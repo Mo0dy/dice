@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import random
 import re
+from diceengine import Diceprop
 
 # Tokens
 INTEGER, ROLL, GREATER_THEN, IF_THEN, PLUS, EOF = "INTEGER", "ROLL", "GREATER_THEN", "IF_THEN", "PLUS", "EOF"
@@ -69,19 +70,22 @@ class Lexer(object):
         return Token(EOF, "EOF")
 
 class Interpreter(object):
+    """Basic interpreter funcitonality"""
     def __init__(self, lexer):
         self.lexer = lexer
         self.current_token = lexer.next_token()
-        print(self.current_token)
 
     def exception(self, message=""):
         raise Exception("Could not parse: {}".format(message))
 
     def eat(self, type):
+        """Checks for token type and advances token"""
         if type != self.current_token.type:
             self.exception("Tried to eat: {} but found {}".format(type, self.current_token.type))
         self.current_token = self.lexer.next_token()
 
+class RollInterpreter(Interpreter):
+    """An interpreter for dice rolling"""
     def factor(self):
         result = self.current_token.value
         self.eat(INTEGER)
@@ -93,7 +97,6 @@ class Interpreter(object):
             self.eat(ROLL)
             dicenum = self.factor()
             result = sum([random.randint(1, dicenum) for _ in range(result)])
-            print("Rolled ", result, dicenum)
         return result
 
     def side(self):
@@ -122,7 +125,39 @@ class Interpreter(object):
         return result
 
 
+class PropInterpreter(Interpreter):
+    def factor(self):
+        result = self.current_token.value
+        self.eat(INTEGER)
+        return result
+
+    def roll(self):
+        result = self.factor()
+        if self.current_token.type == ROLL:
+            self.eat(ROLL)
+            dicesides = self.factor()
+            result = Diceprop(result, dicesides)
+        return result
+
+    def side(self):
+        result = self.roll()
+        while self.current_token.type == PLUS:
+            self.eat(PLUS)
+            right_side = self.roll()
+            result = Diceprop.add(result, right_side)
+        return result
+
+    def expr(self):
+        result = self.side()
+        if self.current_token.type == GREATER_THEN:
+            self.eat(GREATER_THEN)
+            right_side = self.side()
+            result = Diceprop.greaterorequal(result, right_side)
+        return result
+
+
+
 if __name__ == "__main__":
-    lexer = Lexer("1d20 + 5 >= 15 -> 2d6 + 2")
-    interpreter = Interpreter(lexer)
+    lexer = Lexer("1d20 >= 20")
+    interpreter = PropInterpreter(lexer)
     print(interpreter.expr())

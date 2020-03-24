@@ -61,6 +61,41 @@ factor    :  INTEGER
 ***** Construct grammar from precedence
 1. For each level of precedence define a non-terminal. The body of a production for the non-terminal should contain arithmetic operators from that level and non-terminals for the next higher level of precedence.
 2. Create an additional non-terminal factor for basic units of expression, in our case, integers. The general rule is that if you have N levels of precedence, you will need N + 1 non-terminals in total: one non-terminal for each level plus one non-terminal for basic units of expression.
+*** Parse trees
+- Tree structure that symbolizes the parsing
+- Example for: 14 + 2 * 3 - 6 / 2
+  [[file:images/parsetree.png][Example]]
+ 
+*** (Abstract) Syntax Trees
+- Intermediate representation.
+- Parser -> AST -> Interpreter
+- Example:
+  #+BEGIN_SRC python
+class AST(object):
+    """Base class for AST nodes."""
+    pass
+
+class BinOp(AST):
+    """Node for all binary operators"""
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+class Num(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+  #+END_SRC
+- Nodes store the token to create them for convinience
+**** Traversing the Tree
+- easiest is postorder traversal (depth first search): (Python recursion depth?)
+#+BEGIN_SRC python
+def visit(node):
+    for child in node.children:
+        visit(child)
+    # do actions (postorder traversal)
+#+END_SRC
 
 * Dice Rules
 ** Examples
@@ -82,13 +117,59 @@ Reduced Instruction Set: +, >=, d
 |------------+------------------|
 |          4 | ->               |
 |          3 | >=, <=, <, >, == |
-|          2 | +, -             |
+|          2 |                  |
 |          1 | d                |
 |------------+------------------|
 
 ** Grammar
-expr      :  throw (IF_THEN throw)?
+expr      :  throw (IF_THEN side)?
 throw     :  side (GREATER_THEN side)?
 side      :  term (PLUS term)*
 term      :  factor (d factor)?
 factor    :  INTEGER
+
+* Probability Rules
+** Interactive Test:
+#+BEGIN_SRC python
+from interpreter import PropInterpreter, Lexer
+text = "1d20 + 5 >= 20"
+return PropInterpreter(Lexer(text)).expr()
+#+END_SRC
+
+#+RESULTS:
+| True | : | 0.3 | False | : | 0.7 |
+
+** Examples
+|----------------+-------+-----------------------------------------------------------------|
+| Example        | Rule  | Result                                                          |
+|----------------+-------+-----------------------------------------------------------------|
+| 2d6            | NdA   | Generate probability Distribution for every result 2d6 can have |
+| 2 + 2          | x + y | add x to y                                                      |
+| DIS - 3        | x - y | subtract 3 from every entry of the distribution and cap to 0    |
+| 1d20 + 2 >= 18 | a > b | boolean comparision. Collapses probabilty to two                |
+|----------------+-------+-----------------------------------------------------------------|
+
+** Precedence
+Reduced Instruction Set: +, >=, d
+|------------+-----------|
+| precedence | operators |
+|      level |           |
+|------------+-----------|
+|          3 | >=        |
+|          2 | +         |
+|          1 | d         |
+|------------+-----------|
+
+** Grammar
+expr      :  side (GREAATER_THEN side)?
+side      :  roll (ADD roll)*
+roll      :  factor (ROLL factor)?
+factor    :  INTEGER
+
+** 2do (Yet to implement)
+- Other algebra (-, *, /)
+- range or list to operate on: [1:20] [15, 18, 30] (for greate then or equal to)
+- -> for average damage (KEEP DIMENSIONALITY TO ONE!)
+- other comperators <= < > == !=
+- d20 headless rolls
+- Parenthesis
