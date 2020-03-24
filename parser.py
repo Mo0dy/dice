@@ -22,6 +22,7 @@ class Parser(object):
             self.exception("Tried to eat: {} but found {}".format(type, self.current_token.type))
         self.current_token = self.lexer.next_token()
 
+
 class DiceParser(Parser):
     """Parser for the Dice language"""
     def factor(self):
