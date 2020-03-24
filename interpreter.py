@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, PLUS, ROLL, INTEGER, IF_THEN, EOF, GREATER_THEN
-from diceengine import Diceprop
+from lexer import Lexer, PLUS, ROLL, INTEGER, IF_THEN, EOF, GREATER_OR_EQUAL
+from diceengine import Diceengine
 
 class NodeVisitor(object):
     def visit(self, node):
@@ -22,13 +22,16 @@ class Interpreter(NodeVisitor):
     def __init__(self, ast):
         self.ast = ast;
 
+    def exception(self, message=""):
+        raise Exception("Interpreter exception: {}".format(message))
+
     def visit_BinOp(self, node):
         if node.op.type == PLUS:
-            return Diceprop.add(self.visit(node.left), self.visit(node.right))
+            return Diceengine.add(self.visit(node.left), self.visit(node.right))
         if node.op.type == ROLL:
-            return Diceprop(self.visit(node.left), self.visit(node.right))
-        if node.op.type == GREATER_THEN:
-            return Diceprop.greaterorequal(self.visit(node.left), self.visit(node.right))
+            return Diceengine(self.visit(node.left), self.visit(node.right))
+        if node.op.type == GREATER_OR_EQUAL:
+            return Diceengine.greaterorequal(self.visit(node.left), self.visit(node.right))
 
     def visit_Val(self, node):
         return node.value
@@ -38,8 +41,9 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "1d20 + 16 >= 17"
+    input_text = "1d20 * 10 >= 5"
     ast = DiceParser(Lexer(input_text)).expr()
+    print(ast)
     interpreter = Interpreter(ast)
     result = interpreter.interpret()
     print(result)

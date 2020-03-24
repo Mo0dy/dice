@@ -1,80 +1,112 @@
 #!/usr/bin/env python3
 
+"""The actual background processing of data"""
+
+
 from copy import deepcopy
 
-class Diceprop(object):
-    """Holds a probability and has methods for modifiing."""
 
-    def __init__(self, dicenum, dicesides):
-        """Creates a standard dice probability."""
-        self.distribution = self.rollprop(dicesides, dicenum)
+class ResultList(object):
+    """Holds a dictionary of results for a comparison
+
+    e.g. {10: 0.7, 11: 0.8}"""
+   
+    def __init__(self, result_list=[]):
+        self.result_list = result_list
 
     def __repr__(self):
-        return str(self.distribution)
+        return str(self.result_list)
 
-    def __str__(self):
-        return self.__repr__()
+class Distrib(object):
+    """Holds a distribution. Is 0 initialized!!!
 
-    def rollprop(self, dicesides, dicenum):
+    example: {1: 0.5, 2: 0.5} for a d2
+    """
+
+    def __init__(self, distrib=None):
+        # HACK: I don't get it but having distrib={} keyword argument is fucked up
+        self.distrib = distrib if distrib else {}
+
+    def __repr__(self):
+        return str(self.distrib)
+
+    def __getitem__(self, key):
+        # returning 0 if no key is found makes adding easy
+        if key in self.distrib:
+            return self.distrib[key]
+        else:
+            return 0
+
+    def __setitem__(self, key, value):
+        self.distrib[key] = value
+
+    def items(self):
+        return self.distrib.items()
+
+
+# There is also the normal python int
+# And the normal python list
+
+class Diceengine(object):
+    """Wrapper for static objects that manipulate probabilites"""
+
+    @staticmethod
+    def exception(message):
+        raise Exception("Diceengine exception: {}".format(message))
+
+    @staticmethod
+    def rollprop(dicenum, dicesides):
         """Generate probability distribution for the roll of dicenum dice with dicesides sides"""
         # TODO: do proper maths! This is easy stuff!
-        results = {0: 1}
-
+        results = Distrib({0: 1})
         # add dicenum dice
         for _ in range(dicenum):
             # Dictionary to store next probability distribution
-            results_new = {}
+            results_new = Distrib()
             # add every possible dice throw to every existing result
             for i in range(1, dicesides + 1):
                 for value, prop in results.items():
-                    new_value = value + i
-                    new_prop = prop / dicesides
-
-                    # add to new results
-                    if new_value not in results_new:
-                        results_new[new_value] = new_prop
-                    else:
-                        results_new[new_value] += new_prop
-            results = results_new
+                    results_new[value + i] += prop / dicesides
+            results = deepcopy(results_new)
         return results
 
     @staticmethod
     def add(left, right):
         """Can add two diceprops or one diceprop and one integer or two integers"""
-        # swap so that left input will always be Diceprop
+        # Note that adding is cumutative so it only has to be implemented one way
+
         if type(left) == int:
-            # add two integers
             if type(right) == int:
+                # add int to int
                 return left + right
-            left, right = right, left
+            elif type(right) == list:
+                # add int to list
+                return [x + 2 for x in right]
+            elif isinstance(right, Distrib):
+                # add int to distrib
+                new_distrib = Distrib()
+                # add left to every key in Distrib
+                for dice, prop in right.items():
+                    new_distrib[dice + left] = prop
+                return new_distrib
+        elif type(left) == list:
+            if type(right) == int:
+                # has already been implemented
+                return Diceengine.add(right, left)
+        elif isinstance(left, Distrib):
+            if type(right) == int:
+                # has already been implemented
+                return Diceengine.add(right, left)
+            elif isinstance(right, Distrib):
+                # add Distrib to Distrib
+                new_distrib = Distrib()
+                for d1, p1 in left.items():
+                    for d2, p2 in right.items():
+                        new_distrib[d1 + d2] += p1 * p2
+                return new_distrib
 
-        if type(right) == int:
-            # add constant to all dice values
-            new_distrib = {}
-            for dice, prop in left.distribution.items():
-                new_distrib[dice + right] = prop
-            # TODO: cleanup initializers
-            retval = Diceprop(0, 0)
-            retval.distribution = new_distrib
-            return retval
-
-        elif isinstance(right, Diceprop):
-            # generate all new possibilities and assign random distribution
-            new_distrib = {}
-            for d1, p1 in left.distribution.items():
-                for d2, p2 in right.distribution.items():
-                    new_value = d1 + d2
-                    new_prop = p1 * p2
-                    if new_value in new_distrib:
-                        new_distrib[new_value] += new_prop
-                    else:
-                        new_distrib[new_value] = new_prop
-            # TODO: cleanup initializers
-            retval = Diceprop(0, 0)
-            retval.distribution = new_distrib
-            return retval
-        raise Exception("Can't add {} to Distribution!".format(right))
-
+        Diceengine.exception("Can't add {} to {}".format(type(left), type(right)))
+      
     @staticmethod
     def greaterorequal(left, right):
         if type(left) == int and type(right) == int:
@@ -82,7 +114,7 @@ class Diceprop(object):
 
         # for now the left must be a distribution:
         # TODO: call lessthen and switch sides if left side is an integer
-        if not isinstance(left, Diceprop):
+        if not isinstance(left, Diceengine):
             raise Exception("The left side of a comparison must be a Diceprop not {}".format(type(left)))
 
         if type(right) == int:
@@ -97,8 +129,5 @@ class Diceprop(object):
             raise Exception("Not Implemented!")
 
 if __name__ == "__main__":
-    d1 = Diceprop(1, 2)
-    print(d1)
-    d2 = Diceprop(1, 2)
+    d2 = Diceengine.rollprop(2, 2)
     print(d2)
-    print(Diceprop.add(2, d1))

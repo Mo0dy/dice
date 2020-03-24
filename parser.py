@@ -2,7 +2,7 @@
 
 import re
 from syntaxtree import BinOp, Val
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_THEN, IF_THEN, PLUS, EOF
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, EOF
 
 """Generates Abstract Syntax Trees"""
 
@@ -14,7 +14,7 @@ class Parser(object):
         self.current_token = lexer.next_token()
 
     def exception(self, message=""):
-        raise Exception("Could not parse: {}".format(message))
+        raise Exception("Parser exception: {}".format(message))
 
     def eat(self, type):
         """Checks for token type and advances token"""
@@ -38,25 +38,44 @@ class DiceParser(Parser):
             node = BinOp(node, token, self.factor())
         return node
 
-    def side(self):
+    def term(self):
         node = self.roll()
-        while self.current_token.type == PLUS:
+        while self.current_token.type in [MUL, DIV]:
+            # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
-            self.eat(PLUS)
+            self.eat(token.type)
             node = BinOp(node, token, self.roll())
         return node
 
-    def expr(self):
+    def side(self):
+        node = self.term()
+        while self.current_token.type in [PLUS, MINUS]:
+            # MINUS and PLUS are both binary operators so they can be created by the same commands
+            token = self.current_token
+            self.eat(token.type)
+            node = BinOp(node, token, self.term())
+        return node
+
+    def comp(self):
         node = self.side()
-        if self.current_token.type == GREATER_THEN:
+        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL]:
             # store token for AST
             token = self.current_token
-            self.eat(GREATER_THEN)
+            self.eat(token.type)
             node = BinOp(node, token, self.side())
         return node
 
+    def expr(self):
+        node = self.comp()
+        if self.current_token.type == RES:
+            # store token for AST
+            token = self.current_token
+            self.eat(RES)
+            node = BinOp(node, token, self.comp())
+        return node
+
 if __name__ == "__main__":
-    lexer = Lexer("1d20 + 2 >= 20")
+    lexer = Lexer("2d20 + 5 -> 2d6 + 2")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

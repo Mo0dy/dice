@@ -3,8 +3,7 @@
 import re
 
 # Tokens
-INTEGER, ROLL, GREATER_THEN, IF_THEN, PLUS, EOF = "INTEGER", "ROLL", "GREATER_THEN", "IF_THEN", "PLUS", "EOF"
-
+INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "EOF"
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
@@ -33,8 +32,18 @@ class Lexer(object):
         return expression.replace(" ", "")
 
     def next_token(self):
+        """Finds next token"""
+
+        # NOTE: more complex symbols need to be matched first if they contain less complex symbols
+        # e.g. -> before -
+
         # the part of the text that has not yet been interpreted
         expression = self.text[self.index:]
+
+        match = re.search(r"^\-\>", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(RES, "->")
 
         # find INTEGER token
         match = re.search(r"^[0-9]+", expression)
@@ -52,17 +61,48 @@ class Lexer(object):
         match = re.search(r"^\>=", expression)
         if match:
             self.index += len(match[0])
-            return Token(GREATER_THEN, ">=")
+            return Token(GREATER_OR_EQUAL, ">=")
+
+        match = re.search(r"^\<=", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(LESS_OR_EQUAL, "<=")
+
+        match = re.search(r"^\<", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(LESS, "<")
+
+        match = re.search(r"^\>", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(GREATER, ">")
+
+        match = re.search(r"^==", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(EQUAL, "==")
 
         match = re.search(r"^\+", expression)
         if match:
             self.index += len(match[0])
             return Token(PLUS, "+")
 
-        match = re.search(r"^\-\>", expression)
+        match = re.search(r"^\-", expression)
         if match:
             self.index += len(match[0])
-            return Token(IF_THEN, "->")
+            return Token(MINUS, "-")
+
+        match = re.search(r"^\*", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(MUL, "*")
+
+        match = re.search(r"^\\", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(DIV, "+")
+
 
         # can't find anything anymore
         if len(self.text) != self.index:
