@@ -98,10 +98,10 @@ class Lexer(object):
             self.index += len(match[0])
             return Token(MUL, "*")
 
-        match = re.search(r"^\\", expression)
+        match = re.search(r"^/", expression)
         if match:
             self.index += len(match[0])
-            return Token(DIV, "+")
+            return Token(DIV, "/")
 
 
         # can't find anything anymore

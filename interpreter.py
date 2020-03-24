@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, PLUS, ROLL, INTEGER, IF_THEN, EOF, GREATER_OR_EQUAL
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, EOF
 from diceengine import Diceengine
 
 class NodeVisitor(object):
@@ -26,12 +26,30 @@ class Interpreter(NodeVisitor):
         raise Exception("Interpreter exception: {}".format(message))
 
     def visit_BinOp(self, node):
+        # TODO: should I add typeguards here?
+       
         if node.op.type == PLUS:
             return Diceengine.add(self.visit(node.left), self.visit(node.right))
+        if node.op.type == MINUS:
+            return Diceengine.sub(self.visit(node.left), self.visit(node.right))
+        if node.op.type == MUL:
+            return Diceengine.mul(self.visit(node.left), self.visit(node.right))
+        if node.op.type == DIV:
+            return Diceengine.div(self.visit(node.left), self.visit(node.right))
         if node.op.type == ROLL:
-            return Diceengine(self.visit(node.left), self.visit(node.right))
+            return Diceengine.roll(self.visit(node.left), self.visit(node.right))
         if node.op.type == GREATER_OR_EQUAL:
             return Diceengine.greaterorequal(self.visit(node.left), self.visit(node.right))
+        if node.op.type == LESS_OR_EQUAL:
+            return Diceengine.lessorequal(self.visit(node.left), self.visit(node.right))
+        if node.op.type == GREATER:
+            return Diceengine.greater(self.visit(node.left), self.visit(node.right))
+        if node.op.type == LESS:
+            return Diceengine.less(self.visit(node.left), self.visit(node.right))
+        if node.op.type == EQUAL:
+            return Diceengine.equal(self.visit(node.left), self.visit(node.right))
+        if node.op.type == RES:
+            return Diceengine.res(self.visit(node.left), self.visit(node.right))
 
     def visit_Val(self, node):
         return node.value
@@ -41,7 +59,7 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "1d20 * 10 >= 5"
+    input_text = "1d20 + 5 >= 15 -> 2d6 + 2"
     ast = DiceParser(Lexer(input_text)).expr()
     print(ast)
     interpreter = Interpreter(ast)
