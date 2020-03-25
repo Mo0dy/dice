@@ -84,6 +84,37 @@ class Diceengine(object):
         return resolved_result
 
     @staticmethod
+    def reselse(result, distrib_if, distrib_else):
+        # NOTE: Copied from res
+        # convert integer to 100% change distribution
+        if type(distrib_if) == int:
+            distrib_if = Distrib({distrib_if: 1})
+        if type(distrib_else) == int:
+            distrib_else = Distrib({distrib_else: 1})
+        if not isinstance(result, ResultList) \
+           or not isinstance(distrib_if, Distrib) \
+           or not isinstance(distrib_else, Distrib):
+            Diceengine.exception("Can't resolve {} with {} and {}".format(type(result),
+                                                                          type(distrib_if),
+                                                                          type(distrib_else)))
+
+        # sum distribution
+        average_value_if = 0
+        for dice, prop in distrib_if.items():
+            average_value_if += dice * prop
+
+        average_value_else = 0
+        for dice, prop in distrib_else.items():
+            average_value_else += dice * prop
+
+        resolved_result = ResultList()
+        # multiply every change for every value (ac) with average damage
+        for value, prop in result.items():
+            resolved_result[value] = prop * average_value_if + (1 - prop) * average_value_else
+        return resolved_result
+
+
+    @staticmethod
     def roll(dicenum, dicesides):
         """Generate probability distribution for the roll of dicenum dice with dicesides sides"""
         # TODO: do proper maths! This is easy stuff!

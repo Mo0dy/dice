@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, EOF
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF
 from diceengine import Diceengine
 
 class NodeVisitor(object):
@@ -24,6 +24,10 @@ class Interpreter(NodeVisitor):
 
     def exception(self, message=""):
         raise Exception("Interpreter exception: {}".format(message))
+
+    def visit_TenOp(self, node):
+        if node.op1.type == RES and node.op2.type == ELSE:
+            return Diceengine.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
 
     def visit_BinOp(self, node):
         # TODO: should I add typeguards here?
