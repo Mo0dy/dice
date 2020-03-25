@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import re
-from syntaxtree import BinOp, Val
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, EOF
+from syntaxtree import BinOp, TenOp, Val
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, EOF
 
 """Generates Abstract Syntax Trees"""
 
@@ -71,11 +71,19 @@ class DiceParser(Parser):
             # store token for AST
             token = self.current_token
             self.eat(RES)
-            node = BinOp(node, token, self.comp())
+            # cache node if tenary operator gets called
+            new_node1 = self.comp()
+            if self.current_token.type == ELSE:
+                token2 = self.current_token
+                self.eat(ELSE)
+                node = TenOp(node, token, new_node1, token2, self.comp())
+            else:
+                # no tenery operator just normal resolve
+                node = BinOp(node, token, new_node1)
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("2d20 + 5 -> 2d6 + 2")
+    lexer = Lexer("1d2 >= 1 -> 2d6 | 1d6")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

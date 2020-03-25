@@ -3,7 +3,7 @@
 import re
 
 # Tokens
-INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "EOF"
+INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "EOF"
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
@@ -44,6 +44,11 @@ class Lexer(object):
         if match:
             self.index += len(match[0])
             return Token(RES, "->")
+
+        match = re.search(r"^\|", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(ELSE, "|")
 
         # find INTEGER token
         match = re.search(r"^[0-9]+", expression)

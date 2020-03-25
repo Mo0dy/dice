@@ -18,6 +18,26 @@ class BinOp(AST):
         result += '\t|'.join(('\n' + "right: " + str(self.right).lstrip()).splitlines(True))
         return result
 
+class TenOp(AST):
+    """Node for all tenary operators"""
+    def __init__(self, left, op, middle, op2, right):
+        self.left = left
+        self.middle = middle
+        self.right = right
+        self.token1 = self.op1 = op
+        self.token2 = self.op2 = op2
+
+    def __repr__(self):
+        # NOTE: copyied from BinOp
+        result = "TenOp: {}, {}".format(self.op1, self.op2)
+        left_node = str(self.left)
+        middle_node = str(self.middle)
+        right_node = str(self.right)
+        result += '\t|'.join(('\n' + "left: " + str(self.left).lstrip()).splitlines(True))
+        result += '\t|'.join(('\n' + "middle " + str(self.middle).lstrip()).splitlines(True))
+        result += '\t|'.join(('\n' + "right: " + str(self.right).lstrip()).splitlines(True))
+        return result
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):
