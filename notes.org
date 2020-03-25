@@ -220,18 +220,17 @@ Reduced Instruction Set: +, >=, d
 |------------+-----------|
 
 ** Grammar
-expr      :  comp (RES comp (ELSE comp)?)?
+expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side      :  term ((ADD | SUB) term)*
 term      :  roll ((MUL | DIV) term)*
 roll      :  factor (ROLL factor)?
-factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN | ROLL expr | DIS expr | ADV expr
+factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN | ROLL factor | DIS factor | ADV factor
 
 ** 2do (Yet to implement)
 - Roll 4 leave one
 - list to operate on: [15, 18, 30] (for greate then or equal to)
-- unary elsediv for halfe damage: 1d20 >= 10 -> 2d10 |/
- 
+
 * Diceengine
 for dA (A sided dice)
 Advantage: P(X=x) = 2 / A ** 2 * (x - 1) + (1 / A) ** 2

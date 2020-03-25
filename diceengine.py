@@ -66,7 +66,7 @@ class Diceengine(object):
 
     @staticmethod
     def res(result, distrib):
-        # convert integer to 100% change distribution
+        """Evaluates average damage over ac"""
         if type(distrib) == int:
             distrib = Distrib({distrib: 1})
         if not isinstance(result, ResultList) or not isinstance(distrib, Distrib):
@@ -85,6 +85,7 @@ class Diceengine(object):
 
     @staticmethod
     def reselse(result, distrib_if, distrib_else):
+        """Evaluates average damage over dc uses left roll if successful else right roll"""
         # NOTE: Copied from res
         # convert integer to 100% change distribution
         if type(distrib_if) == int:
@@ -113,6 +114,29 @@ class Diceengine(object):
             resolved_result[value] = prop * average_value_if + (1 - prop) * average_value_else
         return resolved_result
 
+    @staticmethod
+    def reselsediv(result, distrib):
+        """Evaluates average damage over dc uses distrib if successful else uses half if unsuccessful"""
+        # NOTE: copied from res
+        if type(distrib) == int:
+            distrib = Distrib({distrib: 1})
+        if not isinstance(result, ResultList) or not isinstance(distrib, Distrib):
+            Diceengine.exception("Can't resolve {} with {}".format(type(result), type(distrib)))
+        # NOTE: copied from reselse
+        # sum distribution
+        average_value_if = 0
+        for dice, prop in distrib.items():
+            average_value_if += dice * prop
+
+        average_value_else = 0
+        for dice, prop in distrib.items():
+            average_value_else += dice // 2 * prop
+
+        resolved_result = ResultList()
+        # multiply every change for every value (ac) with average damage
+        for value, prop in result.items():
+            resolved_result[value] = prop * average_value_if + (1 - prop) * average_value_else
+        return resolved_result
 
     @staticmethod
     def roll(dicenum, dicesides):
@@ -137,6 +161,7 @@ class Diceengine(object):
         """Generates distribution for a single diceroll"""
         if type(dice) != int:
             Diceengine.exception("Can't roll with {}".format(type(dice)))
+        print(Distrib({n: 1 / dice for n in range(1, dice + 1)}))
         return Distrib({n: 1 / dice for n in range(1, dice + 1)})
 
     @staticmethod

@@ -2,7 +2,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV
 
 """Generates Abstract Syntax Trees"""
 
@@ -42,15 +42,15 @@ class DiceParser(Parser):
         elif self.current_token.type == ROLL:
             token = self.current_token
             self.eat(ROLL)
-            return UnOp(self.expr(), token)
+            return UnOp(self.factor(), token)
         elif self.current_token.type == ADV:
             token = self.current_token
             self.eat(ADV)
-            return UnOp(self.expr(), token)
+            return UnOp(self.factor(), token)
         elif self.current_token.type == DIS:
             token = self.current_token
             self.eat(DIS)
-            return UnOp(self.expr(), token)
+            return UnOp(self.factor(), token)
         else:
             token = self.current_token
             self.eat(INTEGER)
@@ -103,13 +103,17 @@ class DiceParser(Parser):
                 token2 = self.current_token
                 self.eat(ELSE)
                 node = TenOp(node, token, new_node1, token2, self.comp())
+            elif self.current_token.type == ELSEDIV:
+                token2 = self.current_token
+                self.eat(ELSEDIV)
+                node = BinOp(node, token2, new_node1)
             else:
                 # no tenery operator just normal resolve
                 node = BinOp(node, token, new_node1)
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("d+5")
+    lexer = Lexer("d20 >= 10 -> 10 |/")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)
