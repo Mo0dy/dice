@@ -3,6 +3,18 @@
 class AST(object):
     """The baseclass for all AST nodes"""
 
+class UnOp(AST):
+    """Node for all unary operators"""
+    def __init__(self, value, op):
+        self.value = value
+        self.token = self.op = op
+
+    def __repr__(self):
+        result = "UnOp: {}".format(self.op)
+        node = str(self.value)
+        result += '\t|'.join(('\n' + "node: " + str(node).lstrip()).splitlines(True))
+        return result
+
 class BinOp(AST):
     """Node for all binary operators"""
     def __init__(self, left, op, right):

@@ -225,15 +225,11 @@ comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) s
 side      :  term ((ADD | SUB) term)*
 term      :  roll ((MUL | DIV) term)*
 roll      :  factor (ROLL factor)?
-factor    :  INTEGER | (LBRACK expr COLON expr RBRACK)
+factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN | ROLL expr | DIS expr | ADV expr
 
 ** 2do (Yet to implement)
-- else |      # (1d20 >= 10 -> 2d10 | 2d10 / 2)
-- range or list to operate on: [1:20] [15, 18, 30] (for greate then or equal to)
-- advantage, disadvantage unary operator d-20, d+20
-- unary d operator
-- Parenthesis
 - Roll 4 leave one
+- list to operate on: [15, 18, 30] (for greate then or equal to)
 - unary elsediv for halfe damage: 1d20 >= 10 -> 2d10 |/
  
 * Diceengine

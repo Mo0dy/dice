@@ -3,7 +3,7 @@
 import re
 
 # Tokens
-INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "LBRACK", "RBRACK", "COMMA", "COLON", "EOF"
+INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, ADV, DIS, LPAREN, RPAREN = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "LBRACK", "RBRACK", "COMMA", "COLON", "EOF", "ADV", "DIS", "LPAREN", "RPAREN"
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
@@ -39,6 +39,26 @@ class Lexer(object):
 
         # the part of the text that has not yet been interpreted
         expression = self.text[self.index:]
+
+        match = re.search(r"^\(", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(LPAREN, "(")
+
+        match = re.search(r"^\)", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(RPAREN, ")")
+
+        match = re.search(r"^d\-", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(DIS, "d-")
+
+        match = re.search(r"^d\+", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(ADV, "d+")
 
         match = re.search(r"^\:", expression)
         if match:

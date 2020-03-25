@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import re
-from syntaxtree import BinOp, TenOp, Val
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF
+from syntaxtree import BinOp, TenOp, Val, UnOp
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN
 
 """Generates Abstract Syntax Trees"""
 
@@ -34,6 +34,23 @@ class DiceParser(Parser):
             value2 = self.expr()
             self.eat(RBRACK)
             return BinOp(value1, token, value2)
+        elif self.current_token.type == LPAREN:
+            self.eat(LPAREN)
+            node = self.expr()
+            self.eat(RPAREN)
+            return node
+        elif self.current_token.type == ROLL:
+            token = self.current_token
+            self.eat(ROLL)
+            return UnOp(self.expr(), token)
+        elif self.current_token.type == ADV:
+            token = self.current_token
+            self.eat(ADV)
+            return UnOp(self.expr(), token)
+        elif self.current_token.type == DIS:
+            token = self.current_token
+            self.eat(DIS)
+            return UnOp(self.expr(), token)
         else:
             token = self.current_token
             self.eat(INTEGER)
@@ -92,7 +109,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("[1:5]")
+    lexer = Lexer("d+5")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

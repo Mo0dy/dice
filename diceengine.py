@@ -117,6 +117,8 @@ class Diceengine(object):
     @staticmethod
     def roll(dicenum, dicesides):
         """Generate probability distribution for the roll of dicenum dice with dicesides sides"""
+        if type(dicenum) != int or type(dicesides) != int:
+            Diceengine.exception("Can't roll with {} and {}".format(type(dicenum), type(dicesides)))
         # TODO: do proper maths! This is easy stuff!
         results = Distrib({0: 1})
         # add dicenum dice
@@ -129,6 +131,31 @@ class Diceengine(object):
                     results_new[value + i] += prop / dicesides
             results = deepcopy(results_new)
         return results
+
+    @staticmethod
+    def rollsingle(dice):
+        """Generates distribution for a single diceroll"""
+        if type(dice) != int:
+            Diceengine.exception("Can't roll with {}".format(type(dice)))
+        return Distrib({n: 1 / dice for n in range(1, dice + 1)})
+
+    @staticmethod
+    def rolladvantage(dice):
+        # calculates the probabilty to hit x with advantage
+        advroll = lambda x: 2 / dice ** 2 * (x - 1) + (1 / dice) ** 2
+        if type(dice) != int:
+            Diceengine.exception("Can't roll with {}".format(type(dice)))
+        return Distrib({n: advroll(n) for n in range(1, dice + 1)})
+
+    @staticmethod
+    def rolldisadvantage(dice):
+        # calculates the probabilty to hit x with disadvantage
+        # FIXME: Implement correct maths
+        Diceengine.exception("Disadvantage not yet implemented!")
+        disadvroll = lambda x: 2 / dice ** 2 * (x + 1) + (1 / dice) ** 2
+        if type(dice) != int:
+            Diceengine.exception("Can't roll with {}".format(type(dice)))
+        return Distrib({n: disadvroll(n) for n in range(1, dice + 1)})
 
     @staticmethod
     def add(left, right):
@@ -343,8 +370,5 @@ class Diceengine(object):
         return Diceengine.greater(right, left)
 
 if __name__ == "__main__":
-    d1 = Diceengine.rollprop(1, 20)
-    d2 = Diceengine.rollprop(1, 3)
-    l = [1, 2, 3]
-
-    print(Diceengine.greater(d1, 11))
+    d1 = Diceengine.rolldisadvantage(2)
+    print(d1)
