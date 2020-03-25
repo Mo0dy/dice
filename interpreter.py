@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, CHOOSE
 from diceengine import Diceengine
 
 class NodeVisitor(object):
@@ -70,6 +70,9 @@ class Interpreter(NodeVisitor):
             if type(val2) != int:
                 self.exception("Expected int got {}".format(type(val2)))
             return [x for x in range(val1, val2 + 1)]
+        if node.op.type == CHOOSE:
+            return Diceengine.choose(self.visit(node.left), self.visit(node.right))
+
         self.exception("{} not implemented".format(node))
 
     def visit_UnOp(self, node):
@@ -91,7 +94,7 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "d20 >= 10 -> 2d6"
+    input_text = "d20![1:10]"
     ast = DiceParser(Lexer(input_text)).expr()
     interpreter = Interpreter(ast)
     result = interpreter.interpret()

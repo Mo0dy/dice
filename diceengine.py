@@ -19,7 +19,7 @@ class ResultList(object):
         return str(self.result_list)
 
     def __getitem__(self, key):
-        return self.result_list[key]
+        return self.result_list[key] if key in self.result_list else 0
 
     def __setitem__(self, key, value):
         self.result_list[key] = value
@@ -63,6 +63,17 @@ class Diceengine(object):
     @staticmethod
     def exception(message):
         raise Exception("Diceengine exception: {}".format(message))
+
+    @staticmethod
+    def choose(left, right):
+        """Only takes entries from right(list) out of left Distrib"""
+        if not isinstance(left, Distrib) or not type(right) == list:
+            Diceengine.exception("Can't choose {} from {}".format(type(left), type(right)))
+        ret_distrib = Distrib()
+        for dice, prop in left.items():
+            if dice in right:
+                ret_distrib[dice] = prop
+        return ret_distrib
 
     @staticmethod
     def res(result, distrib):
@@ -207,7 +218,7 @@ class Diceengine(object):
 
     @staticmethod
     def add(left, right):
-        """Can add two diceprops or one diceprop and one integer or two integers"""
+        """Can add two diceprops or one diceprop and one integer or two integers or two results"""
         # Note that adding is cumutative so it only has to be implemented one way
 
         if type(left) == int:
@@ -241,6 +252,15 @@ class Diceengine(object):
                     for d2, p2 in right.items():
                         new_distrib[d1 + d2] += p1 * p2
                 return new_distrib
+        elif isinstance(left, ResultList):
+            if isinstance(right, ResultList):
+                ret_list = ResultList()
+                # add Resultlist to resultlist
+                for result, value in left.items():
+                    ret_list[result] += value
+                for result, value in right.items():
+                    ret_list[result] += value
+                return ret_list
 
         Diceengine.exception("Can't add {} to {}".format(type(left), type(right)))
 

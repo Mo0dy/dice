@@ -2,7 +2,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, CHOOSE
 
 """Generates Abstract Syntax Trees"""
 
@@ -73,13 +73,24 @@ class DiceParser(Parser):
             node = BinOp(node, token, node2)
         return node
 
-    def term(self):
+    def choose(self):
+        # NOTE: copied from comp
         node = self.roll()
+        if self.current_token.type == CHOOSE:
+            # store token for AST
+            token = self.current_token
+            self.eat(CHOOSE)
+            node = BinOp(node, token, self.roll())
+        return node
+
+
+    def term(self):
+        node = self.choose()
         while self.current_token.type in [MUL, DIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.roll())
+            node = BinOp(node, token, self.choose())
         return node
 
     def side(self):
@@ -122,7 +133,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("-> d20 >= 20 ->")
+    lexer = Lexer("d20![1:20]")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

@@ -147,6 +147,7 @@ return PropInterpreter(Lexer(text)).expr()
 | 2 + 2          | x + y | add x to y                                                      |
 | DIS - 3        | x - y | subtract 3 from every entry of the distribution and cap to 0    |
 | 1d20 + 2 >= 18 | a > b | boolean comparision. Collapses probabilty to two                |
+| 1d20![5:10]    |       | Probability distribution from d20 between 5 and 10              |
 |----------------+-------+-----------------------------------------------------------------|
 
 ** Datatypes and Operators
@@ -168,6 +169,8 @@ return PropInterpreter(Lexer(text)).expr()
 |            |           | Int        | Dist         |                        |
 |            |           |            |              |                        |
 |            | List      | Int        | List         |                        |
+|            |           |            |              |                        |
+|            | Res       | Res        | Res          |                        |
 |------------+-----------+------------+--------------+------------------------|
 | -          | Int       | Dist       | Dist         |                        |
 |            |           | Int        | Int          |                        |
@@ -213,10 +216,11 @@ Reduced Instruction Set: +, >=, d
 | precedence | operators       |
 |      level |                 |
 |------------+-----------------|
-|          6 | -> \vert \vert/ |
-|          5 | >=              |
-|          4 | +-              |
-|          3 | */              |
+|          7 | -> \vert \vert/ |
+|          6 | >=              |
+|          5 | +-              |
+|          4 | */              |
+|          3 | !               |
 |          2 | d h l           |
 |          1 | ()[:]           |
 |------------+-----------------|
@@ -225,7 +229,8 @@ Reduced Instruction Set: +, >=, d
 expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side      :  term ((ADD | SUB) term)*
-term      :  roll ((MUL | DIV) term)*
+term      :  choose ((MUL | DIV) choose)*
+choose    :  roll (CHOOSE roll)?
 roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
 factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN |
              ROLL factor | DIS factor | ADV factor | RES expr
@@ -233,6 +238,13 @@ factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN |
 ** 2do (Yet to implement)
 - Roll 4 leave one
 - list to operate on: [15, 18, 30] (for greate then or equal to)
+- crit? e.g.: d20 >= 14 -> (d20 == 20 -> 2d6 * 2 | 2d6)
+- crit shorthand?
+- Adding results:
+  - Res + Res = Res for summed damage per ac
+- Resolving Results:
+  - -> Res = Average damage for range of ac
+- Dist -> Res: Multiply Every result with changse in distribution
 
 * Diceengine
 for dA (A sided dice)
