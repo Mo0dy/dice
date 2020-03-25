@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON
 from diceengine import Diceengine
 
 class NodeVisitor(object):
@@ -54,6 +54,14 @@ class Interpreter(NodeVisitor):
             return Diceengine.equal(self.visit(node.left), self.visit(node.right))
         if node.op.type == RES:
             return Diceengine.res(self.visit(node.left), self.visit(node.right))
+        if node.op.type == COLON:
+            val1 = self.visit(node.left)
+            if type(val1) != int:
+                self.exception("Expected int got {}".format(type(val1)))
+            val2 = self.visit(node.right)
+            if type(val2) != int:
+                self.exception("Expected int got {}".format(type(val2)))
+            return [x for x in range(val1, val2 + 1)]
 
     def visit_Val(self, node):
         return node.value
@@ -63,7 +71,7 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "1d20 + 5 >= 15 -> 2d6 + 2"
+    input_text = "1d20 + 5 >= [10:15] -> 2d6 + 2"
     ast = DiceParser(Lexer(input_text)).expr()
     print(ast)
     interpreter = Interpreter(ast)

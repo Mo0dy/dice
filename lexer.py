@@ -3,7 +3,7 @@
 import re
 
 # Tokens
-INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "EOF"
+INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "LBRACK", "RBRACK", "COMMA", "COLON", "EOF"
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
@@ -39,6 +39,26 @@ class Lexer(object):
 
         # the part of the text that has not yet been interpreted
         expression = self.text[self.index:]
+
+        match = re.search(r"^\:", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(COLON, ":")
+
+        match = re.search(r"^\,", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(COMMA, ",")
+
+        match = re.search(r"^\[", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(LBRACK, "[")
+
+        match = re.search(r"^\]", expression)
+        if match:
+            self.index += len(match[0])
+            return Token(RBRACK, "]")
 
         match = re.search(r"^\-\>", expression)
         if match:
