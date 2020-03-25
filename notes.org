@@ -209,23 +209,26 @@ return PropInterpreter(Lexer(text)).expr()
 
 ** Precedence
 Reduced Instruction Set: +, >=, d
-|------------+-----------|
-| precedence | operators |
-|      level |           |
-|------------+-----------|
-|          4 | >=        |
-|          3 | +-        |
-|          2 | */        |
-|          1 | d         |
-|------------+-----------|
+|------------+-----------------|
+| precedence | operators       |
+|      level |                 |
+|------------+-----------------|
+|          6 | -> \vert \vert/ |
+|          5 | >=              |
+|          4 | +-              |
+|          3 | */              |
+|          2 | d h l           |
+|          1 | ()[:]           |
+|------------+-----------------|
 
 ** Grammar
 expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side      :  term ((ADD | SUB) term)*
 term      :  roll ((MUL | DIV) term)*
-roll      :  factor (ROLL factor)?
-factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN | ROLL factor | DIS factor | ADV factor
+roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
+factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN |
+             ROLL factor | DIS factor | ADV factor | RES expr
 
 ** 2do (Yet to implement)
 - Roll 4 leave one

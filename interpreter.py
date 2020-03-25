@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from parser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW
 from diceengine import Diceengine
 
 class NodeVisitor(object):
@@ -28,6 +28,12 @@ class Interpreter(NodeVisitor):
     def visit_TenOp(self, node):
         if node.op1.type == RES and node.op2.type == ELSE:
             return Diceengine.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+        elif node.op1.type == ROLL:
+            if node.op2.type == HIGH:
+                return Diceengine.rollhigh(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+            elif node.op2.type == LOW:
+                return Diceengine.rolllow(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+        self.exception("{} not implemented".format(node))
 
     def visit_BinOp(self, node):
         # TODO: should I add typeguards here?
@@ -64,6 +70,7 @@ class Interpreter(NodeVisitor):
             if type(val2) != int:
                 self.exception("Expected int got {}".format(type(val2)))
             return [x for x in range(val1, val2 + 1)]
+        self.exception("{} not implemented".format(node))
 
     def visit_UnOp(self, node):
         if node.op.type == ROLL:
@@ -72,6 +79,9 @@ class Interpreter(NodeVisitor):
             return Diceengine.rolladvantage(self.visit(node.value))
         elif node.op.type == DIS:
             return Diceengine.rolldisadvantage(self.visit(node.value))
+        elif node.op.type == RES:
+            return Diceengine.resunary(self.visit(node.value))
+        self.exception("{} not implemented".format(node))
 
     def visit_Val(self, node):
         return node.value
@@ -81,9 +91,8 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "d20 >= 10 -> 10 |/"
+    input_text = "d20 >= 10 -> 2d6"
     ast = DiceParser(Lexer(input_text)).expr()
-    print(ast)
     interpreter = Interpreter(ast)
     result = interpreter.interpret()
     print(result)

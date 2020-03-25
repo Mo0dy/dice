@@ -84,6 +84,18 @@ class Diceengine(object):
         return resolved_result
 
     @staticmethod
+    def resunary(distrib):
+        """Evaluates distribution (finds average)"""
+        if type(distrib) == int:
+            distrib = Distrib({distrib: 1})
+        if not isinstance(distrib, Distrib):
+            Diceengine.exception("Can't resolve {}".format(type(distrib)))
+        average_value = 0
+        for dice, prop in distrib.items():
+            average_value += dice * prop
+        return ResultList({"AV": average_value})
+
+    @staticmethod
     def reselse(result, distrib_if, distrib_else):
         """Evaluates average damage over dc uses left roll if successful else right roll"""
         # NOTE: Copied from res
@@ -161,7 +173,6 @@ class Diceengine(object):
         """Generates distribution for a single diceroll"""
         if type(dice) != int:
             Diceengine.exception("Can't roll with {}".format(type(dice)))
-        print(Distrib({n: 1 / dice for n in range(1, dice + 1)}))
         return Distrib({n: 1 / dice for n in range(1, dice + 1)})
 
     @staticmethod
@@ -181,6 +192,18 @@ class Diceengine(object):
         if type(dice) != int:
             Diceengine.exception("Can't roll with {}".format(type(dice)))
         return Distrib({n: disadvroll(n) for n in range(1, dice + 1)})
+
+    @staticmethod
+    def rollhigh(dicenum, dice, high):
+        """Roll dicenum dice and take high of the highest rolls"""
+        if type(dicenum) != int or type(dice) != int or type(high) != int:
+            Diceengine.exception("Can't roll with {}, {} and {}".format(type(dicenum), type(dice), type(high)))
+        Diceengine.exception("Roll high not implemented")
+
+    @staticmethod
+    def rolllow(dicenum, dice, low):
+        """Roll dicenum dice and take low of the lowest rolls"""
+        Diceengine.exception("Roll low not implemented")
 
     @staticmethod
     def add(left, right):
