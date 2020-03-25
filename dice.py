@@ -14,5 +14,6 @@ while True:
         break
     try:
         result = Interpreter(DiceParser(Lexer(text)).expr()).interpret()
+        print(result)
     except Exception as e:
         print(e)
