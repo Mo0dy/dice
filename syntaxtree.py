@@ -50,6 +50,20 @@ class TenOp(AST):
         result += '\t|'.join(('\n' + "right: " + str(self.right).lstrip()).splitlines(True))
         return result
 
+class VarOp(AST):
+    """Node for all variadic operators"""
+    def __init__(self, op, nodes):
+        self.token = self.op = op
+        self.nodes = nodes
+
+    def __repr__(self):
+        # NOTE: copied from TenOp
+        result = "VarOp: {}".format(self.op)
+        for node in self.nodes:
+            node = str(node)
+            result += '\t|'.join(('\n' + "node: " + str(node).lstrip()).splitlines(True))
+        return result
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

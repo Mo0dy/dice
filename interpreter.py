@@ -25,6 +25,18 @@ class Interpreter(NodeVisitor):
     def exception(self, message=""):
         raise Exception("Interpreter exception: {}".format(message))
 
+    def visit_VarOp(self, node):
+        if node.op.type == LBRACK:
+            # construct list from subnodes in node.nodes
+            ret_val = []
+            for node in node.nodes:
+                new_val = self.visit(node)
+                if type(new_val) != int:
+                    self.exception("Constructing list expected int got: {}".format(type(new_val)))
+                ret_val.append(new_val)
+            return ret_val
+        self.exception("{} not implemented".format(node))
+
     def visit_TenOp(self, node):
         if node.op1.type == RES and node.op2.type == ELSE:
             return Diceengine.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
@@ -94,7 +106,7 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "d20 >= [1:10] -> 2d5"
+    input_text = "d20[1, 2, 5, 7]"
     ast = DiceParser(Lexer(input_text)).expr()
     interpreter = Interpreter(ast)
     result = interpreter.interpret()

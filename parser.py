@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import re
-from syntaxtree import BinOp, TenOp, Val, UnOp
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
 from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
 
 """Generates Abstract Syntax Trees"""
@@ -27,13 +27,23 @@ class DiceParser(Parser):
     """Parser for the Dice language"""
     def brack(self):
         """NOT a seperate level just a helper method"""
+        token = self.current_token
         self.eat(LBRACK)
         value1 = self.expr()
-        token = self.current_token
-        self.eat(COLON)
-        value2 = self.expr()
+        if self.current_token.type == COLON:
+            token = self.current_token
+            self.eat(COLON)
+            value2 = self.expr()
+            self.eat(RBRACK)
+            return BinOp(value1, token, value2)
+        # Comma seperated values could also be implemented with a bounch of unary operators appending to a list
+        # Somehow this (variadic operator) seems more straigtforward to me
+        nodes = [value1]
+        while self.current_token.type != RBRACK:
+            self.eat(COMMA)
+            nodes.append(self.expr())
         self.eat(RBRACK)
-        return BinOp(value1, token, value2)
+        return VarOp(token, nodes)
 
     def factor(self):
         if self.current_token.type == LBRACK:
@@ -133,7 +143,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("d20 + 4 >= [1:10]")
+    lexer = Lexer("[1, 2, 5, 10]")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)
