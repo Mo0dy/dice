@@ -29,7 +29,8 @@ class Lexer(object):
         raise Exception("Lexer exception: {}".format(message))
 
     def cauterize_input(self, expression):
-        return expression.replace(" ", "")
+        # TODO: this should done more universal
+        return expression.replace(" ", "").replace("\n", "")
 
     def next_token(self):
         """Finds next token"""

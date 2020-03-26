@@ -11,6 +11,10 @@ from parser import DiceParser
 from lexer import Lexer
 
 def interpret(text):
+    if text == "\n":
+        return "\n"
+    if text[0] == '#':
+        return ""
     try:
         result = Interpreter(DiceParser(Lexer(text)).expr()).interpret()
         # round and prettyfy
@@ -34,13 +38,15 @@ def main(args):
         if args[1] in ["-i", "--interactive"]:
             return runinteractive()
         elif args[1] in ["-e", "--execute"] and len(args) > 1:
-            print(interpret(args[2]))
+            sys.stdout.write(interpret(args[2]))
             return 0
 
     input_lines = fileinput.input()
     for line in input_lines:
-        print("dice> ", line)
-        print(interpret(line))
+        result = str(interpret(line)).strip()
+        if result:
+            sys.stdout.write("dice> " + line)
+            sys.stdout.write(str(result) + "\n\n")
     return 0
 
 
