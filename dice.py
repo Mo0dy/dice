@@ -55,16 +55,29 @@ class Definition(object):
         if self.attributes:
             attr_regex = " *, *".join(['"(.*?)"'] * len(self.attributes))
             regex = r"{name}\({attributes}\)".format(name=self.name, attributes=attr_regex)
+
+            # less strict (no " needed)
+            attr_regex2 = ",".join(['(.*?)'] * len(self.attributes))
+            regex2 = r"{name}\({attributes}\)".format(name=self.name, attributes=attr_regex2)
             new_line = line
+
+            # HACK: This should be a lot cleaner!
             match = re.search(regex, new_line)
+            # stores which match is used
+            match1 = True
+            if not match:
+                match1 = False
+                match = re.search(regex2, new_line)
             while match:
                 # NOTE: this can be an endless loop with a carefully chosen #definition
                 groups = match.groups()
                 replacement = self.body
                 for attribute, value in zip(self.attributes, groups):
                     replacement = re.sub(attribute, value, replacement)
-                new_line = re.sub(regex, replacement, new_line, count=1)
+                new_line = re.sub(regex if match1 else regex2, replacement, new_line, count=1)
                 match = re.search(regex, new_line)
+                if not match:
+                    match = re.search(regex2, new_line)
             return new_line
         else:
             regex = r"{name}".format(name=self.name)
