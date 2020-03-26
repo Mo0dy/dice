@@ -164,6 +164,7 @@ return PropInterpreter(Lexer(text)).expr()
 | +          | Int       | Dist       | Dist         | Add Int to every num   |
 |            |           | List       | List         | Add Int to every num   |
 |            |           | Int        | Int          | Int + Int              |
+|            |           | Res        | Res          |                        |
 |            |           |            |              |                        |
 |            | Dist      | Dist       | Dist         |                        |
 |            |           | Int        | Dist         |                        |
@@ -171,6 +172,7 @@ return PropInterpreter(Lexer(text)).expr()
 |            | List      | Int        | List         |                        |
 |            |           |            |              |                        |
 |            | Res       | Res        | Res          |                        |
+|            |           | Int        | Res          |                        |
 |------------+-----------+------------+--------------+------------------------|
 | -          | Int       | Dist       | Dist         |                        |
 |            |           | Int        | Int          |                        |
@@ -232,8 +234,8 @@ side      :  term ((ADD | SUB) term)*
 term      :  choose ((MUL | DIV) choose)*
 choose    :  roll (CHOOSE roll)?
 roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-factor    :  INTEGER | LBRACK expr COLON expr RBRACK | LPAREN exp RPAREN |
-             ROLL factor | DIS factor | ADV factor | RES expr
+factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
+brack     :  LBrack expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)
 - Roll 4 leave one

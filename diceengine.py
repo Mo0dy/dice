@@ -235,6 +235,7 @@ class Diceengine(object):
                 for dice, prop in right.items():
                     new_distrib[dice + left] = prop
                 return new_distrib
+
         elif type(left) == list:
             if type(right) == int:
                 # has already been implemented
