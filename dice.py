@@ -99,19 +99,21 @@ def main(args):
 
     input_lines = fileinput.input()
     for line in input_lines:
-        if line == "\n" or line[0] in '!#':
-            if line.startswith("!define"):
-                define(line[len("!define"):].strip(), definitions)
-            if line[0] == '#':
-                sys.stdout.write(line)
-        else:
-            # apply definitions:
-            for d in definitions:
-                line = d.parse(line)
-            result = str(interpret(line))
-            if result:
-                sys.stdout.write("dice> " + line)
-                sys.stdout.write(str(result) + "\n\n")
+        if line.startswith("//") or line.startswith("\n"):
+            continue
+        if line.startswith("!define"):
+            define(line[len("!define"):].strip(), definitions)
+            continue
+        if line[0] == '#':
+            sys.stdout.write(line)
+            continue
+        # apply definitions:
+        for d in definitions:
+            line = d.parse(line)
+        result = str(interpret(line))
+        if result:
+            sys.stdout.write("dice> " + line)
+            sys.stdout.write(str(result) + "\n\n")
     return 0
 
 
