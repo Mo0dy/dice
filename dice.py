@@ -30,8 +30,12 @@ def runinteractive():
     return 2
 
 def main(args):
-    if len(args) > 1 and args[1] in ["-i", "--interactive"]:
-        return runinteractive()
+    if len(args) > 1:
+        if args[1] in ["-i", "--interactive"]:
+            return runinteractive()
+        elif args[1] in ["-e", "--execute"] and len(args) > 1:
+            print(interpret(args[2]))
+            return 0
 
     input_lines = fileinput.input()
     for line in input_lines:

@@ -2,7 +2,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, CHOOSE
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
 
 """Generates Abstract Syntax Trees"""
 
@@ -25,15 +25,19 @@ class Parser(object):
 
 class DiceParser(Parser):
     """Parser for the Dice language"""
+    def brack(self):
+        """NOT a seperate level just a helper method"""
+        self.eat(LBRACK)
+        value1 = self.expr()
+        token = self.current_token
+        self.eat(COLON)
+        value2 = self.expr()
+        self.eat(RBRACK)
+        return BinOp(value1, token, value2)
+
     def factor(self):
         if self.current_token.type == LBRACK:
-            self.eat(LBRACK)
-            value1 = self.expr()
-            token = self.current_token
-            self.eat(COLON)
-            value2 = self.expr()
-            self.eat(RBRACK)
-            return BinOp(value1, token, value2)
+            return self.brack()
         elif self.current_token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()
@@ -60,37 +64,33 @@ class DiceParser(Parser):
             self.eat(INTEGER)
             return Val(token)
 
-    def roll(self):
+    def index(self):
         node = self.factor()
+        if self.current_token.type == LBRACK:
+            token = self.current_token
+            return BinOp(node, token, self.brack())
+        return node
+
+    def roll(self):
+        node = self.index()
         if self.current_token.type == ROLL:
             token = self.current_token
             self.eat(ROLL)
-            node2 = self.factor()
+            node2 = self.index()
             if self.current_token.type in [HIGH, LOW]:
                 token2 = self.current_token
                 self.eat(token2.type)
-                return TenOp(node, token, node2, token2, self.factor())
+                return TenOp(node, token, node2, token2, self.index())
             node = BinOp(node, token, node2)
         return node
 
-    def choose(self):
-        # NOTE: copied from comp
-        node = self.roll()
-        if self.current_token.type == CHOOSE:
-            # store token for AST
-            token = self.current_token
-            self.eat(CHOOSE)
-            node = BinOp(node, token, self.roll())
-        return node
-
-
     def term(self):
-        node = self.choose()
+        node = self.roll()
         while self.current_token.type in [MUL, DIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.choose())
+            node = BinOp(node, token, self.roll())
         return node
 
     def side(self):
@@ -133,7 +133,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("d20![1:20]")
+    lexer = Lexer("d20 + 4 >= [1:10]")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

@@ -224,7 +224,8 @@ Reduced Instruction Set: +, >=, d
 |          4 | */              |
 |          3 | !               |
 |          2 | d h l           |
-|          1 | ()[:]           |
+|          1 | [:]             |
+|          0 | ()              |
 |------------+-----------------|
 
 ** Grammar
@@ -233,9 +234,10 @@ comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) s
 side      :  term ((ADD | SUB) term)*
 term      :  choose ((MUL | DIV) choose)*
 choose    :  roll (CHOOSE roll)?
-roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
+roll      :  index (ROLL index ((HIGH | LOW) index)?)?
+index     :  factor (brack)?
 factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
-brack     :  LBrack expr (COLON expr | (COMMA expr)*) RBRACK
+brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)
 - Roll 4 leave one
