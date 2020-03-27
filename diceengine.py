@@ -261,6 +261,12 @@ class Diceengine(object):
                 for dice, prop in right.items():
                     new_distrib[dice + left] = prop
                 return new_distrib
+            # NOTE: copied from Diceengine.mul
+            elif isinstance(right, ResultList):
+                new_results = ResultList()
+                for key, value in right.items():
+                    new_results[key] = value + left
+                return new_results
 
         elif type(left) == list:
             if type(right) == int:
@@ -280,7 +286,10 @@ class Diceengine(object):
                         new_distrib[d1 + d2] += p1 * p2
                 return new_distrib
         elif isinstance(left, ResultList):
-            if isinstance(right, ResultList):
+            if type(right) == int:
+                # already implemented
+                return Diceengine.add(right, left)
+            elif isinstance(right, ResultList):
                 ret_list = ResultList()
                 # add Resultlist to resultlist
                 for result, value in left.items():
@@ -352,11 +361,20 @@ class Diceengine(object):
                 for dice, prop in right.items():
                     new_distrib[left * dice] = prop
                 return new_distrib
+            elif isinstance(right, ResultList):
+                new_results = ResultList()
+                for key, value in right.items():
+                    new_results[key] = value * left
+                return new_results
         elif type(left) == list:
             if type(right) == int:
                 # already implemented before
                 return Diceengine.mul(right, left)
         elif isinstance(left, Distrib):
+            if type(right) == int:
+                # already implemented
+                return Diceengine.mul(right, left)
+        elif isinstance(left, ResultList):
             if type(right) == int:
                 # already implemented
                 return Diceengine.mul(right, left)
