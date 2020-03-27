@@ -8,7 +8,7 @@ import re
 
 from interpreter import Interpreter
 from diceengine import ResultList, Distrib
-from parser import DiceParser
+from diceparser import DiceParser
 from lexer import Lexer
 from preprocessor import Preprocessor
 

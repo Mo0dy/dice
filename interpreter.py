@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from parser import DiceParser
+from diceparser import DiceParser
 from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK
 from diceengine import Diceengine
 
