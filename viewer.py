@@ -48,7 +48,11 @@ def parse(text):
             items.append([a, b])
         return dict(items)
 
+def setup():
+    plt.grid()
+
 def main(args):
+    setup()
     args = args[1:]
     input_lines = fileinput.input(args)
     # collects label data until distribution is visualized

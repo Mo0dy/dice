@@ -228,14 +228,44 @@ class Diceengine(object):
         return Distrib({n: disadvroll(n) for n in range(1, dice + 1)})
 
     @staticmethod
-    def rollhigh(dicenum, dice, high):
-        """Roll dicenum dice and take high of the highest rolls"""
-        if type(dicenum) != int or type(dice) != int or type(high) != int:
-            Diceengine.exception("Can't roll with {}, {} and {}".format(type(dicenum), type(dice), type(high)))
+    def rollhigh(n, s, nh):
+        """Roll dicenum dice and take high of the highest rolls
+
+        n = dicenum
+        s = dicesides
+        nh = number of heighest rolls picked
+        """
+
+        if type(n) != int or type(s) != int or type(nh) != int:
+            Diceengine.exception("Can't roll with {}, {} and {}".format(type(n), type(s), type(nh)))
+
+        def count_children(s_num, c_left, n_left, min_val, eyes_sum, distrib):
+            """returns the amount of combinations the children can have"""
+            if c_left == 0:
+                # last node do calculation and return
+                distrib[eyes_sum] += 1
+                return 1
+            if n_left <= 0:
+                # maximum number of normal dice throws reached -> throw agains min val
+                total = 0
+                for i in range(1, min_val + 1):
+                    total += count_children(s_num, c_left - 1, n_left - 1, min_val, eyes_sum, distrib)
+                    return total
+            else:
+                # still a normal dice throw
+                total = 0
+                for i in range(1, s_num + 1):
+                    min_val = min(i, min_val)
+                    total += count_children(s_num, c_left - 1, n_left - 1, min_val, eyes_sum + i, distrib)
+                return total
+
         # do every combination and leave the lowest
-        for n in range(dicenum):
-            pass
-        Diceengine.exception("Roll high not implemented")
+        distrib = Distrib()
+        # count possible results for every outcome
+        total = count_children(s, n, nh, s, 0, distrib)
+        for key, value in distrib.items():
+            distrib[key] = value / total
+        return distrib
 
     @staticmethod
     def rolllow(dicenum, dice, low):
@@ -483,6 +513,4 @@ class Diceengine(object):
         return Diceengine.greater(right, left)
 
 if __name__ == "__main__":
-    print(timeit(lambda: Diceengine.roll(2, 2), number=1))
-    print(timeit(lambda: Diceengine.rollnew(2, 2), number=1))
-    print(timeit(lambda: Diceengine.rollnewnew(2, 2), number=1))
+    print(Diceengine.rollhigh(4, 6, 3))

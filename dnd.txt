@@ -1,15 +1,16 @@
 
-!define ATTACK(mod, ndmg, cdmg, ac) ((d20[1:19] + mod >= ac -> ndmg) + (d20[20] + mod >= ac -> cdmg))
+!define ATTACK(mod, ndmg, cdmg, ac) ((d20[2:19] + mod >= ac -> ndmg) + (d20[20] + mod >= ac -> cdmg))
 
 // PHB spells (first level)
 !define ACID_SPLASH(ntargets, dc, tdexmod) (d20 < dc - tdexmod -> d6) * ntargets
 !define CONE_OF_COLD(ntargets, dc, tdexmod) (d20 < dc - tdexmod -> 8d8 |/) * ntargets
 
 // main basically
-!define AC_RANGE [14:16]
+!define AC_RANGE [5:28]
 
-# Cone of cold 1
-CONE_OF_COLD(1, 14, 5)
-
-# Cone of cold 3
-CONE_OF_COLD(3, 14, 5)
+# normal
+d20 + 4 >= AC_RANGE
+# inspiration
+d20 + 1d4 + 4 >= AC_RANGE
+# advantage
+d+20 + 4 >= AC_RANGE
