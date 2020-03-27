@@ -12,14 +12,15 @@ from diceparser import DiceParser
 from lexer import Lexer
 from preprocessor import Preprocessor
 
-def interpret(text):
+def interpret(text, roundlevel=0):
     """Interprete command and return output"""
     try:
         result = Interpreter(DiceParser(Lexer(text)).expr()).interpret()
         # round and prettyfy
         if isinstance(result, ResultList) or isinstance(result, Distrib):
-            for k, v in result.items():
-                result[k] = round(v, 2)
+            if roundlevel:
+                for k, v in result.items():
+                    result[k] = round(v, roundlevel)
         return result
     except Exception as e:
         return str(e)
@@ -27,16 +28,18 @@ def interpret(text):
 def runinteractive():
     """Get in put from console"""
     while True:
+        roundlevel = 2
         text = input("dice> ")
         if text == "exit":
             return 0
-        print(interpret(text))
+        print(interpret(text, roundlevel))
     return 2
 
 
 def main(args):
     # set if output should be grepable
     grepable = False
+    roundlevel = 0
     # remove filename
     args = args[1:]
     while args:
@@ -44,11 +47,16 @@ def main(args):
             return runinteractive()
             args = args[1:]
         elif args[0] in ["-e", "--execute"] and len(args) > 1:
-            sys.stdout.write(str(interpret(args[1])))
+            sys.stdout.write(str(interpret(args[1], roundlevel)) + "\n")
             return 0
         elif args[0] in ["-g", "--grepable"]:
             grepable = True
             args = args[1:]
+        elif args[0] in ["-r", "--round"]:
+            args = args[1:]
+            if args and args[0].isdigit():
+                roundlevel = int(args[0])
+                args = args[1:]
         else:
             # no arg worked break loop
             break
@@ -69,7 +77,7 @@ def main(args):
         if line.startswith("!define"):
             preprocessor.define(line[len("!define"):].strip())
             continue
-        result = str(interpret(line))
+        result = str(interpret(line, roundlevel))
         if result:
             if not grepable:
                 sys.stdout.write("dice> " + line)

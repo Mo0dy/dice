@@ -97,6 +97,10 @@ def visit(node):
     # do actions (postorder traversal)
 #+END_SRC
 
+* 2do
+** TODO Do the complete documentation!
+*** TODO Write the Readme (github)
+
 * Dice Rules
 ** Examples
 |-----------------------+-------------+----------------------------------------|
