@@ -62,6 +62,7 @@ class Definition(object):
             new_line = line
 
             # HACK: This should be a lot cleaner!
+            # TODO: also match mixtures of these!
             match = re.search(regex, new_line)
             # stores which match is used
             match1 = True
@@ -99,17 +100,20 @@ def main(args):
 
     input_lines = fileinput.input()
     for line in input_lines:
+        # comments
         if line.startswith("//") or line.startswith("\n"):
             continue
-        if line.startswith("!define"):
-            define(line[len("!define"):].strip(), definitions)
-            continue
+        # print statement
         if line[0] == '#':
             sys.stdout.write(line)
             continue
         # apply definitions:
         for d in definitions:
             line = d.parse(line)
+        # create new definitions
+        if line.startswith("!define"):
+            define(line[len("!define"):].strip(), definitions)
+            continue
         result = str(interpret(line))
         if result:
             sys.stdout.write("dice> " + line)

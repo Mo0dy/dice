@@ -1,9 +1,10 @@
 // basic example of macro
-!define crit(atk, ndmg, cdmg, target) ((d20[1:19] + atk >= target -> ndmg) + (d20[20] + atk >= target -> cdmg))
+!define CRIT(atk, ndmg, cdmg, target) ((d20[1:19] + atk >= target -> ndmg) + (d20[20] + atk >= target -> cdmg))
 
-# With Crit
-crit(4, 2d6, 2d6 / 2, [14:18])
+!define AC_RANGE [12:18]
+# With CRIT
+CRIT(4, 2d6, 2d6 / 2, AC_RANGE)
 
-# With smite on crit
-// Just add another distribution to the crit
-crit(4, 2d6, 2d6 / 2, [14:18]) + (d20[20] >= [14:18] -> 3d8)
+# With smite on CRIT
+// Just add another distribution to the CRIT
+CRIT(4, 2d6, 2d6 / 2, AC_RANGE) + (d20[20] >= AC_RANGE -> 3d8)
