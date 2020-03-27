@@ -4,6 +4,9 @@
 
 
 from copy import deepcopy
+# note that comb only exists in python 3.8
+from math import factorial, floor, comb
+from timeit import timeit
 
 
 class ResultList(object):
@@ -162,8 +165,28 @@ class Diceengine(object):
         return resolved_result
 
     @staticmethod
-    def roll(dicenum, dicesides):
+    def roll(n, s):
         """Generate probability distribution for the roll of dicenum dice with dicesides sides"""
+        # NOTE: fallback for python < 3.8
+        # def nck(n, k):
+        #     return factorial(n) / (factorial(k)) / factorial(n - k)
+        # this uses proper maths then just summing. not sure if this is any faster
+        results = Distrib()
+        for p in range(1, s * n + 1):
+            c = (p - n) // s
+            P = sum([(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1) ]) / s ** n
+            if P != 0:
+                results[p] = P
+        return results
+
+    @staticmethod
+    def rollold(dicenum, dicesides):
+        """Generate probability distribution for the roll of dicenum dice with dicesides sides
+
+        Deprecated use rollnew (fallback for < python 3.8)
+        """
+        # NOTE: I could also just use a different factorial definition
+
         if type(dicenum) != int or type(dicesides) != int:
             Diceengine.exception("Can't roll with {} and {}".format(type(dicenum), type(dicesides)))
         # TODO: do proper maths! This is easy stuff!
@@ -209,6 +232,9 @@ class Diceengine(object):
         """Roll dicenum dice and take high of the highest rolls"""
         if type(dicenum) != int or type(dice) != int or type(high) != int:
             Diceengine.exception("Can't roll with {}, {} and {}".format(type(dicenum), type(dice), type(high)))
+        # do every combination and leave the lowest
+        for n in range(dicenum):
+            pass
         Diceengine.exception("Roll high not implemented")
 
     @staticmethod
@@ -439,5 +465,6 @@ class Diceengine(object):
         return Diceengine.greater(right, left)
 
 if __name__ == "__main__":
-    d1 = Diceengine.rolldisadvantage(2)
-    print(d1)
+    print(timeit(lambda: Diceengine.roll(2, 2), number=1))
+    print(timeit(lambda: Diceengine.rollnew(2, 2), number=1))
+    print(timeit(lambda: Diceengine.rollnewnew(2, 2), number=1))
