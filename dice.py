@@ -35,14 +35,25 @@ def runinteractive():
 
 
 def main(args):
-    if len(args) > 1:
-        if args[1] in ["-i", "--interactive"]:
+    # set if output should be grepable
+    grepable = False
+    # remove filename
+    args = args[1:]
+    while args:
+        if args[0] in ["-i", "--interactive"]:
             return runinteractive()
-        elif args[1] in ["-e", "--execute"] and len(args) > 1:
-            sys.stdout.write(interpret(args[2]))
+            args = args[1:]
+        elif args[0] in ["-e", "--execute"] and len(args) > 1:
+            sys.stdout.write(str(interpret(args[1])))
             return 0
+        elif args[0] in ["-g", "--grepable"]:
+            grepable = True
+            args = args[1:]
+        else:
+            # no arg worked break loop
+            break
 
-    input_lines = fileinput.input()
+    input_lines = fileinput.input(args)
     preprocessor = Preprocessor()
     for line in input_lines:
         # comments
@@ -60,8 +71,11 @@ def main(args):
             continue
         result = str(interpret(line))
         if result:
-            sys.stdout.write("dice> " + line)
-            sys.stdout.write(str(result) + "\n\n")
+            if not grepable:
+                sys.stdout.write("dice> " + line)
+            sys.stdout.write(str(result) + "\n")
+            if not grepable:
+                sys.stdout.write("\n")
     return 0
 
 

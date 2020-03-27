@@ -8,3 +8,9 @@ CRIT(4, 2d6, 2d6 / 2, AC_RANGE)
 # With smite on CRIT
 // Just add another distribution to the CRIT
 CRIT(4, 2d6, 2d6 / 2, AC_RANGE) + (d20[20] >= AC_RANGE -> 3d8)
+
+# Simple distribution
+2d6
+
+# average
+-> 2d6
