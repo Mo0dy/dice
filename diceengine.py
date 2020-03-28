@@ -5,7 +5,7 @@
 
 from copy import deepcopy
 # note that comb only exists in python 3.8
-from math import factorial, floor, comb
+from math import factorial, floor, comb, inf
 from timeit import timeit
 
 
@@ -220,9 +220,7 @@ class Diceengine(object):
     @staticmethod
     def rolldisadvantage(dice):
         # calculates the probabilty to hit x with disadvantage
-        # FIXME: Implement correct maths
-        Diceengine.exception("Disadvantage not yet implemented!")
-        disadvroll = lambda x: 2 / dice ** 2 * (x + 1) + (1 / dice) ** 2
+        disadvroll = lambda x: 2 / dice ** 2 * (dice - x) + (1 / dice) ** 2
         if type(dice) != int:
             Diceengine.exception("Can't roll with {}".format(type(dice)))
         return Distrib({n: disadvroll(n) for n in range(1, dice + 1)})
@@ -236,41 +234,71 @@ class Diceengine(object):
         nh = number of heighest rolls picked
         """
 
+        # TODO HACK proper maths
+
         if type(n) != int or type(s) != int or type(nh) != int:
             Diceengine.exception("Can't roll with {}, {} and {}".format(type(n), type(s), type(nh)))
 
-        def count_children(s_num, c_left, n_left, min_val, eyes_sum, distrib):
+        # recursively traverse the option tree
+        def count_children(s, n_left, results, distrib):
             """returns the amount of combinations the children can have"""
-            if c_left == 0:
-                # last node do calculation and return
-                distrib[eyes_sum] += 1
-                return 1
-            if n_left <= 0:
-                # maximum number of normal dice throws reached -> throw agains min val
-                total = 0
-                for i in range(1, min_val + 1):
-                    total += count_children(s_num, c_left - 1, n_left - 1, min_val, eyes_sum, distrib)
-                    return total
-            else:
-                # still a normal dice throw
-                total = 0
-                for i in range(1, s_num + 1):
-                    min_val = min(i, min_val)
-                    total += count_children(s_num, c_left - 1, n_left - 1, min_val, eyes_sum + i, distrib)
-                return total
+            if n_left == 0:
+                distrib[sum(results)] += 1
+                return
+            # traverse the tree
+            for i in range(1, s + 1):
+                results_min = min(results)
+                new_results = results.copy()
+                if i > results_min:
+                    new_results[results.index(results_min)] = i
+                count_children(s, n_left - 1, new_results, distrib)
 
         # do every combination and leave the lowest
         distrib = Distrib()
         # count possible results for every outcome
-        total = count_children(s, n, nh, s, 0, distrib)
+        count_children(s, n, [0] * nh, distrib)
+        total = s ** n
         for key, value in distrib.items():
             distrib[key] = value / total
         return distrib
 
     @staticmethod
-    def rolllow(dicenum, dice, low):
-        """Roll dicenum dice and take low of the lowest rolls"""
-        Diceengine.exception("Roll low not implemented")
+    def rolllow(n, s, nl):
+        # NOTE: copied from rollhigh
+        """Roll dicenum dice and take high of the highest rolls
+
+        n = dicenum
+        s = dicesides
+        nh = number of heighest rolls picked
+        """
+
+        # TODO HACK proper maths
+
+        if type(n) != int or type(s) != int or type(nl) != int:
+            Diceengine.exception("Can't roll with {}, {} and {}".format(type(n), type(s), type(nl)))
+
+        # recursively traverse the option tree
+        def count_children(s, n_left, results, distrib):
+            """returns the amount of combinations the children can have"""
+            if n_left == 0:
+                distrib[sum(results)] += 1
+                return
+            # traverse the tree
+            for i in range(1, s + 1):
+                results_max = max(results)
+                new_results = results.copy()
+                if i < results_max:
+                    new_results[results.index(results_max)] = i
+                count_children(s, n_left - 1, new_results, distrib)
+
+        # do every combination and leave the lowest
+        distrib = Distrib()
+        # count possible results for every outcome
+        count_children(s, n, [inf] * nl, distrib)
+        total = s ** n
+        for key, value in distrib.items():
+            distrib[key] = value / total
+        return distrib
 
     @staticmethod
     def add(left, right):
@@ -513,4 +541,6 @@ class Diceengine(object):
         return Diceengine.greater(right, left)
 
 if __name__ == "__main__":
-    print(Diceengine.rollhigh(4, 6, 3))
+    r = Diceengine.rollhigh(4, 3, 2)
+    print(r)
+    print(sum(list(r.distrib.values())))

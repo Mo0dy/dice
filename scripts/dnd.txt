@@ -6,11 +6,17 @@
 !define CONE_OF_COLD(ntargets, dc, tdexmod) (d20 < dc - tdexmod -> 8d8 |/) * ntargets
 
 // main basically
-!define AC_RANGE [5:28]
+!define AC_RANGE [1:24]
 
 # normal
-d20 + 4 >= AC_RANGE
+d20 >= AC_RANGE
 # inspiration
-d20 + 1d4 + 4 >= AC_RANGE
+d20 + 1d4 >= AC_RANGE
 # advantage
-d+20 + 4 >= AC_RANGE
+d+20 >= AC_RANGE
+# disadvantage
+d-20 >= AC_RANGE
+# super advantage
+3d20h1 >= AC_RANGE
+# super disadvantage
+3d20l1 >= AC_RANGE

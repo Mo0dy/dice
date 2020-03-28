@@ -16,10 +16,12 @@ def show():
 
 def visualize(data, legend):
     """Visualizes data"""
+    print("data", data, legend)
     if isinstance(data, dict):
         x = list(data.keys())
         y = list(data.values())
         plt.plot(x, y, label=legend)
+        print(legend)
         plt.legend()
 
 def string_to_number(string):
@@ -33,6 +35,7 @@ def string_to_number(string):
         return string
 
 def parse(text):
+    # print(text)
     """Parses text to create data"""
     # re recognising python dictionaries
     #
@@ -61,10 +64,13 @@ def main(args):
         # lines starting with # contain information for this script (either lables or commands)
         if line.startswith("#"):
             label.append(line[1:].strip())
+            print("here ", line)
             continue
 
+        print("visualize ", line)
         # actual information
         visualize(parse(line), "\n".join(label))
+        label = []
     show()
     return 0
 
