@@ -74,33 +74,33 @@ class DiceParser(Parser):
             self.eat(INTEGER)
             return Val(token)
 
-    def index(self):
-        node = self.factor()
-        if self.current_token.type == LBRACK:
-            token = self.current_token
-            return BinOp(node, token, self.brack())
-        return node
-
     def roll(self):
-        node = self.index()
+        node = self.factor()
         if self.current_token.type == ROLL:
             token = self.current_token
             self.eat(ROLL)
-            node2 = self.index()
+            node2 = self.factor()
             if self.current_token.type in [HIGH, LOW]:
                 token2 = self.current_token
                 self.eat(token2.type)
-                return TenOp(node, token, node2, token2, self.index())
+                return TenOp(node, token, node2, token2, self.factor())
             node = BinOp(node, token, node2)
         return node
 
-    def term(self):
+    def index(self):
         node = self.roll()
+        if self.current_token.type == LBRACK:
+            token = self.current_token
+            return BinOp(node, token, self.roll())
+        return node
+
+    def term(self):
+        node = self.index()
         while self.current_token.type in [MUL, DIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.roll())
+            node = BinOp(node, token, self.index())
         return node
 
     def side(self):
@@ -143,7 +143,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("[1, 2, 5, 10]")
+    lexer = Lexer("d20[20]")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)

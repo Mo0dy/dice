@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
-"""The actual background processing of data"""
+"""Does aritmetic on stochastical distributions.
 
+Datatypes:
+Result List: Holds results and average values
+Distrib: Holds values and probabilities
+list: (Python) holds values
+int: (Pythoon) holds one value
+"""
 
-from copy import deepcopy
 # note that comb only exists in python 3.8
 from math import factorial, floor, comb, inf
-from timeit import timeit
 
 
 class ResultList(object):
-    """Holds a dictionary of results for a comparison
+    """Holds a dictionary with values and results
 
     e.g. {10: 0.7, 11: 0.8}"""
    
@@ -22,16 +26,19 @@ class ResultList(object):
         return str(self.result_list)
 
     def __getitem__(self, key):
+        """Return value of key if existing else 0"""
         return self.result_list[key] if key in self.result_list else 0
 
     def __setitem__(self, key, value):
         self.result_list[key] = value
 
     def items(self):
+        """Return iterable of internal result list"""
         return self.result_list.items()
 
+
 class Distrib(object):
-    """Holds a distribution. Is 0 initialized!!!
+    """Holds a stocahstic distribution of values and probabilites
 
     example: {1: 0.5, 2: 0.5} for a d2
     """
@@ -44,32 +51,34 @@ class Distrib(object):
         return str(self.distrib)
 
     def __getitem__(self, key):
-        # returning 0 if no key is found makes adding easy
-        if key in self.distrib:
-            return self.distrib[key]
-        else:
-            return 0
+        """Returns probability of key if key exists else 0"""
+        return self.distrib[key] if key in self.distrib else 0
 
     def __setitem__(self, key, value):
         self.distrib[key] = value
 
     def items(self):
+        """Return iterable of distribution"""
         return self.distrib.items()
 
-
-# There is also the normal python int
-# And the normal python list
+    def average(self):
+        """Returns average value of statistic distribution"""
+        # multiply every entry with changse to occur
+        return sum([dice * prop for dice, prop in self.items()])
 
 class Diceengine(object):
-    """Wrapper for static objects that manipulate probabilites"""
+    """Arithmetic methods for handling distributions"""
+    # NOTE: leave in class wrapper as to not seem to similar to default methods
 
     @staticmethod
     def exception(message):
+        """Raises an exception of the Diceengine"""
+        # TODO: more nuonced custom exceptions
         raise Exception("Diceengine exception: {}".format(message))
 
     @staticmethod
     def choose(left, right):
-        """Only takes entries from right(list) out of left Distrib"""
+        """Indexes Distrib (left) with list (right)"""
         if not isinstance(left, Distrib) or not type(right) == list:
             Diceengine.exception("Can't choose {} from {}".format(type(left), type(right)))
         ret_distrib = Distrib()
@@ -80,34 +89,41 @@ class Diceengine(object):
 
     @staticmethod
     def res(result, distrib):
-        """Evaluates average damage over ac"""
+        """Evaluates average damage (distrib) over result
+
+        This is used to convert a hitchangse over ac table to a damage over ac table"""
         if type(distrib) == int:
             distrib = Distrib({distrib: 1})
         if not isinstance(result, ResultList) or not isinstance(distrib, Distrib):
             Diceengine.exception("Can't resolve {} with {}".format(type(result), type(distrib)))
 
-        # sum distribution
-        average_value = 0
-        for dice, prop in distrib.items():
-            average_value += dice * prop
+        # cache average
+        distrib_average = distrib.average()
 
+        # place to store result
         resolved_result = ResultList()
-        # multiply every change for every value (ac) with average damage
+
+        # to resolve check hitchangse (stored for every ac(key) as value)
+        # and multiply with distrib_average
         for value, prop in result.items():
-            resolved_result[value] = prop * average_value
+            resolved_result[value] = prop * distrib_average
         return resolved_result
 
     @staticmethod
-    def resunary(distrib):
-        """Evaluates distribution (finds average)"""
-        if type(distrib) == int:
-            distrib = Distrib({distrib: 1})
-        if not isinstance(distrib, Distrib):
-            Diceengine.exception("Can't resolve {}".format(type(distrib)))
-        average_value = 0
-        for dice, prop in distrib.items():
-            average_value += dice * prop
-        return ResultList({"AV": average_value})
+    def resunary(value):
+        """Return resolution of a single entry.
+
+        Implemented for Distribution only as average.
+        For int just return value of int"""
+        # NOTE: value is wrapped in a ResultList because it fundamentaly is a result
+        # and this language has no float type
+        if type(value) == int:
+            return ResultList({"Int": value})
+
+        if not isinstance(value, Distrib):
+            Diceengine.exception("Can't resolve {}".format(type(value)))
+
+        return ResultList({"AV": value.average()})
 
     @staticmethod
     def reselse(result, distrib_if, distrib_else):
@@ -177,29 +193,6 @@ class Diceengine(object):
             P = sum([(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1) ]) / s ** n
             if P != 0:
                 results[p] = P
-        return results
-
-    @staticmethod
-    def rollold(dicenum, dicesides):
-        """Generate probability distribution for the roll of dicenum dice with dicesides sides
-
-        Deprecated use rollnew (fallback for < python 3.8)
-        """
-        # NOTE: I could also just use a different factorial definition
-
-        if type(dicenum) != int or type(dicesides) != int:
-            Diceengine.exception("Can't roll with {} and {}".format(type(dicenum), type(dicesides)))
-        # TODO: do proper maths! This is easy stuff!
-        results = Distrib({0: 1})
-        # add dicenum dice
-        for _ in range(dicenum):
-            # Dictionary to store next probability distribution
-            results_new = Distrib()
-            # add every possible dice throw to every existing result
-            for i in range(1, dicesides + 1):
-                for value, prop in results.items():
-                    results_new[value + i] += prop / dicesides
-            results = deepcopy(results_new)
         return results
 
     @staticmethod

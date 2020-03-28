@@ -100,7 +100,16 @@ def visit(node):
 * 2do
 ** TODO Do the complete documentation!
 *** TODO Write the Readme (github)
+** TODO Comments
+*** TODO diceengine.py
+**** Working on method: [[file:diceengine.py::129][reselse]]
+*** TODO lexer.py
+*** TODO syntaxtree.py
 
+*** TODO diceparser.py
+*** TODO interpreter.py
+*** TODO preprocessor.py
+*** TODO dice.py
 * Dice Rules
 ** Examples
 |-----------------------+-------------+----------------------------------------|
@@ -227,8 +236,8 @@ Reduced Instruction Set: +, >=, d
 |          5 | +-              |
 |          4 | */              |
 |          3 | !               |
-|          2 | d h l           |
-|          1 | [:]             |
+|          2 | [:]             |
+|          1 | d h l           |
 |          0 | ()              |
 |------------+-----------------|
 
@@ -237,9 +246,9 @@ expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side      :  term ((ADD | SUB) term)*
 term      :  choose ((MUL | DIV) choose)*
-choose    :  roll (CHOOSE roll)?
-roll      :  index (ROLL index ((HIGH | LOW) index)?)?
-index     :  factor (brack)?
+choose    :  index (CHOOSE index)?
+index     :  roll (brack)?
+roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
 factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
 brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
