@@ -1,9 +1,40 @@
 #!/usr/bin/env python3
 
+"""Lexer for the "dice" language.
+
+Is used to convert string input into a token stream"""
+
+
 import re
 
+
 # Tokens
-INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, ADV, DIS, LPAREN, RPAREN, ELSEDIV, HIGH, LOW = "INTEGER", "ROLL", "GREATER_OR_EQUAL", "LESS_OR_EQUAL", "LESS", "GREATER", "EQUAL", "PLUS", "MINUS", "MUL", "DIV", "RES", "ELSE", "LBRACK", "RBRACK", "COMMA", "COLON", "EOF", "ADV", "DIS", "LPAREN", "RPAREN", "ELSEDIV", "HIGH", "LOW"
+INTEGER = "INTEGER"                      # any number
+ROLL = "ROLL"                            # "d"
+GREATER_OR_EQUAL = "GREATER_OR_EQUAL"    # ">="
+LESS_OR_EQUAL = "LESS_OR_EQUAL"          # "<="
+LESS = "LESS"                            # "<"
+GREATER = "GREATER"                      # ">"
+EQUAL = "EQUAL"                          # "=="
+PLUS = "PLUS"                            # "+"
+MINUS = "MINUS"                          # "-"
+MUL = "MUL"                              # "*"
+DIV = "DIV"                              # "/"
+RES = "RES"                              # "->"
+ELSE = "ELSE"                            # "|"
+LBRACK = "LBRACK"                        # "["
+RBRACK = "RBRACK"                        # "]"
+COMMA = "COMMA"                          # ","
+COLON = "COLON"                          # ":"
+ADV = "ADV"                              # "d+"
+DIS = "DIS"                              # "d-"
+LPAREN = "LPAREN"                        # "("
+RPAREN = "RPAREN"                        # ")"
+ELSEDIV = "ELSEDIV"                      # "|/"
+HIGH = "HIGH"                            # "h"
+LOW = "LOW"                              # "l"
+EOF = "EOF"                              # end of file
+
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
@@ -14,159 +45,75 @@ class Token(object):
     def __repr__(self):
         return "Token: {type}, {value}".format(type=self.type, value=self.value)
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class Lexer(object):
-    """Generate tokensteam from string input"""
+    """Generate tokensteam from string input for dice language"""
 
-    def __init__(self, text):
-        self.text = self.cauterize_input(text)
-        self.index = 0
+    def __init__(self, string_input):
+        """test = complete text to be interpreted"""
+        # stores the string that has yet to interpreted
+        self.string_input = self.cauterize_input(string_input)
+        # keep the original text in case needed
+        self.original_text = string_input
 
     def exception(self, message=""):
+        """Raises a lexer exception"""
         raise Exception("Lexer exception: {}".format(message))
 
     def cauterize_input(self, expression):
+        """Modifies input by removing uninteresting charcters (\n, " ")"""
         # TODO: this should done more universal
         return expression.replace(" ", "").replace("\n", "")
 
     def next_token(self):
-        """Finds next token"""
+        """Returns next token in tokenstream"""
 
+        # Matches tokens with regex
+
+        # all regular expressions for tokens and funcitons generating them from the matched string
         # NOTE: more complex symbols need to be matched first if they contain less complex symbols
         # e.g. -> before -
+        # NOTE: no need to match beginning of string because re.match is used
+        token_re_list = [
+            [r"h", lambda x: Token(HIGH, x)],
+            [r"l", lambda x: Token(LOW, x)],
+            [r"\|\/", lambda x: Token(ELSEDIV, x)],
+            [r"\(", lambda x: Token(LPAREN, x)],
+            [r"\)", lambda x: Token(RPAREN, x)],
+            [r"d\-", lambda x: Token(DIS, x)],
+            [r"d\+", lambda x: Token(ADV, x)],
+            [r"\:", lambda x: Token(COLON, x)],
+            [r"\,", lambda x: Token(COMMA, x)],
+            [r"\[", lambda x: Token(LBRACK, x)],
+            [r"\]", lambda x: Token(RBRACK, x)],
+            [r"\-\>", lambda x: Token(RES, x)],
+            [r"\|", lambda x: Token(ELSE, x)],
+            [r"d", lambda x: Token(ROLL, x)],
+            [r"\>=", lambda x: Token(GREATER_OR_EQUAL, x)],
+            [r"\<=", lambda x: Token(LESS_OR_EQUAL, x)],
+            [r"\<", lambda x: Token(LESS, x)],
+            [r">", lambda x: Token(GREATER, x)],
+            [r"==", lambda x: Token(EQUAL, x)],
+            [r"\+", lambda x: Token(PLUS, x)],
+            [r"\-", lambda x: Token(MINUS, x)],
+            [r"\*", lambda x: Token(MUL, x)],
+            [r"/", lambda x: Token(DIV, x)],
+            [r"[0-9]+", lambda x: Token(INTEGER, int(x))],
+        ]
 
-        # the part of the text that has not yet been interpreted
-        expression = self.text[self.index:]
+        # check tokens in order
+        for regex, token_gen in token_re_list:
+            # match only matches from the beginning of the string
+            match = re.match(regex, self.string_input)
+            if match:
+                # advance string
+                self.string_input = self.string_input[len(match[0]):]
+                # generate token from generating function
+                return token_gen(match.group(0))
 
-        match = re.search(r"^h", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(HIGH, "h")
-
-        match = re.search(r"^l", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(LOW, "l")
-
-        match = re.search(r"^\|\/", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(ELSEDIV, "|/")
-
-        match = re.search(r"^\(", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(LPAREN, "(")
-
-        match = re.search(r"^\)", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(RPAREN, ")")
-
-        match = re.search(r"^d\-", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(DIS, "d-")
-
-        match = re.search(r"^d\+", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(ADV, "d+")
-
-        match = re.search(r"^\:", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(COLON, ":")
-
-        match = re.search(r"^\,", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(COMMA, ",")
-
-        match = re.search(r"^\[", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(LBRACK, "[")
-
-        match = re.search(r"^\]", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(RBRACK, "]")
-
-        match = re.search(r"^\-\>", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(RES, "->")
-
-        match = re.search(r"^\|", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(ELSE, "|")
-
-        # find INTEGER token
-        match = re.search(r"^[0-9]+", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(INTEGER, int(match[0]))
-
-        # check for ROLL token
-        match = re.search(r"^d", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(ROLL, 'd')
-
-        # check for GREATER_THEN token
-        match = re.search(r"^\>=", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(GREATER_OR_EQUAL, ">=")
-
-        match = re.search(r"^\<=", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(LESS_OR_EQUAL, "<=")
-
-        match = re.search(r"^\<", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(LESS, "<")
-
-        match = re.search(r"^\>", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(GREATER, ">")
-
-        match = re.search(r"^==", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(EQUAL, "==")
-
-        match = re.search(r"^\+", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(PLUS, "+")
-
-        match = re.search(r"^\-", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(MINUS, "-")
-
-        match = re.search(r"^\*", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(MUL, "*")
-
-        match = re.search(r"^/", expression)
-        if match:
-            self.index += len(match[0])
-            return Token(DIV, "/")
-
-
-        # can't find anything anymore
-        if len(self.text) != self.index:
+        # can't find anything anymore but still input string
+        if self.string_input:
             self.exception("Can not evaluate: '{}'".format(self.text[self.index:]))
+
         # end of token stream
         return Token(EOF, "EOF")

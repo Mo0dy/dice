@@ -106,7 +106,7 @@ class Interpreter(NodeVisitor):
         return self.visit(self.ast)
 
 if __name__ == "__main__":
-    input_text = "d20[1, 2, 5, 7]"
+    input_text = "d20 < 10"
     ast = DiceParser(Lexer(input_text)).expr()
     interpreter = Interpreter(ast)
     result = interpreter.interpret()

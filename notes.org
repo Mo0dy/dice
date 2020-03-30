@@ -100,9 +100,10 @@ def visit(node):
 * 2do
 ** TODO Do the complete documentation!
 *** TODO Write the Readme (github)
+** TODO Fix bug with -e flag
+- "d20 >= 10" etc. does not seem to work
 ** TODO Comments
-*** TODO diceengine.py
-**** Working on method: [[file:diceengine.py::129][reselse]]
+*** DONE diceengine.py
 *** TODO lexer.py
 *** TODO syntaxtree.py
 

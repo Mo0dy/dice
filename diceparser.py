@@ -143,7 +143,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("3d20h1[20]")
+    lexer = Lexer("d20")
     parser = DiceParser(lexer)
     ast = parser.expr()
     print(ast)
