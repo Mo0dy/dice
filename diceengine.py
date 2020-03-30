@@ -9,8 +9,17 @@ list: (Python) holds values
 int: (Pythoon) holds one value
 """
 
+from math import floor, inf
+
 # note that comb only exists in python 3.8
-from math import factorial, floor, comb, inf
+# but it's faster then just calculating factorials
+try:
+    from math import comb
+except ImportError:
+    from math import factorial
+
+    def comb(n, k):
+        return factorial(n) / factorial(k) / factorial(n - k)
 
 
 class ResultList(object):
@@ -573,4 +582,4 @@ class Diceengine(object):
         return Diceengine.compare(left, right, "<")
 
 if __name__ == "__main__":
-    pass
+    print(Diceengine.rollhigh(3, 20, 1))

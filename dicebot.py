@@ -4,7 +4,6 @@
 
 import discord
 import time
-import cv2 as cv
 import re
 import operator
 import os
