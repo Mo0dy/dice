@@ -7,6 +7,9 @@
 import sys
 import fileinput
 import re
+import time
+
+import timeout_decorator
 
 from interpreter import Interpreter
 from diceengine import ResultList, Distrib
@@ -15,6 +18,14 @@ from lexer import Lexer
 from preprocessor import Preprocessor
 import viewer
 
+
+timeout_seconds = 5
+
+
+# Maximum runtime 5 seconds
+@timeout_decorator.timeout(timeout_seconds)
+def interpret_dice(text):
+    return Interpreter(DiceParser(Lexer(text)).expr()).interpret()
 
 def interpret(text, preprocessor, roundlevel=0):
     """Interprete command and return output"""
@@ -30,7 +41,7 @@ def interpret(text, preprocessor, roundlevel=0):
         return ""
 
     try:
-        result = Interpreter(DiceParser(Lexer(preprocessed_text)).expr()).interpret()
+        result = interpret_dice(preprocessed_text)
         # round and prettyfy
         if isinstance(result, ResultList) or isinstance(result, Distrib):
             if roundlevel:
