@@ -101,16 +101,16 @@ def visit(node):
 ** TODO Do the complete documentation!
 *** TODO Write the Readme (github)
 ** TODO Custom exceptions that are easier to read
-** TODO Fix bug with -e flag
+** DONE Fix bug with -e flag
 - "d20 >= 10" etc. does not seem to work
-** TODO Comments
+** DONE Comments
 *** DONE diceengine.py
 *** DONE lexer.py
 *** DONE syntaxtree.py
 *** DONE diceparser.py
-*** TODO interpreter.py
-*** TODO preprocessor.py
-*** TODO dice.py
+*** DONE interpreter.py
+*** DONE preprocessor.py
+*** DONE dice.py
 ** Viewer
 *** TODO implement axial labels and syntax for labels:
 - Command *SPACE* parameter

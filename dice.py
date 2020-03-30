@@ -68,7 +68,9 @@ def main(args):
             return runinteractive()
             args = args[1:]
         elif args[0] in ["-e", "--execute"] and len(args) > 1:
-            sys.stdout.write(str(interpret(args[1], Preprocessor(), roundlevel)) + "\n")
+            # HACK: interpret the rest of the args
+            # they have to be surrounded by quotation marks
+            sys.stdout.write(str(interpret(" ".join(args[1:]), Preprocessor(), roundlevel)) + "\n")
             return 0
         elif args[0] in ["-g", "--grepable"]:
             grepable = True
