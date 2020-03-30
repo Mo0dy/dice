@@ -9,24 +9,16 @@
 // main basically
 !define AC_RANGE [1:24]
 
-// # normal
-// d20 >= AC_RANGE
-// # inspiration
-// d20 + 1d4 >= AC_RANGE
-// # advantage
-// d+20 >= AC_RANGE
-// # disadvantage
-// d-20 >= AC_RANGE
-// # super advantage
-// 3d20h1 >= AC_RANGE
-// # super disadvantage
-// 3d20l1 >= AC_RANGE
-
 !define sadv 3d20h1
 !define ac [14:20]
 
-# paladin
+#xlabel AC
+#ylabel avg. dmg
+#grid fine
+#title paladin
+
+#label paladin
 ((sadv[2:19] + 7 >= ac -> 1d6 + 5) + (sadv[20] + 7 >= ac -> (1d6 + 4d8) * 2 + 5)) * 2 + (sadv[2:19] + 7 >= ac -> 1d6) + (sadv[20] + 7 >= ac -> (1d6 + 4d8) * 2)
 
-# paladin crit 19
+#label paladin crit 19
 ((sadv[19, 20] + 7 >= ac -> (1d6 + 4d8) * 2 + 5)) * 2 + (sadv[19, 20] + 7 >= ac -> (1d6 + 4d8) * 2)

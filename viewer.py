@@ -51,24 +51,34 @@ def parse(text):
             items.append([a, b])
         return dict(items)
 
-def setup():
-    plt.grid()
-
 def do(input_string):
     """Does action according to input string"""
+    if input_string.startswith("#label "):
+        do.label.append(input_string[len("#label "):].strip())
+        return
+    if input_string.startswith("#xlabel"):
+        plt.xlabel(input_string[len("#xlabel "):].strip())
+    if input_string.startswith("#ylabel"):
+        plt.ylabel(input_string[len("#ylabel "):].strip())
+    if input_string.startswith("#grid fine"):
+        plt.minorticks_on()
+        plt.grid(which='minor')
+        plt.grid(color='#666666')
+    elif input_string.startswith("#grid"):
+        plt.grid(color='#666666')
+    if input_string.startswith("#title "):
+        plt.title(input_string[len("#title "):].strip())
     if input_string.startswith("#"):
-        do.label.append(input_string[1:].strip())
+        # just a print statement
         return
 
     # actual information
     visualize(parse(input_string), "\n".join(do.label))
     do.label = []
-# static label
+# static stores lines for the next label
 do.label = []
 
-
 def main(args):
-    setup()
     args = args[1:]
     input_lines = fileinput.input(args)
     # collects label data until distribution is visualized

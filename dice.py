@@ -106,7 +106,6 @@ def main(args):
             args = args[1:]
         elif args[0] in ["-p", "--plot"]:
             plot = True
-            viewer.setup()
             args = args[1:]
         else:
             # no arg worked break loop
