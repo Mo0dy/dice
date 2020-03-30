@@ -14,6 +14,10 @@ def show():
     """Opens window to show final result"""
     plt.show()
 
+def export(path):
+    """Export current figure to path"""
+    plt.savefig(path)
+
 def visualize(data, legend):
     """Visualizes data"""
     print("data", data, legend)

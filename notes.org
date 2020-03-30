@@ -112,13 +112,13 @@ def visit(node):
 *** DONE preprocessor.py
 *** DONE dice.py
 ** Viewer
-*** TODO implement axial labels and syntax for labels:
+*** DONE implement axial labels and syntax for labels:
 - Command *SPACE* parameter
 ** Bot
 *** TODO implement the showing of images
-**** TODO dice.py should be able to call to viewer to generate images directly
+**** DONE dice.py should be able to call to viewer to generate images directly
 *** TODO implement limits for diceengine
-*** TODO Multiline interpretation as multiple statements INCLUDING !define
+*** DONE Multiline interpretation as multiple statements INCLUDING !define
 * Dice Rules
 ** Examples
 |-----------------------+-------------+----------------------------------------|
