@@ -100,17 +100,25 @@ def visit(node):
 * 2do
 ** TODO Do the complete documentation!
 *** TODO Write the Readme (github)
+** TODO Custom exceptions that are easier to read
 ** TODO Fix bug with -e flag
 - "d20 >= 10" etc. does not seem to work
 ** TODO Comments
 *** DONE diceengine.py
-*** TODO lexer.py
-*** TODO syntaxtree.py
-
-*** TODO diceparser.py
+*** DONE lexer.py
+*** DONE syntaxtree.py
+*** DONE diceparser.py
 *** TODO interpreter.py
 *** TODO preprocessor.py
 *** TODO dice.py
+** Viewer
+*** TODO implement axial labels and syntax for labels:
+- Command *SPACE* parameter
+** Bot
+*** TODO implement the showing of images
+**** TODO dice.py should be able to call to viewer to generate images directly
+*** TODO implement limits for diceengine
+*** TODO Multiline interpretation as multiple statements INCLUDING !define
 * Dice Rules
 ** Examples
 |-----------------------+-------------+----------------------------------------|

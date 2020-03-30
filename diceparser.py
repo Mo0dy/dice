@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 
+
+"""The Parser generates an Abstract Syntax Tree from a tokenstream"""
+
+
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
-
-"""Generates Abstract Syntax Trees"""
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
 
 
 class Parser(object):
-    """Basic parser funcitonality"""
+    """The baseclass for all parsers."""
     def __init__(self, lexer):
+        """lexer = Reference to the lexer to generate tokenstream"""
+        # TODO: implement lexer as generator to reduce dependencies
         self.lexer = lexer
+        # Stores the token that is currently being operated on.
+        # This variable can be advanced manully or by using self.eat
         self.current_token = lexer.next_token()
 
     def exception(self, message=""):
+        """Raises a parser exception"""
         raise Exception("Parser exception: {}".format(message))
 
     def eat(self, type):
@@ -24,9 +31,23 @@ class Parser(object):
 
 
 class DiceParser(Parser):
-    """Parser for the Dice language"""
+    """Parser for the Dice language
+
+    Grammar:
+    expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
+    comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
+    side      :  term ((ADD | SUB) term)*
+    term      :  choose ((MUL | DIV) choose)*
+    choose    :  index (CHOOSE index)?
+    index     :  roll (brack)?
+    roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
+    factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
+    brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+    """
+
+    # This just implements the grammar
+
     def brack(self):
-        """NOT a seperate level just a helper method"""
         token = self.current_token
         self.eat(LBRACK)
         value1 = self.expr()
@@ -36,6 +57,7 @@ class DiceParser(Parser):
             value2 = self.expr()
             self.eat(RBRACK)
             return BinOp(value1, token, value2)
+
         # Comma seperated values could also be implemented with a bounch of unary operators appending to a list
         # Somehow this (variadic operator) seems more straigtforward to me
         nodes = [value1]

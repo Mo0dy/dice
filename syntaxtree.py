@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 
+
+"""Classes that make up an abstract syntax tree.
+
+Each node holds operator(s) and data to operate on."""
+
+
 class AST(object):
     """The baseclass for all AST nodes"""
+
 
 class UnOp(AST):
     """Node for all unary operators"""
@@ -14,6 +21,7 @@ class UnOp(AST):
         node = str(self.value)
         result += '\t|'.join(('\n' + "node: " + str(node).lstrip()).splitlines(True))
         return result
+
 
 class BinOp(AST):
     """Node for all binary operators"""
@@ -29,6 +37,7 @@ class BinOp(AST):
         result += '\t|'.join(('\n' + "left: " + str(self.left).lstrip()).splitlines(True))
         result += '\t|'.join(('\n' + "right: " + str(self.right).lstrip()).splitlines(True))
         return result
+
 
 class TenOp(AST):
     """Node for all tenary operators"""
@@ -50,6 +59,7 @@ class TenOp(AST):
         result += '\t|'.join(('\n' + "right: " + str(self.right).lstrip()).splitlines(True))
         return result
 
+
 class VarOp(AST):
     """Node for all variadic operators"""
     def __init__(self, op, nodes):
@@ -63,6 +73,7 @@ class VarOp(AST):
             node = str(node)
             result += '\t|'.join(('\n' + "node: " + str(node).lstrip()).splitlines(True))
         return result
+
 
 class Val(AST):
     """Value end node"""
