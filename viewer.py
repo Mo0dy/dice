@@ -54,23 +54,27 @@ def parse(text):
 def setup():
     plt.grid()
 
+def do(input_string):
+    """Does action according to input string"""
+    if input_string.startswith("#"):
+        do.label.append(input_string[1:].strip())
+        return
+
+    # actual information
+    visualize(parse(input_string), "\n".join(do.label))
+    do.label = []
+# static label
+do.label = []
+
+
 def main(args):
     setup()
     args = args[1:]
     input_lines = fileinput.input(args)
     # collects label data until distribution is visualized
-    label = []
     for line in input_lines:
         # lines starting with # contain information for this script (either lables or commands)
-        if line.startswith("#"):
-            label.append(line[1:].strip())
-            print("here ", line)
-            continue
-
-        print("visualize ", line)
-        # actual information
-        visualize(parse(line), "\n".join(label))
-        label = []
+        do(line)
     show()
     return 0
 

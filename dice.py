@@ -13,6 +13,7 @@ from diceengine import ResultList, Distrib
 from diceparser import DiceParser
 from lexer import Lexer
 from preprocessor import Preprocessor
+import viewer
 
 
 def interpret(text, preprocessor, roundlevel=0):
@@ -53,11 +54,31 @@ def runinteractive():
             print(result)
     return 2
 
+def print_result(result, grepable=False, verbose=False, line=""):
+    """Prints result to std out
+
+    grepable = only one line
+    verbose = also print command
+    line = needed to print command"""
+
+    # send result to stdout
+    if grepable:
+        if verbose:
+            sys.stdout.write("dice> " + line.strip() + " :: " + str(result) + "\n")
+        else:
+            sys.stdout.write(str(result) + "\n")
+    else:
+        if verbose:
+            sys.stdout.write("dice> " + line + str(result) + "\n")
+        else:
+            sys.stdout.write(str(result) + "\n")
+
 
 def main(args):
     # set if output should be grepable
     grepable = False
     verbose = False
+    plot = False
     roundlevel = 0
     # remove filename
     args = args[1:]
@@ -83,6 +104,10 @@ def main(args):
         elif args[0] in ["-v", "--verbose"]:
             verbose = True
             args = args[1:]
+        elif args[0] in ["-p", "--plot"]:
+            plot = True
+            viewer.setup()
+            args = args[1:]
         else:
             # no arg worked break loop
             break
@@ -99,19 +124,20 @@ def main(args):
         # apply definitions:
         result = str(interpret(line, preprocessor, roundlevel))
 
-        # send result to stdout
-        if result:
-            if grepable:
-                if verbose:
-                    sys.stdout.write("dice> " + line.strip() + " :: " + str(result) + "\n")
-                else:
-                    sys.stdout.write(str(result) + "\n")
-            else:
-                if verbose:
-                    sys.stdout.write("dice> " + line + str(result) + "\n")
-                else:
-                    sys.stdout.write(str(result) + "\n")
+        if not result:
+            continue
+
+        if plot:
+            # plot
+            viewer.do(result)
+            if verbose:
+                # don't print commands just results if verbose and plot
+                print_result(result, grepable, False)
+
+        print_result(result, grepable, verbose, line)
     # exit success
+    if plot:
+        viewer.show()
     return 0
 
 
