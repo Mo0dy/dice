@@ -1,0 +1,931 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-03-31 Tue 17:05 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dice-Documentation</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Felix Mühlenberend" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.cacheClassElem = elem.className;
+         elem.cacheClassTarget = target.className;
+         target.className = "code-highlighted";
+         elem.className   = "code-highlighted";
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(elem.cacheClassElem)
+         elem.className = elem.cacheClassElem;
+       if(elem.cacheClassTarget)
+         target.className = elem.cacheClassTarget;
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Dice-Documentation</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org2a0eb4a">1. Dice</a>
+<ul>
+<li><a href="#org05ae2c3">1.1. Examples</a>
+<ul>
+<li><a href="#orgec6bd61">1.1.1. Simple Rolls</a></li>
+<li><a href="#org95f3056">1.1.2. Skillchecks</a></li>
+<li><a href="#org55a9a13">1.1.3. Lists (Ranges)</a></li>
+<li><a href="#org7001929">1.1.4. Rolling Damage</a></li>
+<li><a href="#orgc541495">1.1.5. Indexing</a></li>
+<li><a href="#org62504e9">1.1.6. Arithmetic</a></li>
+</ul>
+</li>
+<li><a href="#org0ee018a">1.2. Command line Usage</a>
+<ul>
+<li><a href="#org1bc2ab9">1.2.1. Running Interactively</a></li>
+<li><a href="#org6f878de">1.2.2. Running File</a></li>
+<li><a href="#orgbcbd369">1.2.3. Command Line Options</a></li>
+</ul>
+</li>
+<li><a href="#org9ba3d82">1.3. Comment and Print</a>
+<ul>
+<li><a href="#orgd7079a2">1.3.1. Comments</a></li>
+<li><a href="#orgb623907">1.3.2. Print</a></li>
+</ul>
+</li>
+<li><a href="#org73f0325">1.4. Datatypes</a>
+<ul>
+<li><a href="#org5e6ec78">1.4.1. Integer</a></li>
+<li><a href="#orgb9da7dc">1.4.2. Distrib(ution)</a></li>
+<li><a href="#org8bad09a">1.4.3. List</a></li>
+<li><a href="#org85bd137">1.4.4. ResultList</a></li>
+</ul>
+</li>
+<li><a href="#org404f4be">1.5. Operators</a>
+<ul>
+<li><a href="#org6b0660c">1.5.1. Arithmetic</a></li>
+<li><a href="#orga2194b5">1.5.2. Roll</a></li>
+<li><a href="#org52fc8cc">1.5.3. Skillcheck (Comparison)</a></li>
+<li><a href="#org52c4dcc">1.5.4. Disadvantage</a></li>
+<li><a href="#org8b45b50">1.5.5. Advantage</a></li>
+<li><a href="#orge7995e5">1.5.6. Roll pick High</a></li>
+<li><a href="#orgc4b232f">1.5.7. Roll pick Low</a></li>
+<li><a href="#org35b5b63">1.5.8. Resolve</a></li>
+</ul>
+</li>
+<li><a href="#org0d4b488">1.6. Indexing</a>
+<ul>
+<li><a href="#org3cbf7cd">1.6.1. Distribution</a></li>
+</ul>
+</li>
+<li><a href="#org6bab541">1.7. (Flow) control</a>
+<ul>
+<li><a href="#orge640c1b">1.7.1. Parenthesis</a></li>
+</ul>
+</li>
+<li><a href="#org8cc86c6">1.8. Macros</a>
+<ul>
+<li><a href="#org7f01d20">1.8.1. Define</a></li>
+</ul>
+</li>
+<li><a href="#org01f320f">1.9. Plotting</a>
+<ul>
+<li><a href="#orge408c9d">1.9.1. Usage of viewer</a></li>
+<li><a href="#orge5ed66a">1.9.2. Commands</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org2a0eb4a" class="outline-2">
+<h2 id="org2a0eb4a"><span class="section-number-2">1</span> Dice</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Dice is a single purpose programming language that calculates tabletop
+rollplaying dice throwing statistics.
+</p>
+</div>
+
+<div id="outline-container-org05ae2c3" class="outline-3">
+<h3 id="org05ae2c3"><span class="section-number-3">1.1</span> Examples</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+To follow along with the examples run the <a href="#org1bc2ab9">interactive dice interpreter</a> with:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash">python3 dice.py -i
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgec6bd61" class="outline-4">
+<h4 id="orgec6bd61"><span class="section-number-4">1.1.1</span> Simple Rolls</h4>
+<div class="outline-text-4" id="text-1-1-1">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">d2</td>
+<td class="org-left">{1: 0.5, 2: 0.5}</td>
+<td class="org-left">generate the probability distribution for a d2 dice</td>
+</tr>
+
+<tr>
+<td class="org-left">2d2</td>
+<td class="org-left">{2: 0.25, 3: 0.5, 4: 0.25}</td>
+<td class="org-left">probability distribution for adding 2 d2 dice</td>
+</tr>
+
+<tr>
+<td class="org-left">d+2</td>
+<td class="org-left">{1: 0.25, 2: 0.75}</td>
+<td class="org-left">probability distribution for d2 with advantage</td>
+</tr>
+
+<tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">(advantage = roll twice pick highest)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org95f3056" class="outline-4">
+<h4 id="org95f3056"><span class="section-number-4">1.1.2</span> Skillchecks</h4>
+<div class="outline-text-4" id="text-1-1-2">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">d20 &gt;= 11</td>
+<td class="org-left">{11: 0.5}</td>
+<td class="org-left">the changse for a d20 to roll higher or equal to 11 is 50%</td>
+</tr>
+
+<tr>
+<td class="org-left">d20 == 1</td>
+<td class="org-left">{1: 0.05}</td>
+<td class="org-left">the changse for a d20 to roll any one value is 0.05</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org55a9a13" class="outline-4">
+<h4 id="org55a9a13"><span class="section-number-4">1.1.3</span> Lists (Ranges)</h4>
+<div class="outline-text-4" id="text-1-1-3">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">[5:7]</td>
+<td class="org-left">[5, 6, 7]</td>
+<td class="org-left">generate a list from 5 to 7</td>
+</tr>
+
+<tr>
+<td class="org-left">d10 == [5:7]</td>
+<td class="org-left">[5: 0.1, 6: 0.1, 7: 0.1]</td>
+<td class="org-left">do a skillcheck for every list element</td>
+</tr>
+
+<tr>
+<td class="org-left">d20 &gt;= [5, 11]</td>
+<td class="org-left">[5: 0.8, 11: 0.5]</td>
+<td class="org-left">do a skillcheck for 5 and 11</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org7001929" class="outline-4">
+<h4 id="org7001929"><span class="section-number-4">1.1.4</span> Rolling Damage</h4>
+<div class="outline-text-4" id="text-1-1-4">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">d20 &gt;= 11 -&gt; 5</td>
+<td class="org-left">{11: 2.5}</td>
+<td class="org-left">with ac 11 and 5 damage on hit the average damage is 2.5</td>
+</tr>
+
+<tr>
+<td class="org-left">d20 &gt;= 11 -&gt; 2d6</td>
+<td class="org-left">{11: 3.5}</td>
+<td class="org-left">on success do 2d6 damage</td>
+</tr>
+
+<tr>
+<td class="org-left">d20 &gt;= [5, 11] -&gt; 10</td>
+<td class="org-left">{5: 8, 11: 5}</td>
+<td class="org-left">damage can also be resolved on multiple targets</td>
+</tr>
+
+<tr>
+<td class="org-left">d20 &gt;= 11 -&gt; 10 &vert; 5</td>
+<td class="org-left">{11: 7.5}</td>
+<td class="org-left">if successful do 10 damage else do 5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-orgc541495" class="outline-4">
+<h4 id="orgc541495"><span class="section-number-4">1.1.5</span> Indexing</h4>
+<div class="outline-text-4" id="text-1-1-5">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">d20[19:20]</td>
+<td class="org-left">{19: 0.05, 20: 0.05}</td>
+<td class="org-left">only take values from 19 to 20 of distrib</td>
+</tr>
+
+<tr>
+<td class="org-left">d20[20]</td>
+<td class="org-left">{20: 0.05}</td>
+<td class="org-left">changse to throw a 20 only</td>
+</tr>
+
+<tr>
+<td class="org-left">d20[20] -&gt; 10</td>
+<td class="org-left">EXCEPTION</td>
+<td class="org-left">can&rsquo;t resolve a Distribution</td>
+</tr>
+
+<tr>
+<td class="org-left">d20[20] &gt;= 14</td>
+<td class="org-left">{14: 0.05}</td>
+<td class="org-left">changse to throw a 20 and be higher then 14 is 0.05</td>
+</tr>
+
+<tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">&#xa0;</td>
+<td class="org-left">this can now be resolved</td>
+</tr>
+
+<tr>
+<td class="org-left">d20[20] &gt;= 14 -&gt; 10</td>
+<td class="org-left">{14: 0.5}</td>
+<td class="org-left">the average damage if only a 20 hits is 0.5</td>
+</tr>
+
+<tr>
+<td class="org-left">d20[19:20] &gt;= 14 -&gt; 10</td>
+<td class="org-left">{14: 1.0}</td>
+<td class="org-left">the average damage for 19 and 20 together is 1.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="outline-container-org62504e9" class="outline-4">
+<h4 id="org62504e9"><span class="section-number-4">1.1.6</span> Arithmetic</h4>
+<div class="outline-text-4" id="text-1-1-6">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">code</th>
+<th scope="col" class="org-left">result</th>
+<th scope="col" class="org-left">explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">1 + 1</td>
+<td class="org-left">2</td>
+<td class="org-left">yeah</td>
+</tr>
+
+<tr>
+<td class="org-left">3 / 2</td>
+<td class="org-left">1</td>
+<td class="org-left">Integer division always floors</td>
+</tr>
+
+<tr>
+<td class="org-left">d2 + d2</td>
+<td class="org-left">{2: 0.25, 3: 0.5, 4: 0.25}</td>
+<td class="org-left">Generate the probabilty for all possible outcomes</td>
+</tr>
+
+<tr>
+<td class="org-left">d2 + 1</td>
+<td class="org-left">{2: 0.5, 3: 0.5}</td>
+<td class="org-left">Add 1 to every outcome</td>
+</tr>
+
+<tr>
+<td class="org-left">[1:2] + 1</td>
+<td class="org-left">[2, 3]</td>
+<td class="org-left">Add 1 to every element</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<ol class="org-ol">
+<li><a id="org5b2963d"></a>Complex Examples<br />
+<ol class="org-ol">
+<li><a id="orgc04e77c"></a>Attack throw<br />
+<div class="outline-text-6" id="text-1-1-6-1-1">
+<p>
+Rolling for an attack has some special properties:
+</p>
+<ol class="org-ol">
+<li>rolling a 1 always misses</li>
+<li>rolling a 20 means double the attack rolls</li>
+</ol>
+
+<p>
+(d20[2:19] &gt;= 14 -&gt; 2d6) + (d20[20] &gt;= 14) -&gt; 2d6 + 2
+This adds the damage for hitting and not critting with the damage of critting
+Note that even tough crits always hit there is still need for the same skillcheck (&gt;= 14)
+</p>
+
+<p>
+This is because the skillcheck defines the target for the damage.
+To add two ResultLists they need to have the same target.
+e.g.:
+adding average damage for a dc of 14
+{14: 1.5} + {14: 2.0} = {14: 3.5}
+</p>
+
+<p>
+adding average damage for multiple targets at the same time
+{14: 2.0} + {13: 1.0} = {13: 1.0, 14: 2.0}
+</p>
+</div>
+</li>
+
+<li><a id="org660d690"></a>Save dc and half damage<br />
+<div class="outline-text-6" id="text-1-1-6-1-2">
+<p>
+If you want to calculate the damage for a spell with save dc (14) and damage
+2d10 you have options:
+</p>
+</div>
+<ol class="org-ol">
+<li><a id="orgcd09391"></a>From the enemies perspective<br />
+<div class="outline-text-7" id="text-1-1-6-1-2-1">
+<p>
+d20 &gt;= 14 -&gt; 2d10 / 2 | 2d10
+</p>
+</div>
+</li>
+<li><a id="orgb0f727f"></a>From your perspective<br />
+<ol class="org-ol">
+<li><a id="org875b557"></a>Normal:<br />
+<div class="outline-text-8" id="text-1-1-6-1-2-2-1">
+<p>
+d20 &lt; 14 -&gt; 2d10 | 2d10 / 2
+</p>
+</div>
+</li>
+<li><a id="org5cd42fe"></a>Shorthand:<br />
+<div class="outline-text-8" id="text-1-1-6-1-2-2-2">
+<p>
+d20 &lt; 14 -&gt; 2d10 |/
+This divides the damage on a fail (in this case if they beat the dc it&rsquo;s a fail)
+</p>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-org0ee018a" class="outline-3">
+<h3 id="org0ee018a"><span class="section-number-3">1.2</span> Command line Usage</h3>
+<div class="outline-text-3" id="text-1-2">
+</div>
+<div id="outline-container-org1bc2ab9" class="outline-4">
+<h4 id="org1bc2ab9"><span class="section-number-4">1.2.1</span> Running Interactively</h4>
+<div class="outline-text-4" id="text-1-2-1">
+<p>
+Start an interactive dice session with the following command:
+</p>
+<div class="org-src-container">
+<pre class="src src-bash">python3 dice.py -i
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org6f878de" class="outline-4">
+<h4 id="org6f878de"><span class="section-number-4">1.2.2</span> Running File</h4>
+<div class="outline-text-4" id="text-1-2-2">
+</div>
+<ol class="org-ol">
+<li><a id="orgf2afcec"></a>From path<br />
+<div class="outline-text-5" id="text-1-2-2-1">
+<div class="org-src-container">
+<pre class="src src-bash">python3 dice.py <span style="color: #268bd2;">[</span>path_to_file<span style="color: #268bd2;">]</span>
+</pre>
+</div>
+</div>
+</li>
+<li><a id="org2fc4dd7"></a>From pipe<br />
+<div class="outline-text-5" id="text-1-2-2-2">
+<p>
+Just redirect pipe to:
+</p>
+<div class="org-src-container">
+<pre class="src src-bash">python3 dice.py
+</pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div id="outline-container-orgbcbd369" class="outline-4">
+<h4 id="orgbcbd369"><span class="section-number-4">1.2.3</span> Command Line Options</h4>
+<div class="outline-text-4" id="text-1-2-3">
+</div>
+<ol class="org-ol">
+<li><a id="org4d453b7"></a>Round<br />
+<div class="outline-text-5" id="text-1-2-3-1">
+<p>
+-r or &#x2013;round [digits]
+round to a certain precision
+</p>
+</div>
+</li>
+<li><a id="org4f971ff"></a>Interactive<br />
+<div class="outline-text-5" id="text-1-2-3-2">
+<p>
+-i or &#x2013;interactive
+runs the dice shell interactively
+</p>
+</div>
+</li>
+<li><a id="orge399185"></a>Grepable<br />
+<div class="outline-text-5" id="text-1-2-3-3">
+<p>
+-g or &#x2013;grepable
+outputs in one line
+</p>
+</div>
+</li>
+<li><a id="org1d98e9e"></a>Verbose<br />
+<div class="outline-text-5" id="text-1-2-3-4">
+<p>
+-v or &#x2013;verbose
+gives more information
+</p>
+</div>
+</li>
+<li><a id="org09e3114"></a>Plot<br />
+<div class="outline-text-5" id="text-1-2-3-5">
+<p>
+-p or &#x2013;plot
+tries to <a href="#org01f320f">plot</a> the graphic
+</p>
+</div>
+</li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-org9ba3d82" class="outline-3">
+<h3 id="org9ba3d82"><span class="section-number-3">1.3</span> Comment and Print</h3>
+<div class="outline-text-3" id="text-1-3">
+</div>
+<div id="outline-container-orgd7079a2" class="outline-4">
+<h4 id="orgd7079a2"><span class="section-number-4">1.3.1</span> Comments</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<p>
+lines starting with // will  be ignored
+e.g.:
+// this is a comment
+</p>
+</div>
+</div>
+<div id="outline-container-orgb623907" class="outline-4">
+<h4 id="orgb623907"><span class="section-number-4">1.3.2</span> Print</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<p>
+lines starting with # will be printed to stdout
+e.g.:
+\# this will be printed
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org73f0325" class="outline-3">
+<h3 id="org73f0325"><span class="section-number-3">1.4</span> Datatypes</h3>
+<div class="outline-text-3" id="text-1-4">
+</div>
+<div id="outline-container-org5e6ec78" class="outline-4">
+<h4 id="org5e6ec78"><span class="section-number-4">1.4.1</span> Integer</h4>
+</div>
+<div id="outline-container-orgb9da7dc" class="outline-4">
+<h4 id="orgb9da7dc"><span class="section-number-4">1.4.2</span> Distrib(ution)</h4>
+</div>
+<div id="outline-container-org8bad09a" class="outline-4">
+<h4 id="org8bad09a"><span class="section-number-4">1.4.3</span> List</h4>
+</div>
+<div id="outline-container-org85bd137" class="outline-4">
+<h4 id="org85bd137"><span class="section-number-4">1.4.4</span> ResultList</h4>
+</div>
+</div>
+<div id="outline-container-org404f4be" class="outline-3">
+<h3 id="org404f4be"><span class="section-number-3">1.5</span> Operators</h3>
+<div class="outline-text-3" id="text-1-5">
+</div>
+<div id="outline-container-org6b0660c" class="outline-4">
+<h4 id="org6b0660c"><span class="section-number-4">1.5.1</span> Arithmetic</h4>
+<div class="outline-text-4" id="text-1-5-1">
+</div>
+<ol class="org-ol">
+<li><a id="orgf84da32"></a>Add<br /></li>
+<li><a id="orgc51ea80"></a>Subtract<br /></li>
+<li><a id="orge68b78e"></a>Divide<br /></li>
+<li><a id="org1f3e9c6"></a>Multiply<br /></li>
+</ol>
+</div>
+<div id="outline-container-orga2194b5" class="outline-4">
+<h4 id="orga2194b5"><span class="section-number-4">1.5.2</span> Roll</h4>
+</div>
+<div id="outline-container-org52fc8cc" class="outline-4">
+<h4 id="org52fc8cc"><span class="section-number-4">1.5.3</span> Skillcheck (Comparison)</h4>
+<div class="outline-text-4" id="text-1-5-3">
+<p>
+&gt;=, &lt;=, &lt;, &gt;, ==
+</p>
+</div>
+</div>
+<div id="outline-container-org52c4dcc" class="outline-4">
+<h4 id="org52c4dcc"><span class="section-number-4">1.5.4</span> Disadvantage</h4>
+</div>
+<div id="outline-container-org8b45b50" class="outline-4">
+<h4 id="org8b45b50"><span class="section-number-4">1.5.5</span> Advantage</h4>
+</div>
+<div id="outline-container-orge7995e5" class="outline-4">
+<h4 id="orge7995e5"><span class="section-number-4">1.5.6</span> Roll pick High</h4>
+</div>
+<div id="outline-container-orgc4b232f" class="outline-4">
+<h4 id="orgc4b232f"><span class="section-number-4">1.5.7</span> Roll pick Low</h4>
+</div>
+<div id="outline-container-org35b5b63" class="outline-4">
+<h4 id="org35b5b63"><span class="section-number-4">1.5.8</span> Resolve</h4>
+<div class="outline-text-4" id="text-1-5-8">
+</div>
+<ol class="org-ol">
+<li><a id="orgdefc236"></a>Ranges<br /></li>
+<li><a id="orgbdae3c1"></a>Else<br /></li>
+<li><a id="org94621dc"></a>Elsediv<br /></li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org0d4b488" class="outline-3">
+<h3 id="org0d4b488"><span class="section-number-3">1.6</span> Indexing</h3>
+<div class="outline-text-3" id="text-1-6">
+</div>
+<div id="outline-container-org3cbf7cd" class="outline-4">
+<h4 id="org3cbf7cd"><span class="section-number-4">1.6.1</span> Distribution</h4>
+</div>
+</div>
+<div id="outline-container-org6bab541" class="outline-3">
+<h3 id="org6bab541"><span class="section-number-3">1.7</span> (Flow) control</h3>
+<div class="outline-text-3" id="text-1-7">
+</div>
+<div id="outline-container-orge640c1b" class="outline-4">
+<h4 id="orge640c1b"><span class="section-number-4">1.7.1</span> Parenthesis</h4>
+</div>
+</div>
+<div id="outline-container-org8cc86c6" class="outline-3">
+<h3 id="org8cc86c6"><span class="section-number-3">1.8</span> Macros</h3>
+<div class="outline-text-3" id="text-1-8">
+</div>
+<div id="outline-container-org7f01d20" class="outline-4">
+<h4 id="org7f01d20"><span class="section-number-4">1.8.1</span> Define</h4>
+</div>
+</div>
+<div id="outline-container-org01f320f" class="outline-3">
+<h3 id="org01f320f"><span class="section-number-3">1.9</span> Plotting</h3>
+<div class="outline-text-3" id="text-1-9">
+</div>
+<div id="outline-container-orge408c9d" class="outline-4">
+<h4 id="orge408c9d"><span class="section-number-4">1.9.1</span> Usage of viewer</h4>
+</div>
+<div id="outline-container-orge5ed66a" class="outline-4">
+<h4 id="orge5ed66a"><span class="section-number-4">1.9.2</span> Commands</h4>
+<div class="outline-text-4" id="text-1-9-2">
+</div>
+<ol class="org-ol">
+<li><a id="org5d5e63a"></a>Legend<br /></li>
+<li><a id="org4e9e44c"></a>Axis Labels<br /></li>
+<li><a id="org045b5bc"></a>Title<br /></li>
+<li><a id="orgc3a2129"></a>Grid<br /></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Felix Mühlenberend</p>
+<p class="date">Created: 2020-03-31 Tue 17:05</p>
+</div>
+</body>
+</html>

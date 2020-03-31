@@ -152,7 +152,6 @@ e.g.:
 *** Roll pick High
 *** Roll pick Low
 *** Resolve
-**** Normal
 **** Ranges
 **** Else
 **** Elsediv
