@@ -79,13 +79,60 @@ adding average damage for a dc of 14
 adding average damage for multiple targets at the same time
 {14: 2.0} + {13: 1.0} = {13: 1.0, 14: 2.0}
 
+***** Save dc and half damage
+If you want to calculate the damage for a spell with save dc (14) and damage
+2d10 you have options:
+****** From the enemies perspective
+d20 >= 14 -> 2d10 / 2 | 2d10
+****** From your perspective
+******* Normal:
+d20 < 14 -> 2d10 | 2d10 / 2
+******* Shorthand:
+d20 < 14 -> 2d10 |/
+This divides the damage on a fail (in this case if they beat the dc it's a fail)
+
 ** Command line Usage
 *** Running Interactively
+Start an interactive dice session with the following command:
+#+BEGIN_SRC bash
+python3 dice.py -i
+#+END_SRC
 *** Running File
+**** From path
+#+BEGIN_SRC bash
+python3 dice.py [path_to_file]
+#+END_SRC
+**** From pipe
+Just redirect pipe to:
+#+BEGIN_SRC bash
+python3 dice.py
+#+END_SRC
 *** Command Line Options
+**** Round
+-r or --round [digits]
+round to a certain precision
+**** Interactive
+-i or --interactive
+runs the dice shell interactively
+**** Grepable
+-g or --grepable
+outputs in one line
+**** Verbose
+-v or --verbose
+gives more information
+**** Plot
+-p or --plot
+tries to [[Plotting][plot]] the graphic
+
 ** Comment and Print
 *** Comments
+lines starting with // will  be ignored
+e.g.:
+// this is a comment
 *** Print
+lines starting with # will be printed to stdout
+e.g.:
+\# this will be printed
 ** Datatypes
 *** Integer
 *** Distrib(ution)
