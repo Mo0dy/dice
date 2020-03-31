@@ -66,8 +66,14 @@ class Bot(object):
         lines = [
             "**{}help** prints this text".format(self.command_prefix),
             "**{}x** executes dice command".format(self.command_prefix),
+            "**{}p** executes dice command and plots".format(self.command_prefix),
+            "**{}d** sends you the documentation for dice".format(self.command_prefix),
         ]
         await channel.send("\n" + mention + " " + "commands:\n" + ("\n").join(lines))
+
+    async def send_doc(self, author, mentions, channel, text):
+        mention = self.get_mention(author)
+        await channel.send(mention + "This is the documentation for dice:", file=discord.File("documentation.html"))
 
     async def execute(self, author, mentions, channel, text):
         """executes a snipped of the dice language"""
@@ -154,6 +160,7 @@ class Bot(object):
             "help": self.print_help,
             "x": self.execute,
             "p": self.execute_image,
+            "d": self.send_doc,
         }
 
         if message.content.startswith(self.command_prefix):
