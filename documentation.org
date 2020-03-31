@@ -1,0 +1,124 @@
+#+TITLE: Dice-Documentation
+
+* Dice
+Dice is a single purpose programming language that calculates tabletop
+rollplaying dice throwing statistics.
+
+** Examples
+To follow along with the examples run the [[Running Interactively][interactive dice interpreter]] with:
+
+#+BEGIN_SRC bash
+python3 dice.py -i
+#+END_SRC
+
+*** Simple Rolls
+| code | result                     | explanation                                         |
+|------+----------------------------+-----------------------------------------------------|
+| d2   | {1: 0.5, 2: 0.5}           | generate the probability distribution for a d2 dice |
+| 2d2  | {2: 0.25, 3: 0.5, 4: 0.25} | probability distribution for adding 2 d2 dice       |
+| d+2  | {1: 0.25, 2: 0.75}         | probability distribution for d2 with advantage      |
+|      |                            | (advantage = roll twice pick highest)               |
+
+*** Skillchecks
+| code      | result    | explanation                                                |
+|-----------+-----------+------------------------------------------------------------|
+| d20 >= 11 | {11: 0.5} | the changse for a d20 to roll higher or equal to 11 is 50% |
+| d20 == 1  | {1: 0.05} | the changse for a d20 to roll any one value is 0.05        |
+
+*** Lists (Ranges)
+| code           | result                   | explanation                            |
+|----------------+--------------------------+----------------------------------------|
+| [5:7]          | [5, 6, 7]                | generate a list from 5 to 7            |
+| d10 == [5:7]   | [5: 0.1, 6: 0.1, 7: 0.1] | do a skillcheck for every list element |
+| d20 >= [5, 11] | [5: 0.8, 11: 0.5]        | do a skillcheck for 5 and 11           |
+
+*** Rolling Damage
+| code                    | result        | explanation                                              |
+|-------------------------+---------------+----------------------------------------------------------|
+| d20 >= 11 -> 5          | {11: 2.5}     | with ac 11 and 5 damage on hit the average damage is 2.5 |
+| d20 >= 11 -> 2d6        | {11: 3.5}     | on success do 2d6 damage                                 |
+| d20 >= [5, 11] -> 10    | {5: 8, 11: 5} | damage can also be resolved on multiple targets          |
+| d20 >= 11 -> 10 \vert 5 | {11: 7.5}     | if successful do 10 damage else do 5                     |
+
+*** Indexing
+| code                   | result               | explanation                                         |
+|------------------------+----------------------+-----------------------------------------------------|
+| d20[19:20]             | {19: 0.05, 20: 0.05} | only take values from 19 to 20 of distrib           |
+| d20[20]                | {20: 0.05}           | changse to throw a 20 only                          |
+| d20[20] -> 10          | EXCEPTION            | can't resolve a Distribution                        |
+| d20[20] >= 14          | {14: 0.05}           | changse to throw a 20 and be higher then 14 is 0.05 |
+|                        |                      | this can now be resolved                            |
+| d20[20] >= 14 -> 10    | {14: 0.5}            | the average damage if only a 20 hits is 0.5         |
+| d20[19:20] >= 14 -> 10 | {14: 1.0}            | the average damage for 19 and 20 together is 1.0    |
+
+*** Arithmetic
+| code      | result                     | explanation                                       |
+|-----------+----------------------------+---------------------------------------------------|
+| 1 + 1     | 2                          | yeah                                              |
+| 3 / 2     | 1                          | Integer division always floors                    |
+| d2 + d2   | {2: 0.25, 3: 0.5, 4: 0.25} | Generate the probabilty for all possible outcomes |
+| d2 + 1    | {2: 0.5, 3: 0.5}           | Add 1 to every outcome                            |
+| [1:2] + 1 | [2, 3]                     | Add 1 to every element                            |
+
+**** Complex Examples
+***** Attack throw
+Rolling for an attack has some special properties:
+1. rolling a 1 always misses
+2. rolling a 20 means double the attack rolls
+
+(d20[2:19] >= 14 -> 2d6) + (d20[20] >= 14) -> 2d6 + 2
+This adds the damage for hitting and not critting with the damage of critting
+Note that even tough crits always hit there is still need for the same skillcheck (>= 14)
+
+This is because the skillcheck defines the target for the damage.
+To add two ResultLists they need to have the same target.
+e.g.:
+adding average damage for a dc of 14
+{14: 1.5} + {14: 2.0} = {14: 3.5}
+
+adding average damage for multiple targets at the same time
+{14: 2.0} + {13: 1.0} = {13: 1.0, 14: 2.0}
+
+** Command line Usage
+*** Running Interactively
+*** Running File
+*** Command Line Options
+** Comment and Print
+*** Comments
+*** Print
+** Datatypes
+*** Integer
+*** Distrib(ution)
+*** List
+*** ResultList
+** Operators
+*** Arithmetic
+**** Add
+**** Subtract
+**** Divide
+**** Multiply
+*** Roll
+*** Skillcheck (Comparison)
+>=, <=, <, >, ==
+*** Disadvantage
+*** Advantage
+*** Roll pick High
+*** Roll pick Low
+*** Resolve
+**** Normal
+**** Ranges
+**** Else
+**** Elsediv
+** Indexing
+*** Distribution
+** (Flow) control
+*** Parenthesis
+** Macros
+*** Define
+** Plotting
+*** Usage of viewer
+*** Commands
+**** Legend
+**** Axis Labels
+**** Title
+**** Grid

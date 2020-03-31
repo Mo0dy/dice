@@ -115,9 +115,9 @@ def visit(node):
 *** DONE implement axial labels and syntax for labels:
 - Command *SPACE* parameter
 ** Bot
-*** TODO implement the showing of images
+*** DONE implement the showing of images
 **** DONE dice.py should be able to call to viewer to generate images directly
-*** TODO implement limits for diceengine
+*** DONE implement limits for diceengine
 *** DONE Multiline interpretation as multiple statements INCLUDING !define
 * Dice Rules
 ** Examples
@@ -262,12 +262,9 @@ factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | AD
 brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)
-- Roll 4 leave one
-- list to operate on: [15, 18, 30] (for greate then or equal to)
-- crit? e.g.: d20 >= 14 -> (d20 == 20 -> 2d6 * 2 | 2d6)
-- crit shorthand?
-- Adding results:
-  - Res + Res = Res for summed damage per ac
+- Defining what the labels will be in the end:
+  [!10-15] + 5:
+  - will compare against [15-20] but results will be noted against [10-15]
 - Resolving Results:
   - -> Res = Average damage for range of ac
 - Dist -> Res: Multiply Every result with changse in distribution
