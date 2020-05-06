@@ -6,7 +6,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG
 
 
 class Parser(object):
@@ -41,7 +41,7 @@ class DiceParser(Parser):
     choose    :  index (CHOOSE index)?
     index     :  roll (brack)?
     roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-    factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
+    factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr
     brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
     """
 
@@ -87,9 +87,9 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(DIS)
             return UnOp(self.factor(), token)
-        elif self.current_token.type == RES:
+        elif self.current_token.type == AVG:
             token = self.current_token
-            self.eat(RES)
+            self.eat(AVG)
             return UnOp(self.expr(), token)
         else:
             token = self.current_token

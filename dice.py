@@ -3,7 +3,6 @@
 
 """Interactive interpreter for the dice language"""
 
-
 import sys
 import fileinput
 import re

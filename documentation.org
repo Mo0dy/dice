@@ -1,6 +1,6 @@
 #+TITLE: Dice-Documentation
 
-* Dice
+* dice
 Dice is a single purpose programming language that calculates tabletop
 rollplaying dice throwing statistics.
 
@@ -22,8 +22,8 @@ python3 dice.py -i
 *** Skillchecks
 | code      | result    | explanation                                                |
 |-----------+-----------+------------------------------------------------------------|
-| d20 >= 11 | {11: 0.5} | the changse for a d20 to roll higher or equal to 11 is 50% |
-| d20 == 1  | {1: 0.05} | the changse for a d20 to roll any one value is 0.05        |
+| d20 >= 11 | {11: 0.5} | the chance for a d20 to roll higher or equal to 11 is 50% |
+| d20 == 1  | {1: 0.05} | the chance for a d20 to roll any one value is 0.05        |
 
 *** Lists (Ranges)
 | code           | result                   | explanation                            |
@@ -44,9 +44,9 @@ python3 dice.py -i
 | code                   | result               | explanation                                         |
 |------------------------+----------------------+-----------------------------------------------------|
 | d20[19:20]             | {19: 0.05, 20: 0.05} | only take values from 19 to 20 of distrib           |
-| d20[20]                | {20: 0.05}           | changse to throw a 20 only                          |
+| d20[20]                | {20: 0.05}           | chance to throw a 20 only                          |
 | d20[20] -> 10          | EXCEPTION            | can't resolve a Distribution                        |
-| d20[20] >= 14          | {14: 0.05}           | changse to throw a 20 and be higher then 14 is 0.05 |
+| d20[20] >= 14          | {14: 0.05}           | chance to throw a 20 and be higher then 14 is 0.05 |
 |                        |                      | this can now be resolved                            |
 | d20[20] >= 14 -> 10    | {14: 0.5}            | the average damage if only a 20 hits is 0.5         |
 | d20[19:20] >= 14 -> 10 | {14: 1.0}            | the average damage for 19 and 20 together is 1.0    |
@@ -66,7 +66,7 @@ Rolling for an attack has some special properties:
 1. rolling a 1 always misses
 2. rolling a 20 means double the attack rolls
 
-(d20[2:19] >= 14 -> 2d6) + (d20[20] >= 14) -> 2d6 + 2
+(d20[2:19] >= 14 -> 2d6) + (d20[20] >= 14) -> 2d6 + 2)
 This adds the damage for hitting and not critting with the damage of critting
 Note that even tough crits always hit there is still need for the same skillcheck (>= 14)
 

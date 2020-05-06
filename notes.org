@@ -258,7 +258,7 @@ term      :  choose ((MUL | DIV) choose)*
 choose    :  index (CHOOSE index)?
 index     :  roll (brack)?
 roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | RES expr
+factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr
 brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)

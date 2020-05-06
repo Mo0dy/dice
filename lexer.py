@@ -21,6 +21,7 @@ MINUS = "MINUS"                          # "-"
 MUL = "MUL"                              # "*"
 DIV = "DIV"                              # "/"
 RES = "RES"                              # "->"
+AVG = "AVT"                              # "~"
 ELSE = "ELSE"                            # "|"
 LBRACK = "LBRACK"                        # "["
 RBRACK = "RBRACK"                        # "]"
@@ -87,6 +88,7 @@ class Lexer(object):
             [r"\[", lambda x: Token(LBRACK, x)],
             [r"\]", lambda x: Token(RBRACK, x)],
             [r"\-\>", lambda x: Token(RES, x)],
+            [r"~", lambda x: Token(AVG, x)],
             [r"\|", lambda x: Token(ELSE, x)],
             [r"d", lambda x: Token(ROLL, x)],
             [r"\>=", lambda x: Token(GREATER_OR_EQUAL, x)],

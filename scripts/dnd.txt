@@ -1,7 +1,6 @@
 
 !define ATTACK(mod, ndmg, cdmg, ac) ((d20[2:19] + mod >= ac -> ndmg) + (d20[20] + mod >= ac -> cdmg))
 
-
 // PHB spells (first level)
 !define ACID_SPLASH(ntargets, dc, tdexmod) (d20 < dc - tdexmod -> d6) * ntargets
 !define CONE_OF_COLD(ntargets, dc, tdexmod) (d20 < dc - tdexmod -> 8d8 |/) * ntargets
@@ -17,8 +16,8 @@
 #grid fine
 #title paladin
 
-#label paladin
-((sadv[2:19] + 7 >= ac -> 1d6 + 5) + (sadv[20] + 7 >= ac -> (1d6 + 4d8) * 2 + 5)) * 2 + (sadv[2:19] + 7 >= ac -> 1d6) + (sadv[20] + 7 >= ac -> (1d6 + 4d8) * 2)
+#label chain
+ATTACK(4, d6 + 2, 2d6 + 2, 19)
 
-#label paladin crit 19
-((sadv[19, 20] + 7 >= ac -> (1d6 + 4d8) * 2 + 5)) * 2 + (sadv[19, 20] + 7 >= ac -> (1d6 + 4d8) * 2)
+#label adamantit
+ATTACK(4, d6 + 2, d6 + 2, 17)

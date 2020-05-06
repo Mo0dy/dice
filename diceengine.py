@@ -120,7 +120,7 @@ class Diceengine(object):
 
     @staticmethod
     def resunary(value):
-        """Return resolution of a single entry.
+        """Return resolution (average) of a single entry.
 
         Implemented for Distribution only as average.
         For int just return value of int"""
@@ -129,10 +129,14 @@ class Diceengine(object):
         if type(value) == int:
             return ResultList({"Int": value})
 
-        if not isinstance(value, Distrib):
-            Diceengine.exception("Can't resolve {}".format(type(value)))
+        if isinstance(value, Distrib):
+            return ResultList({"AV": value.average()})
 
-        return ResultList({"AV": value.average()})
+        if isinstance(value, ResultList):
+            Diceengine.exception("Result List not implemented")
+
+        Diceengine.exception("Can't resolve {}".format(type(value)))
+
 
     @staticmethod
     def reselse(result, distrib_if, distrib_else):
