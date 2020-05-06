@@ -5,7 +5,7 @@
 
 
 from diceparser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP
 from diceengine import Diceengine
 
 
@@ -121,6 +121,8 @@ class Interpreter(NodeVisitor):
             return Diceengine.resunary(self.visit(node.value))
         elif node.op.type == AVG:
             return Diceengine.resunary(self.visit(node.value))
+        elif node.op.type == PROP:
+            return Diceengine.prop(self.visit(node.value))
         self.exception("{} not implemented".format(node))
 
     def visit_Val(self, node):

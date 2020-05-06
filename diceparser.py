@@ -6,7 +6,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP
 
 
 class Parser(object):
@@ -34,15 +34,15 @@ class DiceParser(Parser):
     """Parser for the Dice language
 
     Grammar:
-    expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
-    comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
-    side      :  term ((ADD | SUB) term)*
-    term      :  choose ((MUL | DIV) choose)*
-    choose    :  index (CHOOSE index)?
-    index     :  roll (brack)?
-    roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-    factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr
-    brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+        expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
+        comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
+        side      :  term ((ADD | SUB) term)*
+        term      :  res ((MUL | DIV) res)*
+        res       :  (PROP | ADV)? index
+        index     :  roll (brack)?
+        roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
+        factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor
+        brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
     """
 
     # This just implements the grammar
@@ -79,10 +79,6 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(ROLL)
             return UnOp(self.factor(), token)
-        elif self.current_token.type == ADV:
-            token = self.current_token
-            self.eat(ADV)
-            return UnOp(self.factor(), token)
         elif self.current_token.type == DIS:
             token = self.current_token
             self.eat(DIS)
@@ -90,6 +86,10 @@ class DiceParser(Parser):
         elif self.current_token.type == AVG:
             token = self.current_token
             self.eat(AVG)
+            return UnOp(self.expr(), token)
+        elif self.current_token.type == PROP:
+            token = self.current_token
+            self.eat(PROP)
             return UnOp(self.expr(), token)
         else:
             token = self.current_token
@@ -116,13 +116,23 @@ class DiceParser(Parser):
             return BinOp(node, token, self.roll())
         return node
 
+    def res(self):
+        token = None
+        if self.current_token.type == PROP:
+            token = self.current_token
+            self.eat(PROP)
+        elif self.current_token.type == ADV:
+            token = self.current_token
+            self.eat(ADV)
+        return UnOp(self.index(), token) if token else self.index()
+
     def term(self):
-        node = self.index()
+        node = self.res()
         while self.current_token.type in [MUL, DIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.index())
+            node = BinOp(node, token, self.res())
         return node
 
     def side(self):

@@ -22,6 +22,7 @@ MUL = "MUL"                              # "*"
 DIV = "DIV"                              # "/"
 RES = "RES"                              # "->"
 AVG = "AVT"                              # "~"
+PROP = "PROP"                            # "!"
 ELSE = "ELSE"                            # "|"
 LBRACK = "LBRACK"                        # "["
 RBRACK = "RBRACK"                        # "]"
@@ -76,31 +77,32 @@ class Lexer(object):
         # e.g. -> before -
         # NOTE: no need to match beginning of string because re.match is used
         token_re_list = [
-            [r"h", lambda x: Token(HIGH, x)],
-            [r"l", lambda x: Token(LOW, x)],
+            [r"h",    lambda x: Token(HIGH, x)],
+            [r"l",    lambda x: Token(LOW, x)],
             [r"\|\/", lambda x: Token(ELSEDIV, x)],
-            [r"\(", lambda x: Token(LPAREN, x)],
-            [r"\)", lambda x: Token(RPAREN, x)],
-            [r"d\-", lambda x: Token(DIS, x)],
-            [r"d\+", lambda x: Token(ADV, x)],
-            [r"\:", lambda x: Token(COLON, x)],
-            [r"\,", lambda x: Token(COMMA, x)],
-            [r"\[", lambda x: Token(LBRACK, x)],
-            [r"\]", lambda x: Token(RBRACK, x)],
+            [r"\(",   lambda x: Token(LPAREN, x)],
+            [r"\)",   lambda x: Token(RPAREN, x)],
+            [r"d\-",  lambda x: Token(DIS, x)],
+            [r"d\+",  lambda x: Token(ADV, x)],
+            [r"\:",   lambda x: Token(COLON, x)],
+            [r"\,",   lambda x: Token(COMMA, x)],
+            [r"\[",   lambda x: Token(LBRACK, x)],
+            [r"\]",   lambda x: Token(RBRACK, x)],
             [r"\-\>", lambda x: Token(RES, x)],
-            [r"~", lambda x: Token(AVG, x)],
-            [r"\|", lambda x: Token(ELSE, x)],
-            [r"d", lambda x: Token(ROLL, x)],
-            [r"\>=", lambda x: Token(GREATER_OR_EQUAL, x)],
-            [r"\<=", lambda x: Token(LESS_OR_EQUAL, x)],
-            [r"\<", lambda x: Token(LESS, x)],
-            [r">", lambda x: Token(GREATER, x)],
-            [r"==", lambda x: Token(EQUAL, x)],
-            [r"\+", lambda x: Token(PLUS, x)],
-            [r"\-", lambda x: Token(MINUS, x)],
-            [r"\*", lambda x: Token(MUL, x)],
-            [r"/", lambda x: Token(DIV, x)],
-            [r"[0-9]+", lambda x: Token(INTEGER, int(x))],
+            [r"~",    lambda x: Token(AVG, x)],
+            [r"\!",   lambda x: Token(PROP, x)],
+            [r"\|",   lambda x: Token(ELSE, x)],
+            [r"d",    lambda x: Token(ROLL, x)],
+            [r"\>=",  lambda x: Token(GREATER_OR_EQUAL, x)],
+            [r"\<=",  lambda x: Token(LESS_OR_EQUAL, x)],
+            [r"\<",   lambda x: Token(LESS, x)],
+            [r">",    lambda x: Token(GREATER, x)],
+            [r"==",   lambda x: Token(EQUAL, x)],
+            [r"\+",   lambda x: Token(PLUS, x)],
+            [r"\-",   lambda x: Token(MINUS, x)],
+            [r"\*",   lambda x: Token(MUL, x)],
+            [r"/",    lambda x: Token(DIV, x)],
+            [r"\d+",  lambda x: Token(INTEGER, int(x))],
         ]
 
         # check tokens in order

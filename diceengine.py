@@ -75,6 +75,10 @@ class Distrib(object):
         # multiply every entry with changse to occur
         return sum([dice * prop for dice, prop in self.items()])
 
+    def probabilities(self):
+        """Returns iterable of probabilities"""
+        return self.distrib.values()
+
 class Diceengine(object):
     """Arithmetic methods for handling distributions"""
     # NOTE: leave in class wrapper as to not seem to similar to default methods
@@ -130,12 +134,21 @@ class Diceengine(object):
             return ResultList({"Int": value})
 
         if isinstance(value, Distrib):
-            return ResultList({"AV": value.average()})
+            return value.average()
 
         if isinstance(value, ResultList):
             Diceengine.exception("Result List not implemented")
 
         Diceengine.exception("Can't resolve {}".format(type(value)))
+
+
+    @staticmethod
+    def prop(value):
+        """Return summed probability of all events"""
+        if isinstance(value, Distrib):
+            return sum(value.probabilities())
+
+        Diceengine.exception("Can't generate probability for {}".format(value))
 
 
     @staticmethod
@@ -327,8 +340,9 @@ class Diceengine(object):
         result + result = result      (combines list adding values where keys match)
         """
         # Note that adding is cumutative so it only has to be implemented one way
-        if type(left) == int:
-            if type(right) == int:
+        # TODO: do this better with error handling
+        if type(left) in [int, float]:
+            if type(right) in [int, float]:
                 return left + right
             elif type(right) == list:
                 return [x + left for x in right]
@@ -346,11 +360,11 @@ class Diceengine(object):
                 return new_results
 
         elif type(left) == list:
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # has already been implemented
                 return Diceengine.add(right, left)
         elif isinstance(left, Distrib):
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # has already been implemented
                 return Diceengine.add(right, left)
             elif isinstance(right, Distrib):
@@ -363,7 +377,7 @@ class Diceengine(object):
                         new_distrib[d1 + d2] += p1 * p2
                 return new_distrib
         elif isinstance(left, ResultList):
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # already implemented
                 return Diceengine.add(right, left)
             elif isinstance(right, ResultList):
@@ -441,8 +455,11 @@ class Diceengine(object):
         int * list = list
         int * distrib = distrib
         """
-        if type(left) == int:
-            if type(right) == int:
+
+        # TODO: cleanup with proper exception handling
+
+        if type(left) in [int, float]:
+            if type(right) in [int, float]:
                 return left * right
             elif type(right) == list:
                 return [x * left for x in right]
@@ -459,15 +476,15 @@ class Diceengine(object):
                     new_results[key] = value * left
                 return new_results
         elif type(left) == list:
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # already implemented before
                 return Diceengine.mul(right, left)
         elif isinstance(left, Distrib):
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # already implemented
                 return Diceengine.mul(right, left)
         elif isinstance(left, ResultList):
-            if type(right) == int:
+            if type(right) in [int, float]:
                 # already implemented
                 return Diceengine.mul(right, left)
 

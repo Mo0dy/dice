@@ -254,11 +254,11 @@ Reduced Instruction Set: +, >=, d
 expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side      :  term ((ADD | SUB) term)*
-term      :  choose ((MUL | DIV) choose)*
-choose    :  index (CHOOSE index)?
+term      :  res ((MUL | DIV) res)*
+res       :  (PROP | ADV)? index
 index     :  roll (brack)?
 roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr
+factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor
 brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)
