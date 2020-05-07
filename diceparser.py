@@ -6,7 +6,7 @@
 
 import re
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, BEGIN, END, ASSIGN, SEMI, ID, PRINT
 
 
 class Parser(object):
@@ -91,6 +91,10 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(PROP)
             return UnOp(self.expr(), token)
+        elif self.current_token.type == ID:
+            token = self.current_token
+            self.eat(ID)
+            return Val(token)
         else:
             token = self.current_token
             self.eat(INTEGER)
@@ -121,9 +125,9 @@ class DiceParser(Parser):
         if self.current_token.type == PROP:
             token = self.current_token
             self.eat(PROP)
-        elif self.current_token.type == ADV:
+        elif self.current_token.type == AVG:
             token = self.current_token
-            self.eat(ADV)
+            self.eat(AVG)
         return UnOp(self.index(), token) if token else self.index()
 
     def term(self):
@@ -174,8 +178,40 @@ class DiceParser(Parser):
                 node = BinOp(node, token, new_node1)
         return node
 
+    def statement(self):
+        if self.current_token.type == ID:
+            token = self.current_token
+            self.eat(ID)
+            left = Val(token)
+            token = self.current_token
+            self.eat(ASSIGN)
+            return BinOp(left, token, self.expr())
+        elif self.current_token.type == PRINT:
+            token = self.current_token
+            self.eat(PRINT)
+            return UnOp(self.expr(), token)
+        else:
+            return self.expr()
+
+    def program(self):
+        token = self.current_token
+        self.eat(BEGIN)
+        nodes = []
+        # at least one statement
+        while self.current_token.type != END:
+            nodes.append(self.statement())
+            self.eat(SEMI)
+        self.eat(END)
+        return VarOp(token, nodes)
+
+    def parse(self):
+        node = self.program()
+        if self.current_token.type != EOF:
+            self.exception("Could not parse {}".format(self.current_token))
+        return node
+
 if __name__ == "__main__":
-    lexer = Lexer("d20")
+    lexer = Lexer("BEGIN a = 1; END")
     parser = DiceParser(lexer)
-    ast = parser.expr()
+    ast = parser.parse()
     print(ast)

@@ -24,7 +24,7 @@ timeout_seconds = 5
 # Maximum runtime 5 seconds
 @timeout_decorator.timeout(timeout_seconds)
 def interpret_dice(text):
-    return Interpreter(DiceParser(Lexer(text)).expr()).interpret()
+    return Interpreter(DiceParser(Lexer(text)).parse()).interpret()
 
 def interpret(text, preprocessor, roundlevel=0):
     """Interprete command and return output"""
@@ -59,9 +59,7 @@ def runinteractive():
         text = input("dice> ")
         if text == "exit":
             return 0
-        result = interpret(text, preprocessor, roundlevel)
-        if result:
-            print(result)
+        interpret(text, preprocessor, roundlevel)
     return 2
 
 def print_result(result, grepable=False, verbose=False, line=""):
@@ -129,21 +127,23 @@ def main(args):
     # Using this means definitions are shared!
     preprocessor = Preprocessor()
 
-    for line in input_lines:
-        # apply definitions:
-        result = str(interpret(line, preprocessor, roundlevel))
+    interpret(''.join(input_lines), preprocessor, roundlevel)
 
-        if not result:
-            continue
+    # for line in input_lines:
+    #     # apply definitions:
+    #     result = str(interpret(line, preprocessor, roundlevel))
 
-        if plot:
-            # plot
-            viewer.do(result)
-            if verbose:
-                # don't print commands just results if verbose and plot
-                print_result(result, grepable, False)
+    #     if not result:
+    #         continue
 
-        print_result(result, grepable, verbose, line)
+    #     if plot:
+    #         # plot
+    #         viewer.do(result)
+    #         if verbose:
+    #             # don't print commands just results if verbose and plot
+    #             print_result(result, grepable, False)
+
+    #     print_result(result, grepable, verbose, line)
     # exit success
     if plot:
         viewer.show()

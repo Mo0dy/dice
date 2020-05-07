@@ -82,4 +82,4 @@ class Val(AST):
         self.value = token.value
 
     def __repr__(self):
-        return "Val: {}".format(self.value)
+        return "{}, Val: {}".format(self.token, self.value)

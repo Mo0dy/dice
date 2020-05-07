@@ -21,7 +21,7 @@ MINUS = "MINUS"                          # "-"
 MUL = "MUL"                              # "*"
 DIV = "DIV"                              # "/"
 RES = "RES"                              # "->"
-AVG = "AVT"                              # "~"
+AVG = "AVG"                              # "~"
 PROP = "PROP"                            # "!"
 ELSE = "ELSE"                            # "|"
 LBRACK = "LBRACK"                        # "["
@@ -36,6 +36,13 @@ ELSEDIV = "ELSEDIV"                      # "|/"
 HIGH = "HIGH"                            # "h"
 LOW = "LOW"                              # "l"
 EOF = "EOF"                              # end of file
+BEGIN = "BEGIN"                          # "BEGIN"
+END = "END"                              # "END"
+SEMI = "SEMI"                            # "SEMI"
+ID = "ID"                                # any valid variable defenition
+ASSIGN = "ASSIGN"                        # =
+PRINT = "PRINT"                          # print
+
 
 
 class Token(object):
@@ -77,6 +84,10 @@ class Lexer(object):
         # e.g. -> before -
         # NOTE: no need to match beginning of string because re.match is used
         token_re_list = [
+            [r"BEGIN", lambda x: Token(BEGIN, x)],
+            [r"END",   lambda x: Token(END, x)],
+            [r"print", lambda x: Token(PRINT, x)],
+            [r"\;",    lambda x: Token(SEMI, x)],
             [r"h",    lambda x: Token(HIGH, x)],
             [r"l",    lambda x: Token(LOW, x)],
             [r"\|\/", lambda x: Token(ELSEDIV, x)],
@@ -102,7 +113,10 @@ class Lexer(object):
             [r"\-",   lambda x: Token(MINUS, x)],
             [r"\*",   lambda x: Token(MUL, x)],
             [r"/",    lambda x: Token(DIV, x)],
+            [r"\=",   lambda x: Token(ASSIGN, x)],
+            # try to match anything else to a variable or number
             [r"\d+",  lambda x: Token(INTEGER, int(x))],
+            [r"\w+",  lambda x: Token(ID, x)],
         ]
 
         # check tokens in order

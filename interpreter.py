@@ -5,7 +5,7 @@
 
 
 from diceparser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, BEGIN, END, ID, ASSIGN, SEMI, PRINT
 from diceengine import Diceengine
 
 
@@ -39,6 +39,8 @@ class Interpreter(NodeVisitor):
     def __init__(self, ast):
         """Works on a pre-generated abstract syntax tree"""
         self.ast = ast;
+        # HACK
+        self.global_scope = {}
 
     def exception(self, message=""):
         """Raises an exception for the Interpreter"""
@@ -46,7 +48,13 @@ class Interpreter(NodeVisitor):
 
     def visit_VarOp(self, node):
         """Visits a Variary-Operation node"""
-        if node.op.type == LBRACK:
+        if node.op.type == BEGIN:
+            for n in node.nodes:
+                # TODO: leave the printing up to the specific node
+                self.visit(n)
+            return
+
+        elif node.op.type == LBRACK:
             # construct list of integers from subnodes in node.nodes
             ret_val = []
             for node in node.nodes:
@@ -106,6 +114,9 @@ class Interpreter(NodeVisitor):
             return [x for x in range(val1, val2 + 1)]
         if node.op.type == LBRACK:
             return Diceengine.choose(self.visit(node.left), self.visit(node.right))
+        if node.op.type == ASSIGN:
+            self.global_scope[node.left.value] = self.visit(node.right)
+            return
 
         self.exception("{} not implemented".format(node))
 
@@ -123,16 +134,23 @@ class Interpreter(NodeVisitor):
             return Diceengine.resunary(self.visit(node.value))
         elif node.op.type == PROP:
             return Diceengine.prop(self.visit(node.value))
+        elif node.op.type == PRINT:
+            print(self.visit(node.value))
+            return
         self.exception("{} not implemented".format(node))
 
     def visit_Val(self, node):
         """Visits a Value node"""
-        return node.value
+        if node.token.type == INTEGER:
+            return node.value
 
+        if not node.value in self.global_scope:
+            self.exception("Could not dereference {}".format(node))
+        return self.global_scope[node.value]
 
 if __name__ == "__main__":
-    input_text = "d20 < 10"
-    ast = DiceParser(Lexer(input_text)).expr()
+    input_text = "BEGIN a = 5; print a + 5; END"
+    ast = DiceParser(Lexer(input_text)).parse()
+    print(ast)
     interpreter = Interpreter(ast)
     result = interpreter.interpret()
-    print(result)

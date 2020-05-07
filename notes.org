@@ -143,7 +143,7 @@ Reduced Instruction Set: +, >=, d
 |          1 | d                |
 |------------+------------------|
 
-** Grammar
+** Simple Grammar
 expr      :  throw (IF_THEN side)?
 throw     :  side (GREATER_THEN side)?
 side      :  term (PLUS term)*
@@ -251,15 +251,20 @@ Reduced Instruction Set: +, >=, d
 |------------+-----------------|
 
 ** Grammar
-expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
-comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
-side      :  term ((ADD | SUB) term)*
-term      :  res ((MUL | DIV) res)*
-res       :  (PROP | ADV)? index
-index     :  roll (brack)?
-roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor
-brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+program           :  BEGIN (statement SEMI)* END
+# just having ID here allows for statements with just one variable to print
+# HACK: remove this when a print statement is added
+statement         :  ID ASSIGN expr | PRINT expr | expr
+expr              :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
+comp              :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
+side              :  term ((ADD | SUB) term)*
+term              :  res ((MUL | DIV) res)*
+res               :  (PROP | ADV)? index
+index             :  roll (brack)?
+roll              :  factor (ROLL factor ((HIGH | LOW) factor)?)?
+factor            :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS
+factor | ADV factor | ID
+brack             :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
 
 ** 2do (Yet to implement)
 - Defining what the labels will be in the end:
