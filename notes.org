@@ -254,7 +254,7 @@ Reduced Instruction Set: +, >=, d
 program           :  BEGIN (statement SEMI)* END
 # just having ID here allows for statements with just one variable to print
 # HACK: remove this when a print statement is added
-statement         :  ID ASSIGN expr | PRINT expr | expr
+statement         :  ID ASSIGN expr | intrinsic expr | expr | SHOW
 expr              :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
 comp              :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
 side              :  term ((ADD | SUB) term)*
@@ -262,9 +262,10 @@ term              :  res ((MUL | DIV) res)*
 res               :  (PROP | ADV)? index
 index             :  roll (brack)?
 roll              :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-factor            :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS
+factor            :  INTEGER | STRING | LPAREN exp RPAREN | brack | ROLL factor | DIS
 factor | ADV factor | ID
 brack             :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+intrinsic         : print | label | labelx | ...
 
 ** 2do (Yet to implement)
 - Defining what the labels will be in the end:

@@ -5,8 +5,9 @@
 
 
 from diceparser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, BEGIN, END, ID, ASSIGN, SEMI, PRINT
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, BEGIN, END, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW
 from diceengine import Diceengine
+import viewer
 
 
 class NodeVisitor(object):
@@ -137,11 +138,29 @@ class Interpreter(NodeVisitor):
         elif node.op.type == PRINT:
             print(self.visit(node.value))
             return
+        elif node.op.type == PLOT:
+            viewer.plot(str(self.visit(node.value)))
+            return
+        elif node.op.type == LABEL:
+            viewer.label(str(self.visit(node.value)))
+            return
+        elif node.op.type == XLABEL:
+            viewer.xlabel(str(self.visit(node.value)))
+            return
+        elif node.op.type == YLABEL:
+            viewer.ylabel(str(self.visit(node.value)))
+            return
+        self.exception("{} not implemented".format(node))
+
+    def visit_Op(self, node):
+        if node.op.type == SHOW:
+            viewer.show()
+            return
         self.exception("{} not implemented".format(node))
 
     def visit_Val(self, node):
         """Visits a Value node"""
-        if node.token.type == INTEGER:
+        if node.token.type in [INTEGER, STRING]:
             return node.value
 
         if not node.value in self.global_scope:
@@ -149,7 +168,7 @@ class Interpreter(NodeVisitor):
         return self.global_scope[node.value]
 
 if __name__ == "__main__":
-    input_text = "BEGIN a = 5; print a + 5; END"
+    input_text = 'BEGIN a = d20; xlabel "t1"; ylabel "t2"; print a; label "test"; plot a; show; END'
     ast = DiceParser(Lexer(input_text)).parse()
     print(ast)
     interpreter = Interpreter(ast)

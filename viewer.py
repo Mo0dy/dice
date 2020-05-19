@@ -2,6 +2,8 @@
 
 """Visualizes results from dice using Matplotlib"""
 
+# TODO: make this viewer work with internal dice engine objects!
+
 import fileinput
 import re
 import sys
@@ -54,6 +56,20 @@ def parse(text):
             b = string_to_number(b)
             items.append([a, b])
         return dict(items)
+
+def label(string):
+    do.label.append(string)
+
+def xlabel(string):
+    plt.xlabel(string)
+
+def ylabel(string):
+    plt.ylabel(string)
+
+def plot(string):
+    print("input: ", string, "type: ", type(string))
+    visualize(parse(string), "\n".join(do.label))
+    do.label = []
 
 def do(input_string):
     """Does action according to input string"""

@@ -10,6 +10,15 @@ class AST(object):
     """The baseclass for all AST nodes"""
 
 
+class Op(AST):
+    def __init__(self, op):
+        self.token = self.op = op
+
+    def __repr__(self):
+        result = "Op: {}".format(self.op)
+        return result
+
+
 class UnOp(AST):
     """Node for all unary operators"""
     def __init__(self, value, op):

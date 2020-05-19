@@ -40,8 +40,16 @@ BEGIN = "BEGIN"                          # "BEGIN"
 END = "END"                              # "END"
 SEMI = "SEMI"                            # "SEMI"
 ID = "ID"                                # any valid variable defenition
-ASSIGN = "ASSIGN"                        # =
-PRINT = "PRINT"                          # print
+ASSIGN = "ASSIGN"                        # "="
+PRINT = "PRINT"                          # "print"
+STRING = "STRING"                        # anything inside ""
+
+# Plotting intrinsics
+PLOT = "PLOT"                            # "plot"
+XLABEL = "XLABEL"                        # "xlabel"
+YLABEL = "YLABEL"                        # "ylabel"
+LABEL = "LABEL"                          # "label"
+SHOW = "SHOW"                            # "show"
 
 
 
@@ -84,9 +92,15 @@ class Lexer(object):
         # e.g. -> before -
         # NOTE: no need to match beginning of string because re.match is used
         token_re_list = [
+            [r'".*?"', lambda x: Token(STRING, x[1:-1])],
             [r"BEGIN", lambda x: Token(BEGIN, x)],
             [r"END",   lambda x: Token(END, x)],
             [r"print", lambda x: Token(PRINT, x)],
+            [r"xlabel", lambda x: Token(XLABEL, x)],
+            [r"ylabel", lambda x: Token(YLABEL, x)],
+            [r"label", lambda x: Token(LABEL, x)],
+            [r"plot", lambda x: Token(PLOT, x)],
+            [r"show", lambda x: Token(SHOW, x)],
             [r"\;",    lambda x: Token(SEMI, x)],
             [r"h",    lambda x: Token(HIGH, x)],
             [r"l",    lambda x: Token(LOW, x)],

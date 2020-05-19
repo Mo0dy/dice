@@ -5,8 +5,8 @@
 
 
 import re
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, BEGIN, END, ASSIGN, SEMI, ID, PRINT
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, BEGIN, END, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW
 
 
 class Parser(object):
@@ -94,6 +94,10 @@ class DiceParser(Parser):
         elif self.current_token.type == ID:
             token = self.current_token
             self.eat(ID)
+            return Val(token)
+        elif self.current_token.type == STRING:
+            token = self.current_token
+            self.eat(STRING)
             return Val(token)
         else:
             token = self.current_token
@@ -186,10 +190,14 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(ASSIGN)
             return BinOp(left, token, self.expr())
-        elif self.current_token.type == PRINT:
+        elif self.current_token.type in [PRINT, LABEL, XLABEL, YLABEL, PLOT]:
             token = self.current_token
-            self.eat(PRINT)
+            self.eat(token.type)
             return UnOp(self.expr(), token)
+        elif self.current_token.type == SHOW:
+            token = self.current_token
+            self.eat(SHOW)
+            return Op(token)
         else:
             return self.expr()
 
@@ -211,7 +219,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer("BEGIN a = 1; END")
+    lexer = Lexer('BEGIN a = "test"; plot a; show; END')
     parser = DiceParser(lexer)
     ast = parser.parse()
     print(ast)
