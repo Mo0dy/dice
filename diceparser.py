@@ -29,6 +29,15 @@ class Parser(object):
             self.exception("Tried to eat: {} but found {}".format(type, self.current_token.type))
         self.current_token = self.lexer.next_token()
 
+    def eat_one_or_more(self, type):
+        self.eat(type)
+        while self.current_token.type == type:
+            self.eat(type)
+
+    def eat_zero_or_more(self, type):
+        while self.current_token.type == type:
+            self.eat(type)
+
 
 class DiceParser(Parser):
     """Parser for the Dice language
@@ -204,12 +213,15 @@ class DiceParser(Parser):
     def program(self):
         token = self.current_token
         self.eat(BEGIN)
+        self.eat(SEMI)
         nodes = []
         # at least one statement
         while self.current_token.type != END:
             nodes.append(self.statement())
-            self.eat(SEMI)
+            self.eat_one_or_more(SEMI)
+            # newlines are simply parsed as SEMI
         self.eat(END)
+        self.eat_zero_or_more(SEMI)
         return VarOp(token, nodes)
 
     def parse(self):

@@ -80,7 +80,7 @@ class Lexer(object):
     def cauterize_input(self, expression):
         """Modifies input by removing uninteresting charcters (\n, " ")"""
         # TODO: this should done more universal
-        return expression.replace(" ", "").replace("\n", "")
+        return expression.replace(" ", "").replace("\n", ";")
 
     def next_token(self):
         """Returns next token in tokenstream"""
