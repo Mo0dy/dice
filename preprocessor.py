@@ -58,7 +58,7 @@ class Definition(object):
             regex = r"{name}".format(name=self.name)
             return re.sub(regex, self.body, line)
 
-class Preprocessor(object):
+class Preprocessor():
     """Preprocesses line of code for the dice language
 
     // : gets ignored as comment
@@ -72,7 +72,17 @@ class Preprocessor(object):
         """Defines a preprocessor statement (replace) similar to c #define"""
         self.definitions.append(Definition(line))
 
-    def preprocess(self, line):
+    def preprocess(self, text):
+        """Preprocesses text"""
+        lines = text.split("\n")
+        new_lines = []
+        for line in lines:
+            new_line = self.preprocess_line(line)
+            if new_line:
+                new_lines.append(new_line)
+        return "\n".join(new_lines)
+
+    def preprocess_line(self, line):
         """Preprocesses line"""
         # ignore comments and whitespace only
         if line.startswith("//") or line.strip() == "":

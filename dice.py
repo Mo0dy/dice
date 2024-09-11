@@ -43,7 +43,7 @@ def interpret_file(text, preprocessor, roundlevel=0):
     if not preprocessed_text:
         return ""
 
-    result = Interpreter(DiceParser(Lexer(text)).parse()).interpret()
+    result = Interpreter(DiceParser(Lexer(preprocessed_text)).parse()).interpret()
     # round and prettyfy
     if isinstance(result, ResultList) or isinstance(result, Distrib):
         if roundlevel:
