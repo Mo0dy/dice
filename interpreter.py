@@ -10,13 +10,26 @@ from diceengine import Diceengine
 import viewer
 
 
-class NodeVisitor(object):
-    """Base class for Interpreters visits nodes with depthfirst."""
+class Interpreter():
+    """Excecutes the dice abstract syntax tree for the dice language"""
+
+    # TODO: should I add typeguards here?
+    # At the moment the Diceengine does it's own typeguards so maybe thats ok
+    # It feels like that should be a language Feature also but idk
+    # Interpreter.py and Diceengine.py have a lot of dependencies anyways
+
+    def __init__(self, ast, debug=False):
+        """Works on a pre-generated abstract syntax tree"""
+        self.ast = ast
+        self.debug = debug
+        self.global_scope = {}
 
     def visit(self, node):
         """Calls method with name visit_NodeName for every node visited.
         Does Depthfirst search."""
         method_name = 'visit_' + type(node).__name__
+        if self.debug:
+            print(f"EXEC: {type(node).__name__}, {node.token.type}")
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
 
@@ -27,21 +40,6 @@ class NodeVisitor(object):
     def interpret(self):
         """Interprets AST (start by visiting ast node)"""
         return self.visit(self.ast)
-
-
-class Interpreter(NodeVisitor):
-    """Excecutes the dice abstract syntax tree for the dice language"""
-
-    # TODO: should I add typeguards here?
-    # At the moment the Diceengine does it's own typeguards so maybe thats ok
-    # It feels like that should be a language Feature also but idk
-    # Interpreter.py and Diceengine.py have a lot of dependencies anyways
-
-    def __init__(self, ast):
-        """Works on a pre-generated abstract syntax tree"""
-        self.ast = ast;
-        # HACK
-        self.global_scope = {}
 
     def exception(self, message=""):
         """Raises an exception for the Interpreter"""
