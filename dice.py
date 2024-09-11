@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-
-
 """Interactive interpreter for the dice language"""
 
+import argparse
 import sys
 import fileinput
 import re
@@ -20,36 +19,37 @@ import viewer
 
 timeout_seconds = 5
 
-
-# Maximum runtime 5 seconds
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_dice(text):
-    return Interpreter(DiceParser(Lexer(text)).parse()).interpret()
+def interpret_statement(text, roundlevel=0, print_result=False, show_result=False):
+    result = Interpreter(DiceParser(Lexer(text)).statement()).interpret()
+    if print_result:
+        print(result)
+    if show_result:
+        viewer.do(result)
 
-def interpret(text, preprocessor, roundlevel=0):
+
+@timeout_decorator.timeout(timeout_seconds)
+def interpret_file(text, preprocessor, roundlevel=0):
     """Interprete command and return output"""
     # print statement
     if text.startswith('#'):
         # strip to not print new line
         return text.strip()
 
+    # TODO: remove define
     preprocessed_text = preprocessor.preprocess(text)
 
     # nothing to interpret?
     if not preprocessed_text:
         return ""
 
-    try:
-        result = interpret_dice(preprocessed_text)
-        # round and prettyfy
-        if isinstance(result, ResultList) or isinstance(result, Distrib):
-            if roundlevel:
-                for k, v in result.items():
-                    result[k] = round(v, roundlevel)
-        return result
-    except Exception as e:
-        # print exception if one happens
-        return str(e)
+    result = Interpreter(DiceParser(Lexer(text)).parse()).interpret()
+    # round and prettyfy
+    if isinstance(result, ResultList) or isinstance(result, Distrib):
+        if roundlevel:
+            for k, v in result.items():
+                result[k] = round(v, roundlevel)
+    return result
 
 def runinteractive():
     """Get in put from console"""
@@ -59,7 +59,7 @@ def runinteractive():
         text = input("dice> ")
         if text == "exit":
             return 0
-        interpret(text, preprocessor, roundlevel)
+        interpret_file(text, preprocessor, roundlevel)
     return 2
 
 def print_result(result, grepable=False, verbose=False, line=""):
@@ -82,73 +82,42 @@ def print_result(result, grepable=False, verbose=False, line=""):
             sys.stdout.write(str(result) + "\n")
 
 
-def main(args):
-    # set if output should be grepable
-    grepable = False
-    verbose = False
-    plot = False
-    roundlevel = 0
-    # remove filename
-    args = args[1:]
+def main():
+    parser = argparse.ArgumentParser(description="Process some inputs.")
 
-    # interpret args
-    while args:
-        if args[0] in ["-i", "--interactive"]:
-            return runinteractive()
-            args = args[1:]
-        elif args[0] in ["-e", "--execute"] and len(args) > 1:
-            # HACK: interpret the rest of the args
-            # they have to be surrounded by quotation marks
-            sys.stdout.write(str(interpret(" ".join(args[1:]), Preprocessor(), roundlevel)) + "\n")
-            return 0
-        elif args[0] in ["-g", "--grepable"]:
-            grepable = True
-            args = args[1:]
-        elif args[0] in ["-r", "--round"]:
-            args = args[1:]
-            if args and args[0].isdigit():
-                roundlevel = int(args[0])
-                args = args[1:]
-        elif args[0] in ["-v", "--verbose"]:
-            verbose = True
-            args = args[1:]
-        elif args[0] in ["-p", "--plot"]:
-            plot = True
-            args = args[1:]
-        else:
-            # no arg worked break loop
-            break
+    # Define subparsers for different modes (interactive, execute, default)
+    subparsers = parser.add_subparsers(dest='mode', required=True, help="Modes of operation")
 
-    # no more arguments use fileinput to either interpret the pipe or open a file
-    # (if args still has values e.g. a file path)
-    input_lines = fileinput.input(args)
+    # Subparser for interactive mode
+    parser_interactive = subparsers.add_parser('interactive', help="Run in interactive mode")
 
-    # The preprocessor for all following lines
-    # Using this means definitions are shared!
-    preprocessor = Preprocessor()
+    # Subparser for execute mode
+    parser_execute = subparsers.add_parser('execute', help="Execute the following command")
+    parser_execute.add_argument('command', type=str, help="Command to execute")
 
-    interpret(''.join(input_lines), preprocessor, roundlevel)
+    parser_exec_file = subparsers.add_parser("file", help="Execute the file given.")
+    parser_exec_file.add_argument('file', type=str, help="The file to execute.")
 
-    # for line in input_lines:
-    #     # apply definitions:
-    #     result = str(interpret(line, preprocessor, roundlevel))
+    parser.add_argument("-g", "--grepable", action="store_true", help="Enable grepable output")
+    parser.add_argument("-r", "--roundlevel", type=int, default=0, help="Set rounding level")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("-p", "--plot", action="store_true", help="Enable plotting")
+    parser.add_argument('files', nargs='*', help="Files to process (or stdin if empty)")
 
-    #     if not result:
-    #         continue
+    # Parse arguments
+    args = parser.parse_args()
 
-    #     if plot:
-    #         # plot
-    #         viewer.do(result)
-    #         if verbose:
-    #             # don't print commands just results if verbose and plot
-    #             print_result(result, grepable, False)
+    # Handle modes
+    if args.mode == 'interactive':
+        return runinteractive()
 
-    #     print_result(result, grepable, verbose, line)
-    # exit success
-    if plot:
-        viewer.show()
+    elif args.mode == 'execute':
+        interpret_statement(args.command, args.roundlevel, args.verbose, args.plot)
+        return 0
+    elif args.mode == 'file':
+        with open(args.file) as f:
+            interpret_file(f.read(), Preprocessor(), args.roundlevel)
     return 0
 
-
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
