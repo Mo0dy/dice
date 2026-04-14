@@ -18,11 +18,12 @@ class Interpreter():
     # It feels like that should be a language Feature also but idk
     # Interpreter.py and Diceengine.py have a lot of dependencies anyways
 
-    def __init__(self, ast, debug=False):
+    def __init__(self, ast, debug=False, engine=None):
         """Works on a pre-generated abstract syntax tree"""
         self.ast = ast
         self.debug = debug
         self.global_scope = {}
+        self.engine = engine if engine is not None else Diceengine
 
     def visit(self, node):
         """Calls method with name visit_NodeName for every node visited.
@@ -67,40 +68,40 @@ class Interpreter():
     def visit_TenOp(self, node):
         """Visit a Tenary-Operator node"""
         if node.op1.type == RES and node.op2.type == ELSE:
-            return Diceengine.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+            return self.engine.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
         elif node.op1.type == ROLL and node.op2.type == HIGH:
-            return Diceengine.rollhigh(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+            return self.engine.rollhigh(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
         elif node.op1.type == ROLL and node.op2.type == LOW:
-            return Diceengine.rolllow(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
+            return self.engine.rolllow(self.visit(node.left), self.visit(node.middle), self.visit(node.right))
         self.exception("{} not implemented".format(node))
 
     def visit_BinOp(self, node):
         """Visit a Binary-Operator node"""
 
         if node.op.type == PLUS:
-            return Diceengine.add(self.visit(node.left), self.visit(node.right))
+            return self.engine.add(self.visit(node.left), self.visit(node.right))
         if node.op.type == MINUS:
-            return Diceengine.sub(self.visit(node.left), self.visit(node.right))
+            return self.engine.sub(self.visit(node.left), self.visit(node.right))
         if node.op.type == MUL:
-            return Diceengine.mul(self.visit(node.left), self.visit(node.right))
+            return self.engine.mul(self.visit(node.left), self.visit(node.right))
         if node.op.type == DIV:
-            return Diceengine.div(self.visit(node.left), self.visit(node.right))
+            return self.engine.div(self.visit(node.left), self.visit(node.right))
         if node.op.type == ROLL:
-            return Diceengine.roll(self.visit(node.left), self.visit(node.right))
+            return self.engine.roll(self.visit(node.left), self.visit(node.right))
         if node.op.type == GREATER_OR_EQUAL:
-            return Diceengine.greaterorequal(self.visit(node.left), self.visit(node.right))
+            return self.engine.greaterorequal(self.visit(node.left), self.visit(node.right))
         if node.op.type == LESS_OR_EQUAL:
-            return Diceengine.lessorequal(self.visit(node.left), self.visit(node.right))
+            return self.engine.lessorequal(self.visit(node.left), self.visit(node.right))
         if node.op.type == GREATER:
-            return Diceengine.greater(self.visit(node.left), self.visit(node.right))
+            return self.engine.greater(self.visit(node.left), self.visit(node.right))
         if node.op.type == LESS:
-            return Diceengine.less(self.visit(node.left), self.visit(node.right))
+            return self.engine.less(self.visit(node.left), self.visit(node.right))
         if node.op.type == EQUAL:
-            return Diceengine.equal(self.visit(node.left), self.visit(node.right))
+            return self.engine.equal(self.visit(node.left), self.visit(node.right))
         if node.op.type == RES:
-            return Diceengine.res(self.visit(node.left), self.visit(node.right))
+            return self.engine.res(self.visit(node.left), self.visit(node.right))
         if node.op.type == ELSEDIV:
-            return Diceengine.reselsediv(self.visit(node.left), self.visit(node.right))
+            return self.engine.reselsediv(self.visit(node.left), self.visit(node.right))
         if node.op.type == COLON:
             # generate a sweep ranging value1 to value2 of integers
             val1 = self.visit(node.left)
@@ -111,9 +112,9 @@ class Interpreter():
                 self.exception("Expected int got {}".format(type(val2)))
             return Sweep(range(val1, val2 + 1))
         if node.op.type == LBRACK:
-            return Diceengine.choose(self.visit(node.left), self.visit(node.right))
+            return self.engine.choose(self.visit(node.left), self.visit(node.right))
         if node.op.type == DOT:
-            return Diceengine.choose_single(self.visit(node.left), self.visit(node.right))
+            return self.engine.choose_single(self.visit(node.left), self.visit(node.right))
         if node.op.type == ASSIGN:
             self.global_scope[node.left.value] = self.visit(node.right)
             return
@@ -123,17 +124,17 @@ class Interpreter():
     def visit_UnOp(self, node):
         """Visits a Unary-Operator node"""
         if node.op.type == ROLL:
-            return Diceengine.rollsingle(self.visit(node.value))
+            return self.engine.rollsingle(self.visit(node.value))
         elif node.op.type == ADV:
-            return Diceengine.rolladvantage(self.visit(node.value))
+            return self.engine.rolladvantage(self.visit(node.value))
         elif node.op.type == DIS:
-            return Diceengine.rolldisadvantage(self.visit(node.value))
+            return self.engine.rolldisadvantage(self.visit(node.value))
         elif node.op.type == RES:
-            return Diceengine.resunary(self.visit(node.value))
+            return self.engine.resunary(self.visit(node.value))
         elif node.op.type == AVG:
-            return Diceengine.resunary(self.visit(node.value))
+            return self.engine.resunary(self.visit(node.value))
         elif node.op.type == PROP:
-            return Diceengine.prop(self.visit(node.value))
+            return self.engine.prop(self.visit(node.value))
         elif node.op.type == PRINT:
             print(self.visit(node.value))
             return

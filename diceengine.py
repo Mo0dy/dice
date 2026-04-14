@@ -205,6 +205,13 @@ def _require_int(value, opname):
         raise Exception("{} expects integer outcomes, got {}".format(opname, type(value)))
 
 
+def _require_keep_count(n, keep, opname):
+    _require_int(n, opname)
+    _require_int(keep, opname)
+    if keep < 0 or keep > n:
+        raise Exception("{} expects keep count between 0 and number of dice".format(opname))
+
+
 def _pairwise_numeric(left, right, operator, opname):
     result = Distrib()
     for left_value, left_probability in left.items():
@@ -347,7 +354,7 @@ class Diceengine(object):
     def _rollhigh_plain(n, s, nh):
         _require_int(n, "rollhigh")
         _require_int(s, "rollhigh")
-        _require_int(nh, "rollhigh")
+        _require_keep_count(n, nh, "rollhigh")
         if n < 0 or s <= 0 or nh < 0:
             Diceengine.exception("rollhigh expects positive sides and non-negative counts")
 
@@ -373,7 +380,7 @@ class Diceengine(object):
     def _rolllow_plain(n, s, nl):
         _require_int(n, "rolllow")
         _require_int(s, "rolllow")
-        _require_int(nl, "rolllow")
+        _require_keep_count(n, nl, "rolllow")
         if n < 0 or s <= 0 or nl < 0:
             Diceengine.exception("rolllow expects positive sides and non-negative counts")
 

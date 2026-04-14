@@ -45,6 +45,8 @@ Useful flags:
 - `-g` prints a grep-friendly single-line result
 - `-v` prints the input together with the result
 - `-p` shows the result with `viewer.do(...)` after `execute`
+- `--direct` uses the direct sampling backend instead of the exact probability engine
+- `--seed N` sets the RNG seed for `--direct`
 
 ## Output Modes
 
@@ -60,6 +62,8 @@ There are a few different ways to read the result depending on what you want:
   `d20 >= 11 -> 5 | 0` returns a weighted outcome distribution.
 - Scalar summaries:
   `~(d20 >= 11 -> 5 | 0)` returns a degenerate distribution containing the expected value and `!d20[19:20]` returns probability mass for each selected branch.
+- Direct sampled execution:
+  `python3 dice.py --direct --seed 123 execute "4d6h3"` executes one sampled run through the same language semantics.
 - Plots through Matplotlib:
   use `label`, `xlabel`, `ylabel`, `plot`, and `show` in a multi-statement program when you want a graph.
 

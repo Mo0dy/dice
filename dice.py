@@ -30,28 +30,37 @@ def _round_result(result, roundlevel=0):
         result.round_probabilities(roundlevel)
     return result
 
+
+def _build_engine(args):
+    if not getattr(args, "direct", False):
+        return None
+    from directdiceengine import DirectDiceEngine
+
+    return DirectDiceEngine(seed=args.seed)
+
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0):
+def interpret_statement(text, roundlevel=0, engine=None):
     parser = DiceParser(Lexer(text))
     ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
-    result = Interpreter(ast).interpret()
+    result = Interpreter(ast, engine=engine).interpret()
     return _round_result(result, roundlevel)
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0):
+def interpret_file(text, roundlevel=0, engine=None):
     """Interpret a semicolon or newline separated program."""
-    result = Interpreter(DiceParser(Lexer(text)).parse()).interpret()
+    result = Interpreter(DiceParser(Lexer(text)).parse(), engine=engine).interpret()
     return _round_result(result, roundlevel)
 
 def runinteractive(args):
     """Run a simple interactive shell."""
+    engine = _build_engine(args)
     while True:
         text = input("dice> ")
         if text == "exit":
             return 0
         if not text.strip():
             continue
-        result = interpret_statement(text, args.roundlevel)
+        result = interpret_statement(text, args.roundlevel, engine=engine)
         if result is not None:
             print_result(result, args.grepable, args.verbose, text)
     return 2
@@ -96,6 +105,8 @@ def main():
     parser.add_argument("-r", "--roundlevel", type=int, default=0, help="Set rounding level")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("-p", "--plot", action="store_true", help="Enable plotting")
+    parser.add_argument("--direct", action="store_true", help="Use the direct sampling backend instead of the exact engine")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for direct sampling")
     parser.add_argument('files', nargs='*', help="Files to process (or stdin if empty)")
 
     # Parse arguments
@@ -106,7 +117,8 @@ def main():
         return runinteractive(args)
 
     elif args.mode == 'execute':
-        result = interpret_statement(args.command, args.roundlevel)
+        engine = _build_engine(args)
+        result = interpret_statement(args.command, args.roundlevel, engine=engine)
         if result is not None:
             print_result(result, args.grepable, args.verbose, args.command)
         if args.plot and result is not None:
@@ -114,8 +126,9 @@ def main():
             viewer.show()
         return 0
     elif args.mode == 'file':
+        engine = _build_engine(args)
         with open(args.file) as f:
-            result = interpret_file(f.read(), args.roundlevel)
+            result = interpret_file(f.read(), args.roundlevel, engine=engine)
         if result is not None:
             print_result(result, args.grepable, args.verbose, args.file)
     return 0

@@ -9,6 +9,7 @@
 Secondary surfaces:
 
 - `dice.py`: CLI entry point
+- `directdiceengine.py`: sampling-based reference backend and validation helpers
 - `viewer.py`: Matplotlib plotting helper
 - `README.md`: brief user-facing language reference during the rewrite
 - `DICE_REWRITE_PLAN.md`: active rewrite design and implementation plan
@@ -17,7 +18,7 @@ Secondary surfaces:
 
 ## Repository Structure
 
-- Top-level runtime modules: `dice.py`, `lexer.py`, `diceparser.py`, `interpreter.py`, `diceengine.py`, `syntaxtree.py`, `viewer.py`
+- Top-level runtime modules: `dice.py`, `directdiceengine.py`, `lexer.py`, `diceparser.py`, `interpreter.py`, `diceengine.py`, `syntaxtree.py`, `viewer.py`
 - User-facing docs: `README.md`
 - Examples and sample programs: `test.dice`, `scripts/*.txt`, `scripts/*.org`
 - Agent-facing docs: `docs/`
@@ -59,5 +60,9 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - Test framework: `unittest` with tests under `tests/`.
 - First-line syntax coverage lives in `tests/test_readme_examples.py`, which extracts fenced `dice` blocks from `README.md` and executes them through `dice.py`.
 - Runtime regressions live in `tests/test_runtime.py`.
+- Focused math regression checks live in `tests/test_math_correctness.py`.
+- Direct-backend smoke coverage lives in `tests/test_direct_engine.py`.
+- Slow Monte Carlo validation lives in `tests/test_stochastic_validation.py` and does not need to be run constantly; use it after major semantic changes are completed.
 - When adding language examples to `README.md`, keep them executable by the current runtime or update the runtime and tests in the same change.
 - Run tests with `python3 -m unittest discover -s tests -v`.
+- Run optional stochastic validation with `RUN_STOCHASTIC_VALIDATION=1 python3 -m unittest tests.test_stochastic_validation -v`.
