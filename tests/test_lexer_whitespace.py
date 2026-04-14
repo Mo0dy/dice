@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, ROLL, SEMI, STRING, Lexer
+from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, ROLL, SEMI, STRING, SUM, Lexer
 
 
 def tokens(text):
@@ -68,6 +68,9 @@ class LexerWhitespaceTest(unittest.TestCase):
 
     def test_import_keyword_tokenizes(self):
         self.assertEqual(tokens('import "spells/base.dice"'), [(IMPORT, "import"), (STRING, "spells/base.dice")])
+
+    def test_sum_keyword_tokenizes(self):
+        self.assertEqual(tokens("sum(3, d6)"), [(SUM, "sum"), ("LPAREN", "("), (INTEGER, 3), ("COMMA", ","), (ROLL, "d"), (INTEGER, 6), ("RPAREN", ")")])
 
 
 if __name__ == "__main__":

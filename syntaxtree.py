@@ -154,6 +154,20 @@ class Import(AST):
         return "Import: {}".format(self.path.value)
 
 
+class Sum(AST):
+    """Independent repeated evaluation and addition."""
+    def __init__(self, count, value, token):
+        self.count = count
+        self.value = value
+        self.token = token
+
+    def __repr__(self):
+        result = "Sum"
+        result += '\t|'.join(('\n' + "count: " + str(self.count).lstrip()).splitlines(True))
+        result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

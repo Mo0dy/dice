@@ -4,8 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM
 
 
 class Parser(object):
@@ -65,10 +65,11 @@ class DiceParser(Parser):
         res       :  (PROP | ADV)? index
         index     :  roll (brack | dot)?
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
+        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | sum | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
         brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
         match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
         match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
+        sum       :  SUM LPAREN expr COMMA expr RPAREN
         dot       :  DOT (INTEGER | ID)
     """
 
@@ -121,11 +122,23 @@ class DiceParser(Parser):
             self.exception("Expected at least one match clause")
         return Match(value, name, clauses, token)
 
+    def sum_expr(self):
+        token = self.current_token
+        self.eat(SUM)
+        self.eat(LPAREN)
+        count = self.expr()
+        self.eat(COMMA)
+        value = self.expr()
+        self.eat(RPAREN)
+        return Sum(count, value, token)
+
     def factor(self):
         if self.current_token.type == LBRACK:
             return self.brack()
         elif self.current_token.type == MATCH:
             return self.match_expr()
+        elif self.current_token.type == SUM:
+            return self.sum_expr()
         elif self.current_token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()

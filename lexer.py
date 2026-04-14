@@ -53,6 +53,7 @@ MATCH = "MATCH"                          # "match"
 AS = "AS"                                # "as"
 OTHERWISE = "OTHERWISE"                  # "otherwise"
 IMPORT = "IMPORT"                        # "import"
+SUM = "SUM"                              # "sum"
 
 
 
@@ -115,6 +116,7 @@ class Lexer(object):
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
             [r"import\b", lambda x: Token(IMPORT, x)],
+            [r"sum\b", lambda x: Token(SUM, x)],
             # d+ needed to not confuse indexing (d20.20)
             [r"\n",    lambda x: Token(SEMI, x)],
             [r"\;",    lambda x: Token(SEMI, x)],

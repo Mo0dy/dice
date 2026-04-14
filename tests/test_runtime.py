@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from dice import interpret_file, interpret_statement
 from diceengine import TRUE, FALSE, Distributions
+from directdiceengine import DirectDiceEngine
 
 
 def only_distribution(result):
@@ -101,6 +102,37 @@ class RuntimeTest(unittest.TestCase):
     def test_strings_preserve_spaces(self):
         result = interpret_statement('"fire bolt"')
         self.assertEqual(result, "fire bolt")
+
+    def test_sum_repeats_independent_evaluations(self):
+        result = only_distribution(interpret_statement("sum(3, d2)"))
+        self.assertAlmostEqual(result[3], 0.125)
+        self.assertAlmostEqual(result[4], 0.375)
+        self.assertAlmostEqual(result[5], 0.375)
+        self.assertAlmostEqual(result[6], 0.125)
+
+    def test_sum_preserves_sweeps_from_inner_expression(self):
+        result = interpret_statement("sum(2, d20 >= [10:11] -> 1 | 0)")
+        self.assertEqual(result.axes[0].values, (10, 11))
+        self.assertAlmostEqual(result.cells[(10,)][0], 0.2025)
+        self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
+        self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
+
+    def test_sum_accepts_swept_counts(self):
+        result = interpret_statement("sum([1:3], d2)")
+        self.assertEqual(result.axes[0].values, (1, 2, 3))
+        self.assertAlmostEqual(result.cells[(1,)][1], 0.5)
+        self.assertAlmostEqual(result.cells[(3,)][6], 0.125)
+
+    def test_sum_direct_backend_samples_independent_runs(self):
+        result = only_distribution(interpret_statement("sum(3, d2)", engine=DirectDiceEngine(seed=1)))
+        self.assertEqual(sum(result.probabilities()), 1)
+        self.assertEqual(len(list(result.items())), 1)
+        sampled_total = next(iter(result.keys()))
+        self.assertIn(sampled_total, (3, 4, 5, 6))
+
+    def test_sum_rejects_non_deterministic_count(self):
+        with self.assertRaisesRegex(Exception, "deterministic count"):
+            interpret_statement("sum(d2, d6)")
 
 
 if __name__ == "__main__":

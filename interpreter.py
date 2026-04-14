@@ -34,6 +34,7 @@ class Interpreter():
         self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
         self.imported_files = imported_files if imported_files is not None else set()
         self.import_stack = import_stack if import_stack is not None else []
+        self._sweep_cache = {}
 
     def visit(self, node):
         """Calls method with name visit_NodeName for every node visited.
@@ -81,6 +82,9 @@ class Interpreter():
         local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in axes)
         return cells.get(local_coordinates, default)
 
+    def _fixed_axis_distribution(self, axes, coordinates):
+        return Distributions(axes, {coordinates: Distrib({0: 1})})
+
     def _accumulate_distribution_contributions(self, contributions):
         combined_axes = _union_axes([Distributions(axes, cells) for axes, cells in contributions]) if contributions else ()
         coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
@@ -114,12 +118,19 @@ class Interpreter():
 
         elif node.op.type == LBRACK:
             values = []
-            for node in node.nodes:
-                new_val = self.visit(node)
+            for child in node.nodes:
+                new_val = self.visit(child)
                 if type(new_val) not in [int, str]:
                     self.exception("Constructing sweep expected scalar got: {}".format(type(new_val)))
                 values.append(new_val)
-            return Sweep(values)
+            cache_key = tuple(values)
+            if not hasattr(self, "_sweep_cache"):
+                self._sweep_cache = {}
+            if id(node) not in self._sweep_cache:
+                self._sweep_cache[id(node)] = {}
+            if cache_key not in self._sweep_cache[id(node)]:
+                self._sweep_cache[id(node)][cache_key] = Sweep(values)
+            return self._sweep_cache[id(node)][cache_key]
 
         self.exception("{} not implemented".format(node))
 
@@ -179,6 +190,38 @@ class Interpreter():
         finally:
             self.local_scopes.pop()
             self.call_stack.pop()
+
+    def visit_Sum(self, node):
+        count_value = _coerce_to_distributions(self.visit(node.count))
+        contributions = []
+
+        for count_coordinates, count_distrib in count_value.cells.items():
+            count_items = list(count_distrib.items())
+            if len(count_items) != 1:
+                self.exception("sum expects a deterministic count per sweep point")
+
+            count_outcome, count_probability = count_items[0]
+            if count_probability != 1:
+                self.exception("sum expects a deterministic count per sweep point")
+            if not isinstance(count_outcome, int) or count_outcome < 0:
+                self.exception("sum expects a non-negative integer count")
+
+            repeated = 0
+            for _ in range(count_outcome):
+                repeated = self.engine.add(repeated, self.visit(node.value))
+
+            repeated_value = _coerce_to_distributions(repeated)
+            count_selection = self._fixed_axis_distribution(count_value.axes, count_coordinates)
+            combined_axes = _union_axes([count_selection, repeated_value])
+            coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
+            cells = {}
+            for coordinates in coordinates_space:
+                if self._lookup_projected(count_value.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
+                    continue
+                cells[coordinates] = repeated_value.lookup(combined_axes, coordinates)
+            contributions.append((combined_axes, cells))
+
+        return self._accumulate_distribution_contributions(contributions)
 
     def visit_Match(self, node):
         matched_value = _coerce_to_distributions(self.visit(node.value))
@@ -296,7 +339,14 @@ class Interpreter():
             val2 = self.visit(node.right)
             if type(val2) != int:
                 self.exception("Expected int got {}".format(type(val2)))
-            return Sweep(range(val1, val2 + 1))
+            cache_key = (val1, val2)
+            if not hasattr(self, "_sweep_cache"):
+                self._sweep_cache = {}
+            if id(node) not in self._sweep_cache:
+                self._sweep_cache[id(node)] = {}
+            if cache_key not in self._sweep_cache[id(node)]:
+                self._sweep_cache[id(node)][cache_key] = Sweep(range(val1, val2 + 1))
+            return self._sweep_cache[id(node)][cache_key]
         if node.op.type == LBRACK:
             return self.engine.choose(self.visit(node.left), self.visit(node.right))
         if node.op.type == DOT:

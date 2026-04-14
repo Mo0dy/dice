@@ -25,6 +25,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
+- `sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
 - `import "path/to/file.dice"` loads another dice file once, relative to the current file.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
@@ -102,6 +103,7 @@ hit(ac) = d20 >= ac
 damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
+sum(3, d2)
 ```
 
 ## Whitespace
@@ -138,6 +140,7 @@ crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
+sum(3, d2)
 d20
 2d6
 d20 >= 11
