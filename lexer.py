@@ -49,6 +49,9 @@ XLABEL = "XLABEL"                        # "xlabel"
 YLABEL = "YLABEL"                        # "ylabel"
 LABEL = "LABEL"                          # "label"
 SHOW = "SHOW"                            # "show"
+MATCH = "MATCH"                          # "match"
+AS = "AS"                                # "as"
+OTHERWISE = "OTHERWISE"                  # "otherwise"
 
 
 
@@ -100,6 +103,9 @@ class Lexer(object):
             [r"label\b", lambda x: Token(LABEL, x)],
             [r"plot\b", lambda x: Token(PLOT, x)],
             [r"show\b", lambda x: Token(SHOW, x)],
+            [r"match\b", lambda x: Token(MATCH, x)],
+            [r"as\b", lambda x: Token(AS, x)],
+            [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
             # d+ needed to not confuse indexing (d20.20)
             [r"\;",    lambda x: Token(SEMI, x)],
             [r"h(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(HIGH, x)],

@@ -4,8 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE
 
 
 class Parser(object):
@@ -49,6 +49,10 @@ class Parser(object):
     def restore(self, state):
         self.current_token, self.peek_token, self.lexer.string_input = state
 
+    def eat_match_separators(self):
+        while self.current_token.type == SEMI and self.peek_token.type in [SEMI, ELSE]:
+            self.eat(SEMI)
+
 
 class DiceParser(Parser):
     """Parser for the Dice language
@@ -61,8 +65,10 @@ class DiceParser(Parser):
         res       :  (PROP | ADV)? index
         index     :  roll (brack | dot)?
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
+        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
         brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+        match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
+        match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
         dot       :  DOT (INTEGER | ID)
     """
 
@@ -88,9 +94,38 @@ class DiceParser(Parser):
         self.eat(RBRACK)
         return VarOp(token, nodes)
 
+    def match_expr(self):
+        token = self.current_token
+        self.eat(MATCH)
+        value = self.expr()
+        self.eat(AS)
+        if self.current_token.type != ID:
+            self.exception("Expected identifier after as")
+        name = Val(self.current_token)
+        self.eat(ID)
+        self.eat_match_separators()
+        clauses = []
+        while self.current_token.type == ELSE:
+            self.eat(ELSE)
+            if self.current_token.type == OTHERWISE:
+                self.eat(OTHERWISE)
+                condition = None
+                otherwise = True
+            else:
+                condition = self.expr()
+                otherwise = False
+            self.eat(ASSIGN)
+            clauses.append(MatchClause(condition, self.expr(), otherwise=otherwise))
+            self.eat_match_separators()
+        if not clauses:
+            self.exception("Expected at least one match clause")
+        return Match(value, name, clauses, token)
+
     def factor(self):
         if self.current_token.type == LBRACK:
             return self.brack()
+        elif self.current_token.type == MATCH:
+            return self.match_expr()
         elif self.current_token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()

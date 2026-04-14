@@ -24,6 +24,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `expr[index]` filters a distribution by one value or sweep of values.
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
+- `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
@@ -98,6 +99,7 @@ Examples:
 hit(ac) = d20 >= ac
 damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
+match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 ```
 
 ## Whitespace
@@ -126,6 +128,7 @@ hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
 crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
+match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 d20
 2d6
 d20 >= 11

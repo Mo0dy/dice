@@ -113,6 +113,37 @@ class Call(AST):
         return result
 
 
+class MatchClause(AST):
+    """One guarded clause in a match expression."""
+    def __init__(self, condition, result, otherwise=False):
+        self.condition = condition
+        self.result = result
+        self.otherwise = otherwise
+        self.token = result.token
+
+    def __repr__(self):
+        label = "otherwise" if self.otherwise else str(self.condition).lstrip()
+        result = "MatchClause: {}".format(label)
+        result += '\t|'.join(('\n' + "result: " + str(self.result).lstrip()).splitlines(True))
+        return result
+
+
+class Match(AST):
+    """Expression-level match with a shared bound value."""
+    def __init__(self, value, name, clauses, token):
+        self.value = value
+        self.name = name
+        self.clauses = clauses
+        self.token = token
+
+    def __repr__(self):
+        result = "Match: {}".format(self.name.value)
+        result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
+        for clause in self.clauses:
+            result += '\t|'.join(('\n' + "clause: " + str(clause).lstrip()).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

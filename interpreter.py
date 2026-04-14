@@ -5,8 +5,10 @@
 
 
 from diceparser import DiceParser
+from itertools import product
+
 from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW, DOT
-from diceengine import Diceengine, Sweep
+from diceengine import Diceengine, Sweep, Distrib, Distributions, TRUE, FALSE, _coerce_to_distributions, _union_axes
 import viewer
 
 
@@ -64,6 +66,34 @@ class Interpreter():
         """Raises an exception for the Interpreter"""
         raise Exception("Interpreter exception: {}".format(message))
 
+    def _lookup_projected(self, axes, cells, combined_axes, coordinates, default):
+        if not axes:
+            return cells.get((), default)
+        index_by_key = {axis.key: idx for idx, axis in enumerate(combined_axes)}
+        local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in axes)
+        return cells.get(local_coordinates, default)
+
+    def _accumulate_distribution_contributions(self, contributions):
+        combined_axes = _union_axes([Distributions(axes, cells) for axes, cells in contributions]) if contributions else ()
+        coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
+        cells = {}
+        for coordinates in coordinates_space:
+            distrib = Distrib()
+            for axes, contribution_cells in contributions:
+                projected = self._lookup_projected(axes, contribution_cells, combined_axes, coordinates, None)
+                if not projected:
+                    continue
+                for outcome, probability in projected.items():
+                    distrib[outcome] = distrib[outcome] + probability
+            cells[coordinates] = distrib
+        return Distributions(combined_axes, cells if cells else {(): Distrib()})
+
+    def _bool_masses(self, condition):
+        invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
+        if invalid:
+            self.exception("Match guards expect boolean outcomes, got {}".format(invalid))
+        return condition[TRUE], condition[FALSE]
+
     def visit_VarOp(self, node):
         """Visits a Variary-Operation node"""
         if node.op.type == SEMI:
@@ -114,6 +144,77 @@ class Interpreter():
         finally:
             self.local_scopes.pop()
             self.call_stack.pop()
+
+    def visit_Match(self, node):
+        matched_value = _coerce_to_distributions(self.visit(node.value))
+        contributions = []
+
+        for matched_coordinates, matched_distrib in matched_value.cells.items():
+            for outcome, outcome_probability in matched_distrib.items():
+                if outcome_probability == 0:
+                    continue
+
+                local_scope = {node.name.value: outcome}
+                self.local_scopes.append(local_scope)
+                try:
+                    remaining_axes = matched_value.axes
+                    remaining_cells = {matched_coordinates: 1}
+
+                    for clause in node.clauses:
+                        if clause.otherwise:
+                            result_value = _coerce_to_distributions(self.visit(clause.result))
+                            clause_axes = _union_axes([Distributions(remaining_axes, {coord: Distrib({mass: 1}) for coord, mass in remaining_cells.items()}), result_value])
+                            coordinates_space = [()] if not clause_axes else product(*(axis.values for axis in clause_axes))
+                            clause_cells = {}
+                            for coordinates in coordinates_space:
+                                remaining_mass = self._lookup_projected(remaining_axes, remaining_cells, clause_axes, coordinates, 0)
+                                if remaining_mass == 0:
+                                    continue
+                                result_distrib = result_value.lookup(clause_axes, coordinates)
+                                weighted = Distrib()
+                                for result_outcome, result_probability in result_distrib.items():
+                                    weighted[result_outcome] = outcome_probability * remaining_mass * result_probability
+                                clause_cells[coordinates] = weighted
+                            contributions.append((clause_axes, clause_cells))
+                            remaining_cells = {}
+                            break
+
+                        condition_value = _coerce_to_distributions(self.visit(clause.condition))
+                        result_value = _coerce_to_distributions(self.visit(clause.result))
+                        clause_axes = _union_axes([
+                            Distributions(remaining_axes, {coord: Distrib({mass: 1}) for coord, mass in remaining_cells.items()}),
+                            condition_value,
+                            result_value,
+                        ])
+                        coordinates_space = [()] if not clause_axes else product(*(axis.values for axis in clause_axes))
+                        clause_cells = {}
+                        next_remaining = {}
+                        for coordinates in coordinates_space:
+                            remaining_mass = self._lookup_projected(remaining_axes, remaining_cells, clause_axes, coordinates, 0)
+                            if remaining_mass == 0:
+                                continue
+                            condition_distrib = condition_value.lookup(clause_axes, coordinates)
+                            true_mass, false_mass = self._bool_masses(condition_distrib)
+                            matched_mass = remaining_mass * true_mass
+                            if matched_mass:
+                                result_distrib = result_value.lookup(clause_axes, coordinates)
+                                weighted = Distrib()
+                                for result_outcome, result_probability in result_distrib.items():
+                                    weighted[result_outcome] = outcome_probability * matched_mass * result_probability
+                                clause_cells[coordinates] = weighted
+                            next_mass = remaining_mass * false_mass
+                            if next_mass:
+                                next_remaining[coordinates] = next_mass
+                        contributions.append((clause_axes, clause_cells))
+                        remaining_axes = clause_axes
+                        remaining_cells = next_remaining
+
+                    if any(mass for mass in remaining_cells.values()):
+                        self.exception("Match expression left unmatched cases for {}".format(node.name.value))
+                finally:
+                    self.local_scopes.pop()
+
+        return self._accumulate_distribution_contributions(contributions)
 
     def visit_TenOp(self, node):
         """Visit a Tenary-Operator node"""
