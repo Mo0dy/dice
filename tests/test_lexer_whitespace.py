@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, EOF, HIGH, ID, INTEGER, LOW, MATCH, OTHERWISE, ROLL, STRING, Lexer
+from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, ROLL, SEMI, STRING, Lexer
 
 
 def tokens(text):
@@ -57,11 +57,17 @@ class LexerWhitespaceTest(unittest.TestCase):
     def test_strings_preserve_internal_spaces(self):
         self.assertEqual(tokens('"fire bolt"'), [(STRING, "fire bolt")])
 
+    def test_comments_are_skipped_and_newlines_still_split_statements(self):
+        self.assertEqual(tokens('x = 1 // keep this\n y = 2'), [(ID, "x"), ("ASSIGN", "="), (INTEGER, 1), (SEMI, "\n"), (ID, "y"), ("ASSIGN", "="), (INTEGER, 2)])
+
     def test_match_keywords_tokenize(self):
         self.assertEqual(
             tokens("match d20 as roll | otherwise = 0"),
             [(MATCH, "match"), (ROLL, "d"), (INTEGER, 20), (AS, "as"), (ID, "roll"), ("ELSE", "|"), (OTHERWISE, "otherwise"), ("ASSIGN", "="), (INTEGER, 0)],
         )
+
+    def test_import_keyword_tokenizes(self):
+        self.assertEqual(tokens('import "spells/base.dice"'), [(IMPORT, "import"), (STRING, "spells/base.dice")])
 
 
 if __name__ == "__main__":

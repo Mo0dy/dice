@@ -2,6 +2,7 @@
 """Interactive interpreter for the dice language"""
 
 import argparse
+import os
 import sys
 
 try:
@@ -39,34 +40,37 @@ def _build_engine(args):
     return DirectDiceEngine(seed=args.seed)
 
 
-def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None):
+def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None, current_dir=None):
     if interpreter is None:
-        interpreter = Interpreter(ast, engine=engine)
+        interpreter = Interpreter(ast, engine=engine, current_dir=current_dir)
     else:
         interpreter.ast = ast
+        if current_dir is not None:
+            interpreter.current_dir = os.path.abspath(current_dir)
     result = interpreter.interpret()
     return _round_result(result, roundlevel)
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, engine=None, interpreter=None):
+def interpret_statement(text, roundlevel=0, engine=None, interpreter=None, current_dir=None):
     parser = DiceParser(Lexer(text))
     ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
-    return _interpret_ast(ast, roundlevel, engine=engine, interpreter=interpreter)
+    return _interpret_ast(ast, roundlevel, engine=engine, interpreter=interpreter, current_dir=current_dir)
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0, engine=None, interpreter=None):
+def interpret_file(text, roundlevel=0, engine=None, interpreter=None, current_dir=None):
     """Interpret a semicolon or newline separated program."""
     return _interpret_ast(
         DiceParser(Lexer(text)).parse(),
         roundlevel,
         engine=engine,
         interpreter=interpreter,
+        current_dir=current_dir,
     )
 
 def runinteractive(args):
     """Run a simple interactive shell."""
     engine = _build_engine(args)
-    interpreter = Interpreter(None, engine=engine)
+    interpreter = Interpreter(None, engine=engine, current_dir=os.getcwd())
     while True:
         text = input("dice> ")
         if text == "exit":
@@ -141,7 +145,12 @@ def main():
     elif args.mode == 'file':
         engine = _build_engine(args)
         with open(args.file) as f:
-            result = interpret_file(f.read(), args.roundlevel, engine=engine)
+            result = interpret_file(
+                f.read(),
+                args.roundlevel,
+                engine=engine,
+                current_dir=os.path.dirname(os.path.abspath(args.file)),
+            )
         if result is not None:
             print_result(result, args.grepable, args.verbose, args.file)
     return 0

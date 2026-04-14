@@ -52,6 +52,7 @@ SHOW = "SHOW"                            # "show"
 MATCH = "MATCH"                          # "match"
 AS = "AS"                                # "as"
 OTHERWISE = "OTHERWISE"                  # "otherwise"
+IMPORT = "IMPORT"                        # "import"
 
 
 
@@ -82,12 +83,19 @@ class Lexer(object):
 
     def normalize_input(self, expression):
         """Normalizes line endings while preserving ordinary spaces."""
-        return expression.replace("\r\n", "\n").replace("\r", "\n").replace("\n", ";")
+        return expression.replace("\r\n", "\n").replace("\r", "\n")
 
     def next_token(self):
         """Returns next token in tokenstream"""
         while self.string_input and self.string_input[0] in [" ", "\t"]:
             self.string_input = self.string_input[1:]
+
+        if self.string_input.startswith("//"):
+            comment_end = 2
+            while comment_end < len(self.string_input) and self.string_input[comment_end] != "\n":
+                comment_end += 1
+            self.string_input = self.string_input[comment_end:]
+            return self.next_token()
 
         # Matches tokens with regex
 
@@ -106,7 +114,9 @@ class Lexer(object):
             [r"match\b", lambda x: Token(MATCH, x)],
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
+            [r"import\b", lambda x: Token(IMPORT, x)],
             # d+ needed to not confuse indexing (d20.20)
+            [r"\n",    lambda x: Token(SEMI, x)],
             [r"\;",    lambda x: Token(SEMI, x)],
             [r"h(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(HIGH, x)],
             [r"l(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(LOW, x)],

@@ -4,8 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT
 
 
 class Parser(object):
@@ -302,6 +302,14 @@ class DiceParser(Parser):
         function_definition = self.try_function_definition()
         if function_definition:
             return function_definition
+        if self.current_token.type == IMPORT:
+            token = self.current_token
+            self.eat(IMPORT)
+            if self.current_token.type != STRING:
+                self.exception("Expected string path after import")
+            path = Val(self.current_token)
+            self.eat(STRING)
+            return Import(path, token)
         if self.current_token.type == ID and self.peek_token.type == ASSIGN:
             token = self.current_token
             self.eat(ID)

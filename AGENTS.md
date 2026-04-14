@@ -32,6 +32,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 
 - Programs are parsed as EOF-delimited statement sequences rather than `BEGIN ... END` wrappers.
 - The legacy preprocessor and Discord bot have been removed from the active surface.
+- Minimal first-class comments and file imports now belong to the active language surface: `// ...` and `import "path.dice"`.
 - `README.md` examples are part of the executable contract through the test suite.
 - The current ongoing task is the semantic rewrite described in `DICE_REWRITE_PLAN.md`.
 
@@ -51,6 +52,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - During this rewrite, every semantic feature change should come with sensible end-to-end tests where practical.
 - Do not recreate parallel user docs like the removed `documentation.org` / `documentation.html` unless the user explicitly asks for them.
 - For syntax changes, update `lexer.py`, `diceparser.py`, and `interpreter.py` together.
+- For import behavior, keep resolution relative to the importing file and prefer explicit runtime syntax over hidden preprocessing.
 - For semantic changes, check `diceengine.py` first; most operator behavior lives there.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.
 - Prefer `README.md` for current tested examples and `scripts/` / `notes.org` for older intent or design history.

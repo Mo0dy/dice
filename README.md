@@ -25,6 +25,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
+- `import "path/to/file.dice"` loads another dice file once, relative to the current file.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
@@ -41,6 +42,7 @@ The CLI has three modes:
 - Run a dice program from a file: `python3 dice.py file path/to/program.dice`
 
 The `file` mode parses a dice program, not Markdown or plain notes. Multi-line programs are separated by newlines or `;`.
+Use `import "relative/path.dice"` inside files when you want to share helpers across programs.
 
 Useful flags:
 
@@ -119,6 +121,13 @@ When identifiers are involved, write dice operators with spaces so they remain s
 - `count d sides l keep`
 
 Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also preserve internal spaces now, for example `"fire bolt"`.
+
+## Comments And Imports
+
+- `// ...` starts a line comment and can also appear after code on the same line.
+- `import "helpers.dice"` imports another dice file once.
+- Imports are resolved relative to the file that contains the import.
+- Imports are meant for reusable helpers and sample libraries, not for reviving the old macro/preprocessor layer.
 
 ## Examples
 

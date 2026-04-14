@@ -144,6 +144,16 @@ class Match(AST):
         return result
 
 
+class Import(AST):
+    """Top-level import statement."""
+    def __init__(self, path, token):
+        self.path = path
+        self.token = token
+
+    def __repr__(self):
+        return "Import: {}".format(self.path.value)
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

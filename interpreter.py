@@ -4,6 +4,8 @@
 """The Interpreter for the dice language."""
 
 
+import os
+
 from diceparser import DiceParser
 from itertools import product
 
@@ -20,7 +22,7 @@ class Interpreter():
     # It feels like that should be a language Feature also but idk
     # Interpreter.py and Diceengine.py have a lot of dependencies anyways
 
-    def __init__(self, ast, debug=False, engine=None):
+    def __init__(self, ast, debug=False, engine=None, current_dir=None, imported_files=None, import_stack=None):
         """Works on a pre-generated abstract syntax tree"""
         self.ast = ast
         self.debug = debug
@@ -29,6 +31,9 @@ class Interpreter():
         self.local_scopes = []
         self.call_stack = []
         self.engine = engine if engine is not None else Diceengine
+        self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
+        self.imported_files = imported_files if imported_files is not None else set()
+        self.import_stack = import_stack if import_stack is not None else []
 
     def visit(self, node):
         """Calls method with name visit_NodeName for every node visited.
@@ -45,8 +50,11 @@ class Interpreter():
 
     def interpret(self):
         """Interprets AST (start by visiting ast node)"""
-        self.collect_function_definitions(self.ast)
-        return self.visit(self.ast)
+        return self.evaluate(self.ast)
+
+    def evaluate(self, ast):
+        self.collect_function_definitions(ast)
+        return self.visit(ast)
 
     def collect_function_definitions(self, node):
         if type(node).__name__ == "FunctionDef":
@@ -117,6 +125,33 @@ class Interpreter():
 
     def visit_FunctionDef(self, node):
         return
+
+    def visit_Import(self, node):
+        import_path = node.path.value
+        resolved_path = os.path.abspath(os.path.join(self.current_dir, import_path))
+
+        if resolved_path in self.import_stack:
+            cycle = " -> ".join(self.import_stack + [resolved_path])
+            self.exception("Import cycle detected: {}".format(cycle))
+
+        if resolved_path in self.imported_files:
+            return
+
+        if not os.path.isfile(resolved_path):
+            self.exception("Could not import {}".format(import_path))
+
+        with open(resolved_path, encoding="utf-8") as handle:
+            ast = DiceParser(Lexer(handle.read())).parse()
+
+        self.imported_files.add(resolved_path)
+        self.import_stack.append(resolved_path)
+        previous_dir = self.current_dir
+        self.current_dir = os.path.dirname(resolved_path)
+        try:
+            return self.evaluate(ast)
+        finally:
+            self.current_dir = previous_dir
+            self.import_stack.pop()
 
     def visit_Call(self, node):
         function_name = node.name.value
