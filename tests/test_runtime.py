@@ -1,8 +1,11 @@
 import os
+import io
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +18,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import dice
 from dice import interpret_file, interpret_statement
 from diceengine import TRUE, FALSE, Distributions
 from directdiceengine import DirectDiceEngine
@@ -152,6 +156,16 @@ class RuntimeTest(unittest.TestCase):
     def test_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic count"):
             interpret_statement("sum(d2, d6)")
+
+    def test_interactive_parser_error_does_not_end_session(self):
+        args = SimpleNamespace(roundlevel=0, grepable=False, verbose=False, direct=False, seed=None)
+        with mock.patch("builtins.input", side_effect=["1 +", "1 + 1", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("syntax error: Parser exception", stderr.getvalue())
+        self.assertIn("2", stdout.getvalue())
 
 
 if __name__ == "__main__":

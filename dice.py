@@ -19,8 +19,8 @@ except ImportError:
 
 from interpreter import Interpreter
 from diceengine import Distributions
-from diceparser import DiceParser
-from lexer import Lexer
+from diceparser import DiceParser, ParserError
+from lexer import Lexer, LexerError
 import viewer
 
 
@@ -67,17 +67,32 @@ def interpret_file(text, roundlevel=0, engine=None, interpreter=None, current_di
         current_dir=current_dir,
     )
 
+def print_interactive_error(error):
+    """Print a user-facing REPL error without a traceback."""
+    prefix = "syntax error" if isinstance(error, (ParserError, LexerError)) else "error"
+    sys.stderr.write("{}: {}\n".format(prefix, error))
+
 def runinteractive(args):
     """Run a simple interactive shell."""
     engine = _build_engine(args)
     interpreter = Interpreter(None, engine=engine, current_dir=os.getcwd())
     while True:
-        text = input("dice> ")
+        try:
+            text = input("dice> ")
+        except EOFError:
+            return 0
+        except KeyboardInterrupt:
+            sys.stderr.write("\n")
+            continue
         if text == "exit":
             return 0
         if not text.strip():
             continue
-        result = interpret_statement(text, args.roundlevel, interpreter=interpreter)
+        try:
+            result = interpret_statement(text, args.roundlevel, interpreter=interpreter)
+        except Exception as error:
+            print_interactive_error(error)
+            continue
         if result is not None:
             print_result(result, args.grepable, args.verbose, text)
     return 2

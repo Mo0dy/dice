@@ -68,6 +68,10 @@ class Token(object):
         return "Token: {type}, {value}".format(type=self.type, value=self.value)
 
 
+class LexerError(Exception):
+    """Raised when tokenization fails."""
+
+
 class Lexer(object):
     """Generate tokensteam from string input for dice language"""
 
@@ -81,7 +85,7 @@ class Lexer(object):
 
     def exception(self, message=""):
         """Raises a lexer exception"""
-        raise Exception("Lexer exception: {}".format(message))
+        raise LexerError("Lexer exception: {}".format(message))
 
     def normalize_input(self, expression):
         """Normalizes line endings while preserving ordinary spaces."""

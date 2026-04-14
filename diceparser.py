@@ -8,6 +8,10 @@ from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Ma
 from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM, RENDER
 
 
+class ParserError(Exception):
+    """Raised when parsing fails."""
+
+
 class Parser(object):
     """The baseclass for all parsers."""
     def __init__(self, lexer):
@@ -21,7 +25,7 @@ class Parser(object):
 
     def exception(self, message=""):
         """Raises a parser exception"""
-        raise Exception("Parser exception: {}".format(message))
+        raise ParserError("Parser exception: {}".format(message))
 
     def eat(self, type):
         """Checks for token type and advances token"""
