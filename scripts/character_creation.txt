@@ -1,4 +1,0 @@
-# Straigt 3d6
-3d6
-# Throw 4 leave lowest
-4d6h3
