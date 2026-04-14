@@ -4,9 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-import re
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, BEGIN, END, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT
 
 
 class Parser(object):
@@ -15,9 +14,10 @@ class Parser(object):
         """lexer = Reference to the lexer to generate tokenstream"""
         # TODO: implement lexer as generator to reduce dependencies
         self.lexer = lexer
-        # Stores the token that is currently being operated on.
-        # This variable can be advanced manully or by using self.eat
+        # Keep one token of lookahead so assignments can be distinguished from
+        # identifier expressions when parsing statements.
         self.current_token = lexer.next_token()
+        self.peek_token = lexer.next_token()
 
     def exception(self, message=""):
         """Raises a parser exception"""
@@ -27,7 +27,8 @@ class Parser(object):
         """Checks for token type and advances token"""
         if type != self.current_token.type:
             self.exception("Tried to eat: {} but found {}".format(type, self.current_token.type))
-        self.current_token = self.lexer.next_token()
+        self.current_token = self.peek_token
+        self.peek_token = self.lexer.next_token()
 
     def eat_one_or_more(self, type):
         self.eat(type)
@@ -48,10 +49,11 @@ class DiceParser(Parser):
         side      :  term ((ADD | SUB) term)*
         term      :  res ((MUL | DIV) res)*
         res       :  (PROP | ADV)? index
-        index     :  roll (brack)?
+        index     :  roll (brack | dot)?
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor
+        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
         brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+        dot       :  DOT (INTEGER | ID)
     """
 
     # This just implements the grammar
@@ -92,6 +94,10 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(DIS)
             return UnOp(self.factor(), token)
+        elif self.current_token.type == ADV:
+            token = self.current_token
+            self.eat(ADV)
+            return UnOp(self.factor(), token)
         elif self.current_token.type == AVG:
             token = self.current_token
             self.eat(AVG)
@@ -108,10 +114,12 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(STRING)
             return Val(token)
-        else:
+        elif self.current_token.type == INTEGER:
             token = self.current_token
             self.eat(INTEGER)
             return Val(token)
+        else:
+            self.exception("Expected factor")
 
     def roll(self):
         node = self.factor()
@@ -130,7 +138,15 @@ class DiceParser(Parser):
         node = self.roll()
         if self.current_token.type == LBRACK:
             token = self.current_token
-            return BinOp(node, token, self.roll())
+            # NOTE: I changed this line to use self.factor() instead of self.roll() should be correct I guess
+            return BinOp(node, token, self.factor())
+        if self.current_token.type == DOT:
+            token = self.current_token
+            self.eat(DOT)
+            if self.current_token.type == INTEGER or self.current_token.type == ID:
+                return BinOp(node, token, self.factor())
+            else:
+                self.exception("Expected INTEGER or ID")
         return node
 
     def res(self):
@@ -192,7 +208,7 @@ class DiceParser(Parser):
         return node
 
     def statement(self):
-        if self.current_token.type == ID:
+        if self.current_token.type == ID and self.peek_token.type == ASSIGN:
             token = self.current_token
             self.eat(ID)
             left = Val(token)
@@ -211,18 +227,19 @@ class DiceParser(Parser):
             return self.expr()
 
     def program(self):
-        token = self.current_token
-        self.eat(BEGIN)
-        self.eat(SEMI)
         nodes = []
-        # at least one statement
-        while self.current_token.type != END:
-            nodes.append(self.statement())
-            self.eat_one_or_more(SEMI)
-            # newlines are simply parsed as SEMI
-        self.eat(END)
         self.eat_zero_or_more(SEMI)
-        return VarOp(token, nodes)
+        while self.current_token.type != EOF:
+            nodes.append(self.statement())
+            if self.current_token.type == EOF:
+                break
+            self.eat_one_or_more(SEMI)
+            self.eat_zero_or_more(SEMI)
+        if not nodes:
+            self.exception("Expected statement")
+        if len(nodes) == 1:
+            return nodes[0]
+        return VarOp(Token(SEMI, ";"), nodes)
 
     def parse(self):
         node = self.program()
@@ -231,7 +248,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer('BEGIN a = "test"; plot a; show; END')
+    lexer = Lexer('a = "test"; plot a; show')
     parser = DiceParser(lexer)
     ast = parser.parse()
     print(ast)

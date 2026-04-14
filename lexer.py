@@ -28,6 +28,7 @@ LBRACK = "LBRACK"                        # "["
 RBRACK = "RBRACK"                        # "]"
 COMMA = "COMMA"                          # ","
 COLON = "COLON"                          # ":"
+DOT = "DOT"                              # ".
 ADV = "ADV"                              # "d+"
 DIS = "DIS"                              # "d-"
 LPAREN = "LPAREN"                        # "("
@@ -36,8 +37,6 @@ ELSEDIV = "ELSEDIV"                      # "|/"
 HIGH = "HIGH"                            # "h"
 LOW = "LOW"                              # "l"
 EOF = "EOF"                              # end of file
-BEGIN = "BEGIN"                          # "BEGIN"
-END = "END"                              # "END"
 SEMI = "SEMI"                            # "SEMI"
 ID = "ID"                                # any valid variable defenition
 ASSIGN = "ASSIGN"                        # "="
@@ -72,6 +71,7 @@ class Lexer(object):
         self.string_input = self.cauterize_input(string_input)
         # keep the original text in case needed
         self.original_text = string_input
+        self.location = 0
 
     def exception(self, message=""):
         """Raises a lexer exception"""
@@ -93,14 +93,13 @@ class Lexer(object):
         # NOTE: no need to match beginning of string because re.match is used
         token_re_list = [
             [r'".*?"', lambda x: Token(STRING, x[1:-1])],
-            [r"BEGIN", lambda x: Token(BEGIN, x)],
-            [r"END",   lambda x: Token(END, x)],
             [r"print", lambda x: Token(PRINT, x)],
             [r"xlabel", lambda x: Token(XLABEL, x)],
             [r"ylabel", lambda x: Token(YLABEL, x)],
             [r"label", lambda x: Token(LABEL, x)],
             [r"plot", lambda x: Token(PLOT, x)],
             [r"show", lambda x: Token(SHOW, x)],
+            # d+ needed to not confuse indexing (d20.20)
             [r"\;",    lambda x: Token(SEMI, x)],
             [r"h",    lambda x: Token(HIGH, x)],
             [r"l",    lambda x: Token(LOW, x)],
@@ -110,6 +109,7 @@ class Lexer(object):
             [r"d\-",  lambda x: Token(DIS, x)],
             [r"d\+",  lambda x: Token(ADV, x)],
             [r"\:",   lambda x: Token(COLON, x)],
+            [r"\.",   lambda x: Token(DOT, x)],
             [r"\,",   lambda x: Token(COMMA, x)],
             [r"\[",   lambda x: Token(LBRACK, x)],
             [r"\]",   lambda x: Token(RBRACK, x)],
@@ -145,7 +145,7 @@ class Lexer(object):
 
         # can't find anything anymore but still input string
         if self.string_input:
-            self.exception("Can not evaluate: '{}'".format(self.text[self.index:]))
+            self.exception("Can not evaluate: '{}'".format(self.string_input))
 
         # end of token stream
         return Token(EOF, "EOF")

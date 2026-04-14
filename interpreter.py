@@ -5,7 +5,7 @@
 
 
 from diceparser import DiceParser
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, BEGIN, END, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW, DOT
 from diceengine import Diceengine
 import viewer
 
@@ -47,11 +47,11 @@ class Interpreter():
 
     def visit_VarOp(self, node):
         """Visits a Variary-Operation node"""
-        if node.op.type == BEGIN:
+        if node.op.type == SEMI:
+            last_result = None
             for n in node.nodes:
-                # TODO: leave the printing up to the specific node
-                self.visit(n)
-            return
+                last_result = self.visit(n)
+            return last_result
 
         elif node.op.type == LBRACK:
             # construct list of integers from subnodes in node.nodes
@@ -113,6 +113,8 @@ class Interpreter():
             return [x for x in range(val1, val2 + 1)]
         if node.op.type == LBRACK:
             return Diceengine.choose(self.visit(node.left), self.visit(node.right))
+        if node.op.type == DOT:
+            return Diceengine.choose_single(self.visit(node.left), self.visit(node.right))
         if node.op.type == ASSIGN:
             self.global_scope[node.left.value] = self.visit(node.right)
             return
@@ -166,7 +168,7 @@ class Interpreter():
         return self.global_scope[node.value]
 
 if __name__ == "__main__":
-    input_text = 'BEGIN a = d20; xlabel "t1"; ylabel "t2"; print a; label "test"; plot a; show; END'
+    input_text = 'a = d20; xlabel "t1"; ylabel "t2"; print a; label "test"; plot a; show'
     ast = DiceParser(Lexer(input_text)).parse()
     print(ast)
     interpreter = Interpreter(ast)

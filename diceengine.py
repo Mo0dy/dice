@@ -101,6 +101,13 @@ class Diceengine(object):
         return ret_distrib
 
     @staticmethod
+    def choose_single(left, right):
+        """Indexes Distrib (left) with single value (right)"""
+        if not isinstance(left, Distrib) or not type(right) == int:
+            Diceengine.exception("Can't choose {} from {}".format(type(left), type(right)))
+        return left[right]
+
+    @staticmethod
     def res(result, distrib):
         """Evaluates average damage (distrib) over result
 
@@ -190,7 +197,7 @@ class Diceengine(object):
     @staticmethod
     def reselsediv(result, distrib):
         """Evaluates average damage over dc uses distrib if successful else divides (integer) by 2 if unsuccessful"""
-        return Diceengine.reselse(result, Diceengine.div(distrib, 2))
+        return Diceengine.reselse(result, distrib, Diceengine.div(distrib, 2))
 
     @staticmethod
     def roll(n, s):
@@ -538,14 +545,14 @@ class Diceengine(object):
         # switch direction for rest of the code
         # (so we only have to handle the case where left is the distribution)
         if type(distrib) == list and isinstance(list_input, Distrib):
-            if op == '<=':
-                op = '>='
-            if op == ">=":
-                op = "<="
-            if op == "<":
-                op = ">"
-            if op == ">":
-                op = "<"
+            if operator == '<=':
+                operator = '>='
+            if operator == ">=":
+                operator = "<="
+            if operator == "<":
+                operator = ">"
+            if operator == ">":
+                operator = "<"
 
         if type(list_input) != list or not isinstance(distrib, Distrib):
             Diceengine.exception("Can't compare {} with {}".format(type(list_input), type(distrib)))

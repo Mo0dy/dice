@@ -5,9 +5,12 @@
 # TODO: make this viewer work with internal dice engine objects!
 
 import fileinput
+import os
 import re
 import sys
+import tempfile
 
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "dice-mplconfig"))
 import matplotlib.pyplot as plt
 
 from diceengine import ResultList, Distrib
@@ -22,12 +25,10 @@ def export(path):
 
 def visualize(data, legend):
     """Visualizes data"""
-    print("data", data, legend)
     if isinstance(data, dict):
         x = list(data.keys())
         y = list(data.values())
         plt.plot(x, y, label=legend)
-        print(legend)
         plt.legend()
 
 def string_to_number(string):
@@ -67,7 +68,6 @@ def ylabel(string):
     plt.ylabel(string)
 
 def plot(string):
-    print("input: ", string, "type: ", type(string))
     visualize(parse(string), "\n".join(do.label))
     do.label = []
 

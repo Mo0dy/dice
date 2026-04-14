@@ -3,63 +3,56 @@
 
 import argparse
 import sys
-import fileinput
-import re
-import time
 
-import timeout_decorator
+try:
+    import timeout_decorator
+except ImportError:
+    class _TimeoutFallback(object):
+        @staticmethod
+        def timeout(_seconds):
+            def decorator(function):
+                return function
+            return decorator
+
+    timeout_decorator = _TimeoutFallback()
 
 from interpreter import Interpreter
 from diceengine import ResultList, Distrib
 from diceparser import DiceParser
 from lexer import Lexer
-from preprocessor import Preprocessor
 import viewer
 
 
 timeout_seconds = 5
 
-@timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, print_result=False, show_result=False):
-    result = Interpreter(DiceParser(Lexer(text)).statement()).interpret()
-    if print_result:
-        print(result)
-    if show_result:
-        viewer.do(result)
-
-
-@timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, preprocessor, roundlevel=0):
-    """Interprete command and return output"""
-    # print statement
-    if text.startswith('#'):
-        # strip to not print new line
-        return text.strip()
-
-    # TODO: remove define
-    preprocessed_text = preprocessor.preprocess(text)
-
-    # nothing to interpret?
-    if not preprocessed_text:
-        return ""
-
-    result = Interpreter(DiceParser(Lexer(preprocessed_text)).parse()).interpret()
-    # round and prettyfy
-    if isinstance(result, ResultList) or isinstance(result, Distrib):
-        if roundlevel:
-            for k, v in result.items():
-                result[k] = round(v, roundlevel)
+def _round_result(result, roundlevel=0):
+    if roundlevel and isinstance(result, (ResultList, Distrib)):
+        for key, value in result.items():
+            result[key] = round(value, roundlevel)
     return result
 
-def runinteractive():
-    """Get in put from console"""
-    preprocessor = Preprocessor()
+@timeout_decorator.timeout(timeout_seconds)
+def interpret_statement(text, roundlevel=0):
+    result = Interpreter(DiceParser(Lexer(text)).statement()).interpret()
+    return _round_result(result, roundlevel)
+
+@timeout_decorator.timeout(timeout_seconds)
+def interpret_file(text, roundlevel=0):
+    """Interpret a semicolon or newline separated program."""
+    result = Interpreter(DiceParser(Lexer(text)).parse()).interpret()
+    return _round_result(result, roundlevel)
+
+def runinteractive(args):
+    """Run a simple interactive shell."""
     while True:
-        roundlevel = 2
         text = input("dice> ")
         if text == "exit":
             return 0
-        interpret_file(text, preprocessor, roundlevel)
+        if not text.strip():
+            continue
+        result = interpret_statement(text, args.roundlevel)
+        if result is not None:
+            print_result(result, args.grepable, args.verbose, text)
     return 2
 
 def print_result(result, grepable=False, verbose=False, line=""):
@@ -109,14 +102,21 @@ def main():
 
     # Handle modes
     if args.mode == 'interactive':
-        return runinteractive()
+        return runinteractive(args)
 
     elif args.mode == 'execute':
-        interpret_statement(args.command, args.roundlevel, args.verbose, args.plot)
+        result = interpret_statement(args.command, args.roundlevel)
+        if result is not None:
+            print_result(result, args.grepable, args.verbose, args.command)
+        if args.plot and result is not None:
+            viewer.do(str(result))
+            viewer.show()
         return 0
     elif args.mode == 'file':
         with open(args.file) as f:
-            interpret_file(f.read(), Preprocessor(), args.roundlevel)
+            result = interpret_file(f.read(), args.roundlevel)
+        if result is not None:
+            print_result(result, args.grepable, args.verbose, args.file)
     return 0
 
 if __name__ == "__main__":
