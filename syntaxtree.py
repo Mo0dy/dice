@@ -84,6 +84,35 @@ class VarOp(AST):
         return result
 
 
+class FunctionDef(AST):
+    """Top-level one-line function definition."""
+    def __init__(self, name, params, body):
+        self.name = name
+        self.params = params
+        self.body = body
+        self.token = name.token
+
+    def __repr__(self):
+        result = "FunctionDef: {}".format(self.name.value)
+        result += '\t|'.join(('\n' + "params: " + ", ".join(param.value for param in self.params)).splitlines(True))
+        result += '\t|'.join(('\n' + "body: " + str(self.body).lstrip()).splitlines(True))
+        return result
+
+
+class Call(AST):
+    """Function call expression."""
+    def __init__(self, name, args):
+        self.name = name
+        self.args = args
+        self.token = name.token
+
+    def __repr__(self):
+        result = "Call: {}".format(self.name.value)
+        for arg in self.args:
+            result += '\t|'.join(('\n' + "arg: " + str(arg).lstrip()).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

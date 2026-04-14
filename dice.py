@@ -38,29 +38,42 @@ def _build_engine(args):
 
     return DirectDiceEngine(seed=args.seed)
 
-@timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, engine=None):
-    parser = DiceParser(Lexer(text))
-    ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
-    result = Interpreter(ast, engine=engine).interpret()
+
+def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None):
+    if interpreter is None:
+        interpreter = Interpreter(ast, engine=engine)
+    else:
+        interpreter.ast = ast
+    result = interpreter.interpret()
     return _round_result(result, roundlevel)
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0, engine=None):
+def interpret_statement(text, roundlevel=0, engine=None, interpreter=None):
+    parser = DiceParser(Lexer(text))
+    ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
+    return _interpret_ast(ast, roundlevel, engine=engine, interpreter=interpreter)
+
+@timeout_decorator.timeout(timeout_seconds)
+def interpret_file(text, roundlevel=0, engine=None, interpreter=None):
     """Interpret a semicolon or newline separated program."""
-    result = Interpreter(DiceParser(Lexer(text)).parse(), engine=engine).interpret()
-    return _round_result(result, roundlevel)
+    return _interpret_ast(
+        DiceParser(Lexer(text)).parse(),
+        roundlevel,
+        engine=engine,
+        interpreter=interpreter,
+    )
 
 def runinteractive(args):
     """Run a simple interactive shell."""
     engine = _build_engine(args)
+    interpreter = Interpreter(None, engine=engine)
     while True:
         text = input("dice> ")
         if text == "exit":
             return 0
         if not text.strip():
             continue
-        result = interpret_statement(text, args.roundlevel, engine=engine)
+        result = interpret_statement(text, args.roundlevel, interpreter=interpreter)
         if result is not None:
             print_result(result, args.grepable, args.verbose, text)
     return 2

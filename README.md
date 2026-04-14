@@ -22,6 +22,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `[a:b]` creates an unnamed sweep over an inclusive integer range.
 - `[a, b, c]` creates an unnamed sweep over explicit values.
 - `expr[index]` filters a distribution by one value or sweep of values.
+- `f(x) = expr` defines a top-level one-line function.
+- `f(a, b)` calls a user-defined function inside an expression.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
@@ -81,9 +83,49 @@ plot d20 >= [10:20]
 show
 ```
 
+## Functions
+
+User-defined functions are one-line top-level definitions.
+
+- Parameters shadow globals.
+- Functions may call other functions.
+- Forward references work across a program.
+- Recursion is not supported.
+
+Examples:
+
+```text
+hit(ac) = d20 >= ac
+damage(ac) = hit(ac) -> 5 | 0
+crit(ac, dmg) = d20 == 20 -> dmg | 0
+```
+
+## Whitespace
+
+Compact dice forms still work for literal-style expressions:
+
+- `d20`
+- `2d6`
+- `3d20h1`
+- `3d20l1`
+
+When identifiers are involved, write dice operators with spaces so they remain separate tokens:
+
+- `count d sides`
+- `d sides`
+- `count d sides h keep`
+- `count d sides l keep`
+
+Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also preserve internal spaces now, for example `"fire bolt"`.
+
 ## Examples
 
 ```dice
+hit(ac) = d20 >= ac; hit(11)
+hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
+crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
+always() = 5; always()
+rolln(a, b) = a d b; rolln(2, 2)
 d20
 2d6
 d20 >= 11

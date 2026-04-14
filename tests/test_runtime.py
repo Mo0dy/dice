@@ -77,6 +77,31 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[3], 0.5)
         self.assertAlmostEqual(result[4], 0.25)
 
+    def test_variable_driven_binary_roll_works_with_spaces(self):
+        result = only_distribution(interpret_file("a = 2\nb = 2\na d b"))
+        self.assertAlmostEqual(result[2], 0.25)
+        self.assertAlmostEqual(result[3], 0.5)
+        self.assertAlmostEqual(result[4], 0.25)
+
+    def test_variable_driven_unary_roll_works_with_spaces(self):
+        result = only_distribution(interpret_file("sides = 2\nd sides"))
+        self.assertAlmostEqual(result[1], 0.5)
+        self.assertAlmostEqual(result[2], 0.5)
+
+    def test_variable_driven_keep_high_works_with_spaces(self):
+        result = only_distribution(interpret_file("n = 3\ns = 2\nk = 1\nn d s h k"))
+        self.assertAlmostEqual(result[1], 0.125)
+        self.assertAlmostEqual(result[2], 0.875)
+
+    def test_variable_driven_keep_low_works_with_spaces(self):
+        result = only_distribution(interpret_file("n = 3\ns = 2\nk = 1\nn d s l k"))
+        self.assertAlmostEqual(result[1], 0.875)
+        self.assertAlmostEqual(result[2], 0.125)
+
+    def test_strings_preserve_spaces(self):
+        result = interpret_statement('"fire bolt"')
+        self.assertEqual(result, "fire bolt")
+
 
 if __name__ == "__main__":
     unittest.main()

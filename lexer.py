@@ -68,7 +68,7 @@ class Lexer(object):
     def __init__(self, string_input):
         """test = complete text to be interpreted"""
         # stores the string that has yet to interpreted
-        self.string_input = self.cauterize_input(string_input)
+        self.string_input = self.normalize_input(string_input)
         # keep the original text in case needed
         self.original_text = string_input
         self.location = 0
@@ -77,13 +77,14 @@ class Lexer(object):
         """Raises a lexer exception"""
         raise Exception("Lexer exception: {}".format(message))
 
-    def cauterize_input(self, expression):
-        """Modifies input by removing uninteresting charcters (\n, " ")"""
-        # TODO: this should done more universal
-        return expression.replace(" ", "").replace("\n", ";")
+    def normalize_input(self, expression):
+        """Normalizes line endings while preserving ordinary spaces."""
+        return expression.replace("\r\n", "\n").replace("\r", "\n").replace("\n", ";")
 
     def next_token(self):
         """Returns next token in tokenstream"""
+        while self.string_input and self.string_input[0] in [" ", "\t"]:
+            self.string_input = self.string_input[1:]
 
         # Matches tokens with regex
 
@@ -93,16 +94,16 @@ class Lexer(object):
         # NOTE: no need to match beginning of string because re.match is used
         token_re_list = [
             [r'".*?"', lambda x: Token(STRING, x[1:-1])],
-            [r"print", lambda x: Token(PRINT, x)],
-            [r"xlabel", lambda x: Token(XLABEL, x)],
-            [r"ylabel", lambda x: Token(YLABEL, x)],
-            [r"label", lambda x: Token(LABEL, x)],
-            [r"plot", lambda x: Token(PLOT, x)],
-            [r"show", lambda x: Token(SHOW, x)],
+            [r"print\b", lambda x: Token(PRINT, x)],
+            [r"xlabel\b", lambda x: Token(XLABEL, x)],
+            [r"ylabel\b", lambda x: Token(YLABEL, x)],
+            [r"label\b", lambda x: Token(LABEL, x)],
+            [r"plot\b", lambda x: Token(PLOT, x)],
+            [r"show\b", lambda x: Token(SHOW, x)],
             # d+ needed to not confuse indexing (d20.20)
             [r"\;",    lambda x: Token(SEMI, x)],
-            [r"h",    lambda x: Token(HIGH, x)],
-            [r"l",    lambda x: Token(LOW, x)],
+            [r"h(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(HIGH, x)],
+            [r"l(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(LOW, x)],
             [r"\|\/", lambda x: Token(ELSEDIV, x)],
             [r"\(",   lambda x: Token(LPAREN, x)],
             [r"\)",   lambda x: Token(RPAREN, x)],
@@ -117,7 +118,7 @@ class Lexer(object):
             [r"~",    lambda x: Token(AVG, x)],
             [r"\!",   lambda x: Token(PROP, x)],
             [r"\|",   lambda x: Token(ELSE, x)],
-            [r"d",    lambda x: Token(ROLL, x)],
+            [r"d(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(ROLL, x)],
             [r"\>=",  lambda x: Token(GREATER_OR_EQUAL, x)],
             [r"\<=",  lambda x: Token(LESS_OR_EQUAL, x)],
             [r"\<",   lambda x: Token(LESS, x)],

@@ -23,6 +23,9 @@ class Interpreter():
         self.ast = ast
         self.debug = debug
         self.global_scope = {}
+        self.function_scope = {}
+        self.local_scopes = []
+        self.call_stack = []
         self.engine = engine if engine is not None else Diceengine
 
     def visit(self, node):
@@ -40,7 +43,22 @@ class Interpreter():
 
     def interpret(self):
         """Interprets AST (start by visiting ast node)"""
+        self.collect_function_definitions(self.ast)
         return self.visit(self.ast)
+
+    def collect_function_definitions(self, node):
+        if type(node).__name__ == "FunctionDef":
+            self.register_function(node)
+            return
+        if type(node).__name__ == "VarOp" and node.op.type == SEMI:
+            for child in node.nodes:
+                if type(child).__name__ == "FunctionDef":
+                    self.register_function(child)
+
+    def register_function(self, node):
+        if node.name.value in self.function_scope:
+            self.exception("Duplicate function definition for {}".format(node.name.value))
+        self.function_scope[node.name.value] = node
 
     def exception(self, message=""):
         """Raises an exception for the Interpreter"""
@@ -51,6 +69,8 @@ class Interpreter():
         if node.op.type == SEMI:
             last_result = None
             for n in node.nodes:
+                if type(n).__name__ == "FunctionDef":
+                    continue
                 last_result = self.visit(n)
             return last_result
 
@@ -64,6 +84,36 @@ class Interpreter():
             return Sweep(values)
 
         self.exception("{} not implemented".format(node))
+
+    def visit_FunctionDef(self, node):
+        return
+
+    def visit_Call(self, node):
+        function_name = node.name.value
+        if function_name not in self.function_scope:
+            self.exception("Unknown function {}".format(function_name))
+
+        function = self.function_scope[function_name]
+        if len(node.args) != len(function.params):
+            self.exception(
+                "Function {} expected {} arguments but got {}".format(
+                    function_name,
+                    len(function.params),
+                    len(node.args),
+                )
+            )
+        if function_name in self.call_stack:
+            self.exception("Recursion not supported for {}".format(function_name))
+
+        values = [self.visit(arg) for arg in node.args]
+        local_scope = {param.value: value for param, value in zip(function.params, values)}
+        self.call_stack.append(function_name)
+        self.local_scopes.append(local_scope)
+        try:
+            return self.visit(function.body)
+        finally:
+            self.local_scopes.pop()
+            self.call_stack.pop()
 
     def visit_TenOp(self, node):
         """Visit a Tenary-Operator node"""
@@ -162,6 +212,10 @@ class Interpreter():
         """Visits a Value node"""
         if node.token.type in [INTEGER, STRING]:
             return node.value
+
+        for scope in reversed(self.local_scopes):
+            if node.value in scope:
+                return scope[node.value]
 
         if not node.value in self.global_scope:
             self.exception("Could not dereference {}".format(node))

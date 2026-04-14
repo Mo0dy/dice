@@ -4,7 +4,7 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call
 from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT
 
 
@@ -38,6 +38,16 @@ class Parser(object):
     def eat_zero_or_more(self, type):
         while self.current_token.type == type:
             self.eat(type)
+
+    def snapshot(self):
+        return (
+            self.current_token,
+            self.peek_token,
+            self.lexer.string_input,
+        )
+
+    def restore(self, state):
+        self.current_token, self.peek_token, self.lexer.string_input = state
 
 
 class DiceParser(Parser):
@@ -109,6 +119,8 @@ class DiceParser(Parser):
         elif self.current_token.type == ID:
             token = self.current_token
             self.eat(ID)
+            if self.current_token.type == LPAREN:
+                return self.call(Val(token))
             return Val(token)
         elif self.current_token.type == STRING:
             token = self.current_token
@@ -120,6 +132,50 @@ class DiceParser(Parser):
             return Val(token)
         else:
             self.exception("Expected factor")
+
+    def call(self, name):
+        self.eat(LPAREN)
+        args = []
+        if self.current_token.type != RPAREN:
+            args.append(self.expr())
+            while self.current_token.type == COMMA:
+                self.eat(COMMA)
+                args.append(self.expr())
+        self.eat(RPAREN)
+        return Call(name, args)
+
+    def try_function_definition(self):
+        if self.current_token.type != ID or self.peek_token.type != LPAREN:
+            return None
+
+        state = self.snapshot()
+        try:
+            name_token = self.current_token
+            self.eat(ID)
+            self.eat(LPAREN)
+            params = []
+            if self.current_token.type != RPAREN:
+                if self.current_token.type != ID:
+                    self.restore(state)
+                    return None
+                params.append(Val(self.current_token))
+                self.eat(ID)
+                while self.current_token.type == COMMA:
+                    self.eat(COMMA)
+                    if self.current_token.type != ID:
+                        self.restore(state)
+                        return None
+                    params.append(Val(self.current_token))
+                    self.eat(ID)
+            self.eat(RPAREN)
+            if self.current_token.type != ASSIGN:
+                self.restore(state)
+                return None
+            self.eat(ASSIGN)
+            return FunctionDef(Val(name_token), params, self.expr())
+        except Exception:
+            self.restore(state)
+            raise
 
     def roll(self):
         node = self.factor()
@@ -208,6 +264,9 @@ class DiceParser(Parser):
         return node
 
     def statement(self):
+        function_definition = self.try_function_definition()
+        if function_definition:
+            return function_definition
         if self.current_token.type == ID and self.peek_token.type == ASSIGN:
             token = self.current_token
             self.eat(ID)
