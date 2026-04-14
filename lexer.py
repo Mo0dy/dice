@@ -43,12 +43,13 @@ ASSIGN = "ASSIGN"                        # "="
 PRINT = "PRINT"                          # "print"
 STRING = "STRING"                        # anything inside ""
 
-# Plotting intrinsics
-PLOT = "PLOT"                            # "plot"
-XLABEL = "XLABEL"                        # "xlabel"
-YLABEL = "YLABEL"                        # "ylabel"
-LABEL = "LABEL"                          # "label"
-SHOW = "SHOW"                            # "show"
+# Rendering intrinsics
+PLOT = "PLOT"                            # legacy "plot"
+XLABEL = "XLABEL"                        # legacy "xlabel"
+YLABEL = "YLABEL"                        # legacy "ylabel"
+LABEL = "LABEL"                          # legacy "label"
+SHOW = "SHOW"                            # legacy "show"
+RENDER = "RENDER"                        # "render"
 MATCH = "MATCH"                          # "match"
 AS = "AS"                                # "as"
 OTHERWISE = "OTHERWISE"                  # "otherwise"
@@ -112,6 +113,7 @@ class Lexer(object):
             [r"label\b", lambda x: Token(LABEL, x)],
             [r"plot\b", lambda x: Token(PLOT, x)],
             [r"show\b", lambda x: Token(SHOW, x)],
+            [r"render\b", lambda x: Token(RENDER, x)],
             [r"match\b", lambda x: Token(MATCH, x)],
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],

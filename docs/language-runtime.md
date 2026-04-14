@@ -62,11 +62,8 @@ The legacy runtime used to have a `Preprocessor` that handled:
 
 That implementation still exists in git history (`git show HEAD:preprocessor.py`), but it is no longer part of the active runtime.
 
-## Plotting Layer
+## Rendering Layer
 
-Plotting is split across language intrinsics and plain-text directives:
+Rendering is now centered on declarative `render(...)` statements in the language.
 
-- intrinsic commands parsed in the language: `plot`, `label`, `xlabel`, `ylabel`, `show`
-- viewer-side comment directives in sample scripts: `#label`, `#xlabel`, `#ylabel`, `#title`, `#grid`
-
-Future edits should decide whether plotting remains a textual post-processing layer, a first-class language feature, or both.
+`viewer.py` renders runtime `Distributions` directly and chooses a chart shape from the result structure instead of parsing textual dict output.

@@ -7,7 +7,7 @@ The repository implements a small domain-specific language for dice and probabil
 ## Main Components
 
 - `lexer.py`
-  Converts source text into tokens. It recognizes arithmetic operators, dice operators, comparison operators, indexing, plotting intrinsics, identifiers, and strings.
+  Converts source text into tokens. It recognizes arithmetic operators, dice operators, comparison operators, indexing, rendering syntax, identifiers, and strings.
 - `diceparser.py`
   Builds an AST from lexer tokens using hand-written recursive descent parsing.
 - `syntaxtree.py`
@@ -17,7 +17,7 @@ The repository implements a small domain-specific language for dice and probabil
 - `diceengine.py`
   Holds the core math and type behavior: distributions, sweeps, branching, indexing, and arithmetic.
 - `viewer.py`
-  Provides Matplotlib-backed plotting helpers and a lightweight command protocol for labels, axes, and titles.
+  Provides Matplotlib-backed rendering over runtime `Distributions`, including smart defaults for bars, lines, heatmaps, and simple comparisons.
 
 ## Execution Flow
 
@@ -27,14 +27,14 @@ The repository implements a small domain-specific language for dice and probabil
 2. `DiceParser` turns tokens into AST nodes from `syntaxtree.py`.
 3. `Interpreter` evaluates the AST.
 4. Operator semantics are delegated to `Diceengine`.
-5. Plotting intrinsics call into `viewer.py`.
+5. Render statements call into `viewer.py`.
 
 ### Entry points
 
 - `dice.py`
   Intended CLI for interactive, single-command, and file execution.
 - `viewer.py`
-  Can also run as a standalone plotting script over textual output.
+  Provides the direct runtime rendering backend used by the interpreter and CLI.
 
 ## Core Data Types
 
@@ -52,4 +52,4 @@ The repository implements a small domain-specific language for dice and probabil
 - Syntax work usually spans `lexer.py`, `diceparser.py`, and `interpreter.py`.
 - Semantic/operator work is centered in `diceengine.py`.
 - AST shape changes belong in `syntaxtree.py` and then ripple into parser/interpreter.
-- Plotting changes usually stay in `viewer.py`, unless new language intrinsics are added.
+- Rendering changes usually stay in `viewer.py`, unless new language syntax is added.

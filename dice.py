@@ -139,8 +139,9 @@ def main():
         if result is not None:
             print_result(result, args.grepable, args.verbose, args.command)
         if args.plot and result is not None:
-            viewer.do(str(result))
-            viewer.show()
+            render_outcome = viewer.render_result(result)
+            if render_outcome.output_path is not None:
+                print_result(render_outcome.output_path, args.grepable, args.verbose, args.command)
         return 0
     elif args.mode == 'file':
         engine = _build_engine(args)

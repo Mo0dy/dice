@@ -28,6 +28,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `f(a, b)` calls a user-defined function inside an expression.
 - `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
 - `sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
+- `render(expr)` renders one result with smart defaults.
+- `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
 - `import "path/to/file.dice"` loads another dice file once, relative to the current file.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
@@ -52,7 +54,7 @@ Useful flags:
 - `-r N` rounds numeric output, for example `python3 dice.py -r 2 execute "d20 >= 11"`
 - `-g` prints a grep-friendly single-line result
 - `-v` prints the input together with the result
-- `-p` shows the result with `viewer.do(...)` after `execute`
+- `-p` renders the final result after `execute` using the same smart renderer as `render(...)`
 - `--direct` uses the direct sampling backend instead of the exact probability engine
 - `--seed N` sets the RNG seed for `--direct`
 
@@ -73,21 +75,17 @@ There are a few different ways to read the result depending on what you want:
   `~(d20 >= 11 -> 5 | 0)` returns a degenerate distribution containing the expected value and `!d20[19:20]` returns probability mass for each selected branch.
 - Direct sampled execution:
   `python3 dice.py --direct --seed 123 execute "4d6h3"` executes one sampled run through the same language semantics.
-- Plots through Matplotlib:
-  use `label`, `xlabel`, `ylabel`, `plot`, and `show` in a multi-statement program when you want a graph.
+- Rendering through Matplotlib:
+  use `render(...)` in a program, or `-p` on `execute`, when you want a graph.
 
-Example plotting program:
+Example rendering program:
 
 ```bash
 python3 dice.py file path/to/plot.dice
 ```
 
 ```text
-xlabel "AC"
-ylabel "chance"
-label "attack"
-plot d20 >= [10:20]
-show
+render(~(d20 >= [AC:10:20] -> 5 | 0))
 ```
 
 ## Functions
@@ -107,6 +105,7 @@ damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 sum(3, d2)
+render(~(d20 >= [AC:10:20] -> 5 | 0))
 ```
 
 ## Whitespace
@@ -127,6 +126,15 @@ When identifiers are involved, write dice operators with spaces so they remain s
 
 Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also preserve internal spaces now, for example `"fire bolt"`.
 
+## Rendering
+
+- `render(expr)` renders one expression result immediately.
+- `render(expr1, "a", expr2, "b")` compares multiple compatible results on one chart.
+- Axis labels come from named sweeps like `[AC:10:20]`.
+- Unnamed sweeps still render, but use fallback axis labels.
+- Supported quick-render shapes are:
+  unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.
+
 ## Comments And Imports
 
 - `// ...` starts a line comment and can also appear after code on the same line.
@@ -145,6 +153,7 @@ always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 sum(3, d2)
+render(d20)
 d20
 2d6
 d20 >= 11

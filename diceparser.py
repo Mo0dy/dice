@@ -4,8 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum, Named
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum, Named, Render
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM, RENDER
 
 
 class Parser(object):
@@ -70,6 +70,7 @@ class DiceParser(Parser):
         match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
         match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
         sum       :  SUM LPAREN expr COMMA expr RPAREN
+        render    :  RENDER LPAREN expr (COMMA STRING COMMA expr COMMA STRING)* RPAREN
         dot       :  DOT (INTEGER | ID)
     """
 
@@ -138,6 +139,33 @@ class DiceParser(Parser):
         value = self.expr()
         self.eat(RPAREN)
         return Sum(count, value, token)
+
+    def render_statement(self):
+        token = self.current_token
+        self.eat(RENDER)
+        self.eat(LPAREN)
+        expressions = [self.expr()]
+        labels = []
+        while self.current_token.type == COMMA:
+            self.eat(COMMA)
+            if self.current_token.type != STRING:
+                self.exception("render comparison labels must be strings")
+            labels.append(Val(self.current_token))
+            self.eat(STRING)
+            if self.current_token.type == COMMA:
+                self.eat(COMMA)
+                expressions.append(self.expr())
+        self.eat(RPAREN)
+
+        if not labels:
+            return Render([(expressions[0], None)], token)
+
+        if len(expressions) < 2:
+            self.exception("render comparisons need at least two expressions")
+        if len(expressions) != len(labels):
+            self.exception("render comparisons require a label for every expression")
+
+        return Render(list(zip(expressions, labels)), token)
 
     def factor(self):
         if self.current_token.type == LBRACK:
@@ -337,14 +365,12 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(ASSIGN)
             return BinOp(left, token, self.expr())
-        elif self.current_token.type in [PRINT, LABEL, XLABEL, YLABEL, PLOT]:
+        elif self.current_token.type == RENDER:
+            return self.render_statement()
+        elif self.current_token.type == PRINT:
             token = self.current_token
             self.eat(token.type)
             return UnOp(self.expr(), token)
-        elif self.current_token.type == SHOW:
-            token = self.current_token
-            self.eat(SHOW)
-            return Op(token)
         else:
             return self.expr()
 
@@ -370,7 +396,7 @@ class DiceParser(Parser):
         return node
 
 if __name__ == "__main__":
-    lexer = Lexer('a = "test"; plot a; show')
+    lexer = Lexer('a = "test"; render(a)')
     parser = DiceParser(lexer)
     ast = parser.parse()
     print(ast)

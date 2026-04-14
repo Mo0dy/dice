@@ -9,7 +9,7 @@ import os
 from diceparser import DiceParser
 from itertools import product
 
-from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW, DOT
+from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, DOT
 from diceengine import Diceengine, Sweep, Distrib, Distributions, TRUE, FALSE, _coerce_to_distributions, _union_axes
 import viewer
 
@@ -173,6 +173,19 @@ class Interpreter():
         if cache_key not in self._sweep_cache:
             self._sweep_cache[cache_key] = Sweep(value.values, name=node.name.value)
         return self._sweep_cache[cache_key]
+
+    def visit_Render(self, node):
+        if len(node.entries) == 1 and node.entries[0][1] is None:
+            render_outcome = viewer.render_result(self.visit(node.entries[0][0]))
+            return render_outcome.output_path
+
+        entries = []
+        for expr, label in node.entries:
+            if label is None or label.token.type != STRING:
+                self.exception("render comparisons require explicit string labels")
+            entries.append((label.value, self.visit(expr)))
+        render_outcome = viewer.render_comparison(entries)
+        return render_outcome.output_path
 
     def visit_Call(self, node):
         function_name = node.name.value
@@ -384,24 +397,6 @@ class Interpreter():
         elif node.op.type == PRINT:
             print(self.visit(node.value))
             return
-        elif node.op.type == PLOT:
-            viewer.plot(str(self.visit(node.value)))
-            return
-        elif node.op.type == LABEL:
-            viewer.label(str(self.visit(node.value)))
-            return
-        elif node.op.type == XLABEL:
-            viewer.xlabel(str(self.visit(node.value)))
-            return
-        elif node.op.type == YLABEL:
-            viewer.ylabel(str(self.visit(node.value)))
-            return
-        self.exception("{} not implemented".format(node))
-
-    def visit_Op(self, node):
-        if node.op.type == SHOW:
-            viewer.show()
-            return
         self.exception("{} not implemented".format(node))
 
     def visit_Val(self, node):
@@ -418,7 +413,7 @@ class Interpreter():
         return self.global_scope[node.value]
 
 if __name__ == "__main__":
-    input_text = 'a = d20; xlabel "t1"; ylabel "t2"; print a; label "test"; plot a; show'
+    input_text = 'a = d20; print a; render(a)'
     ast = DiceParser(Lexer(input_text)).parse()
     print(ast)
     interpreter = Interpreter(ast)

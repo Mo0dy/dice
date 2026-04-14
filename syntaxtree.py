@@ -181,6 +181,22 @@ class Named(AST):
         return result
 
 
+class Render(AST):
+    """Declarative render statement."""
+    def __init__(self, entries, token):
+        self.entries = entries
+        self.token = token
+
+    def __repr__(self):
+        result = "Render"
+        for value, label in self.entries:
+            rendered = str(value).lstrip()
+            if label is not None:
+                rendered += ' as "{}"'.format(label.value)
+            result += '\t|'.join(('\n' + "entry: " + rendered).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):
