@@ -55,8 +55,6 @@ Useful flags:
 - `-g` prints a grep-friendly single-line result
 - `-v` prints the input together with the result
 - `-p` renders the final result after `execute` using the same smart renderer as `render(...)`
-- `--direct` uses the direct sampling backend instead of the exact probability engine
-- `--seed N` sets the RNG seed for `--direct`
 
 ## Output Modes
 
@@ -73,8 +71,6 @@ There are a few different ways to read the result depending on what you want:
   `d20 >= 11 -> 5 | 0` returns a weighted outcome distribution.
 - Scalar summaries:
   `~(d20 >= 11 -> 5 | 0)` returns a degenerate distribution containing the expected value and `!d20[19:20]` returns probability mass for each selected branch.
-- Direct sampled execution:
-  `python3 dice.py --direct --seed 123 execute "4d6h3"` executes one sampled run through the same language semantics.
 - Rendering through Matplotlib:
   use `render(...)` in a program, or `-p` on `execute`, when you want a graph.
 
@@ -134,6 +130,21 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 - Unnamed sweeps still render, but use fallback axis labels.
 - Supported quick-render shapes are:
   unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.
+
+## Python Integration
+
+You can also keep a persistent dice session from Python:
+
+```python
+from dice import dice_interpreter
+
+session = dice_interpreter()
+result = session("d20 >= [AC:10:12] -> 5 | 0")
+session.assign("cached", result)
+session("render(cached)")
+```
+
+Register Python functions with `session.register_function(...)`. Registered functions receive eagerly evaluated runtime values and may return `int`, `float`, `str`, `Distrib`, `Distributions`, or `Sweep`. Use `@lift_sweeps` when you want a Python function to operate pointwise across sweep axes.
 
 ## Comments And Imports
 

@@ -4,8 +4,8 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum, Named, Render
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM, RENDER
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Named
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, DOT, MATCH, AS, OTHERWISE, IMPORT
 
 
 class ParserError(Exception):
@@ -69,12 +69,10 @@ class DiceParser(Parser):
         res       :  (PROP | ADV)? index
         index     :  roll (brack | dot)?
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | sum | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
+        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
         brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
         match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
         match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
-        sum       :  SUM LPAREN expr COMMA expr RPAREN
-        render    :  RENDER LPAREN expr (COMMA STRING COMMA expr COMMA STRING)* RPAREN
         dot       :  DOT (INTEGER | ID)
     """
 
@@ -134,50 +132,11 @@ class DiceParser(Parser):
             self.exception("Expected at least one match clause")
         return Match(value, name, clauses, token)
 
-    def sum_expr(self):
-        token = self.current_token
-        self.eat(SUM)
-        self.eat(LPAREN)
-        count = self.expr()
-        self.eat(COMMA)
-        value = self.expr()
-        self.eat(RPAREN)
-        return Sum(count, value, token)
-
-    def render_statement(self):
-        token = self.current_token
-        self.eat(RENDER)
-        self.eat(LPAREN)
-        expressions = [self.expr()]
-        labels = []
-        while self.current_token.type == COMMA:
-            self.eat(COMMA)
-            if self.current_token.type != STRING:
-                self.exception("render comparison labels must be strings")
-            labels.append(Val(self.current_token))
-            self.eat(STRING)
-            if self.current_token.type == COMMA:
-                self.eat(COMMA)
-                expressions.append(self.expr())
-        self.eat(RPAREN)
-
-        if not labels:
-            return Render([(expressions[0], None)], token)
-
-        if len(expressions) < 2:
-            self.exception("render comparisons need at least two expressions")
-        if len(expressions) != len(labels):
-            self.exception("render comparisons require a label for every expression")
-
-        return Render(list(zip(expressions, labels)), token)
-
     def factor(self):
         if self.current_token.type == LBRACK:
             return self.brack()
         elif self.current_token.type == MATCH:
             return self.match_expr()
-        elif self.current_token.type == SUM:
-            return self.sum_expr()
         elif self.current_token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()
@@ -369,9 +328,7 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(ASSIGN)
             return BinOp(left, token, self.expr())
-        elif self.current_token.type == RENDER:
-            return self.render_statement()
-        elif self.current_token.type == PRINT:
+        if self.current_token.type == PRINT:
             token = self.current_token
             self.eat(token.type)
             return UnOp(self.expr(), token)

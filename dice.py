@@ -32,14 +32,6 @@ def _round_result(result, roundlevel=0):
     return result
 
 
-def _build_engine(args):
-    if not getattr(args, "direct", False):
-        return None
-    from directdiceengine import DirectDiceEngine
-
-    return DirectDiceEngine(seed=args.seed)
-
-
 def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None, current_dir=None):
     if interpreter is None:
         interpreter = Interpreter(ast, engine=engine, current_dir=current_dir)
@@ -67,6 +59,38 @@ def interpret_file(text, roundlevel=0, engine=None, interpreter=None, current_di
         current_dir=current_dir,
     )
 
+
+class DiceSession(object):
+    """Stateful Python-facing wrapper around the dice interpreter."""
+
+    def __init__(self, roundlevel=0, engine=None, current_dir=None):
+        self.roundlevel = roundlevel
+        self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
+        self.interpreter = Interpreter(None, engine=engine, current_dir=self.current_dir)
+
+    def __call__(self, text, current_dir=None):
+        call_dir = self.current_dir if current_dir is None else os.path.abspath(current_dir)
+        return interpret_statement(
+            text,
+            roundlevel=self.roundlevel,
+            interpreter=self.interpreter,
+            current_dir=call_dir,
+        )
+
+    def assign(self, name, value):
+        if value is None:
+            self.interpreter.exception("Unsupported host value type {}".format(type(value)))
+        self.interpreter._validate_runtime_value(value)
+        self.interpreter.global_scope[name] = value
+        return value
+
+    def register_function(self, function, name=None):
+        return self.interpreter.register_function(function, name=name)
+
+
+def dice_interpreter(roundlevel=0, current_dir=None, engine=None):
+    return DiceSession(roundlevel=roundlevel, current_dir=current_dir, engine=engine)
+
 def print_interactive_error(error):
     """Print a user-facing REPL error without a traceback."""
     prefix = "syntax error" if isinstance(error, (ParserError, LexerError)) else "error"
@@ -74,8 +98,7 @@ def print_interactive_error(error):
 
 def runinteractive(args):
     """Run a simple interactive shell."""
-    engine = _build_engine(args)
-    interpreter = Interpreter(None, engine=engine, current_dir=os.getcwd())
+    interpreter = Interpreter(None, current_dir=os.getcwd())
     while True:
         try:
             text = input("dice> ")
@@ -137,8 +160,6 @@ def main():
     parser.add_argument("-r", "--roundlevel", type=int, default=0, help="Set rounding level")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("-p", "--plot", action="store_true", help="Enable plotting")
-    parser.add_argument("--direct", action="store_true", help="Use the direct sampling backend instead of the exact engine")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for direct sampling")
     parser.add_argument('files', nargs='*', help="Files to process (or stdin if empty)")
 
     # Parse arguments
@@ -149,8 +170,7 @@ def main():
         return runinteractive(args)
 
     elif args.mode == 'execute':
-        engine = _build_engine(args)
-        result = interpret_statement(args.command, args.roundlevel, engine=engine)
+        result = interpret_statement(args.command, args.roundlevel)
         if result is not None:
             print_result(result, args.grepable, args.verbose, args.command)
         if args.plot and result is not None:
@@ -159,12 +179,10 @@ def main():
                 print_result(render_outcome.output_path, args.grepable, args.verbose, args.command)
         return 0
     elif args.mode == 'file':
-        engine = _build_engine(args)
         with open(args.file) as f:
             result = interpret_file(
                 f.read(),
                 args.roundlevel,
-                engine=engine,
                 current_dir=os.path.dirname(os.path.abspath(args.file)),
             )
         if result is not None:

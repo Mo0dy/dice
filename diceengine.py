@@ -3,6 +3,7 @@
 """Sweep-aware probability primitives for the dice language."""
 
 from dataclasses import dataclass
+from functools import wraps
 from itertools import product
 from math import inf
 
@@ -182,6 +183,7 @@ def _union_axes(distribution_sets):
 def lift_sweeps(function):
     """Lift a plain distribution operator over all sweep assignments."""
 
+    @wraps(function)
     def wrapped(*args):
         distribution_sets = [_coerce_to_distributions(arg) for arg in args]
         combined_axes = _union_axes(distribution_sets)

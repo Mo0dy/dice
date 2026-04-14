@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, RENDER, ROLL, SEMI, STRING, SUM, Lexer
+from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, ROLL, SEMI, STRING, Lexer
 
 
 def tokens(text):
@@ -69,11 +69,11 @@ class LexerWhitespaceTest(unittest.TestCase):
     def test_import_keyword_tokenizes(self):
         self.assertEqual(tokens('import "spells/base.dice"'), [(IMPORT, "import"), (STRING, "spells/base.dice")])
 
-    def test_sum_keyword_tokenizes(self):
-        self.assertEqual(tokens("sum(3, d6)"), [(SUM, "sum"), ("LPAREN", "("), (INTEGER, 3), ("COMMA", ","), (ROLL, "d"), (INTEGER, 6), ("RPAREN", ")")])
+    def test_sum_name_tokenizes_as_identifier(self):
+        self.assertEqual(tokens("sum(3, d6)"), [(ID, "sum"), ("LPAREN", "("), (INTEGER, 3), ("COMMA", ","), (ROLL, "d"), (INTEGER, 6), ("RPAREN", ")")])
 
-    def test_render_keyword_tokenizes(self):
-        self.assertEqual(tokens('render(d20, "hit")'), [(RENDER, "render"), ("LPAREN", "("), (ROLL, "d"), (INTEGER, 20), ("COMMA", ","), (STRING, "hit"), ("RPAREN", ")")])
+    def test_render_name_tokenizes_as_identifier(self):
+        self.assertEqual(tokens('render(d20, "hit")'), [(ID, "render"), ("LPAREN", "("), (ROLL, "d"), (INTEGER, 20), ("COMMA", ","), (STRING, "hit"), ("RPAREN", ")")])
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 """The Interpreter for the dice language."""
 
 
+import inspect
 import os
 
 from diceparser import DiceParser
@@ -11,7 +12,19 @@ from itertools import product
 
 from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, DOT
 from diceengine import Diceengine, Sweep, Distrib, Distributions, TRUE, FALSE, _coerce_to_distributions, _union_axes
-import viewer
+from standard_library import register_standard_library
+
+
+class CallableEntry(object):
+    """Registered callable exposed to dice source."""
+
+    def __init__(self, name, kind, arity=None, variadic=False, function=None, node=None):
+        self.name = name
+        self.kind = kind
+        self.arity = arity
+        self.variadic = variadic
+        self.function = function
+        self.node = node
 
 
 class Interpreter():
@@ -27,7 +40,7 @@ class Interpreter():
         self.ast = ast
         self.debug = debug
         self.global_scope = {}
-        self.function_scope = {}
+        self.callable_scope = {}
         self.local_scopes = []
         self.call_stack = []
         self.engine = engine if engine is not None else Diceengine
@@ -35,6 +48,7 @@ class Interpreter():
         self.imported_files = imported_files if imported_files is not None else set()
         self.import_stack = import_stack if import_stack is not None else []
         self._sweep_cache = {}
+        self._register_builtin_functions()
 
     def visit(self, node):
         """Calls method with name visit_NodeName for every node visited.
@@ -58,22 +72,58 @@ class Interpreter():
         return self.visit(ast)
 
     def collect_function_definitions(self, node):
+        if node is None:
+            return
         if type(node).__name__ == "FunctionDef":
-            self.register_function(node)
+            self.register_function_definition(node)
             return
         if type(node).__name__ == "VarOp" and node.op.type == SEMI:
             for child in node.nodes:
                 if type(child).__name__ == "FunctionDef":
-                    self.register_function(child)
+                    self.register_function_definition(child)
 
-    def register_function(self, node):
-        if node.name.value in self.function_scope:
-            self.exception("Duplicate function definition for {}".format(node.name.value))
-        self.function_scope[node.name.value] = node
+    def _register_callable(self, entry):
+        if entry.name in self.callable_scope:
+            self.exception("Duplicate function definition for {}".format(entry.name))
+        self.callable_scope[entry.name] = entry
+
+    def _register_builtin_functions(self):
+        register_standard_library(self, CallableEntry)
+
+    def register_function_definition(self, node):
+        self._register_callable(
+            CallableEntry(node.name.value, "dsl", arity=len(node.params), node=node)
+        )
+
+    def _callable_arity(self, function):
+        signature = inspect.signature(function)
+        arity = 0
+        for parameter in signature.parameters.values():
+            if parameter.kind not in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                self.exception("Python functions only support fixed positional arguments")
+            if parameter.default is not inspect._empty:
+                self.exception("Python functions only support fixed positional arguments")
+            arity += 1
+        return arity
+
+    def register_function(self, function, name=None):
+        callable_name = name if name is not None else function.__name__
+        if not callable_name:
+            self.exception("Python functions must have a name")
+        arity = self._callable_arity(function)
+        self._register_callable(CallableEntry(callable_name, "host", arity=arity, function=function))
+        return function
 
     def exception(self, message=""):
         """Raises an exception for the Interpreter"""
         raise Exception("Interpreter exception: {}".format(message))
+
+    def _validate_runtime_value(self, value):
+        if value is None:
+            return value
+        if isinstance(value, (int, float, str, Sweep, Distrib, Distributions)):
+            return value
+        self.exception("Unsupported host value type {}".format(type(value)))
 
     def _lookup_projected(self, axes, cells, combined_axes, coordinates, default):
         if not axes:
@@ -105,6 +155,40 @@ class Interpreter():
         if invalid:
             self.exception("Match guards expect boolean outcomes, got {}".format(invalid))
         return condition[TRUE], condition[FALSE]
+
+    def _check_call_arity(self, entry, call_arity):
+        if entry.variadic:
+            return
+        if call_arity != entry.arity:
+            self.exception(
+                "Function {} expected {} arguments but got {}".format(
+                    entry.name,
+                    entry.arity,
+                    call_arity,
+                )
+            )
+
+    def _call_dsl_function(self, entry, values):
+        function = entry.node
+        if entry.name in self.call_stack:
+            self.exception("Recursion not supported for {}".format(entry.name))
+
+        local_scope = {param.value: value for param, value in zip(function.params, values)}
+        self.call_stack.append(entry.name)
+        self.local_scopes.append(local_scope)
+        try:
+            return self.visit(function.body)
+        finally:
+            self.local_scopes.pop()
+            self.call_stack.pop()
+
+    def _call_host_function(self, entry, values):
+        try:
+            return self._validate_runtime_value(entry.function(*values))
+        except Exception as error:
+            if str(error).startswith("Interpreter exception:"):
+                raise
+            self.exception("Function {} failed: {}".format(entry.name, error))
 
     def visit_VarOp(self, node):
         """Visits a Variary-Operation node"""
@@ -174,77 +258,17 @@ class Interpreter():
             self._sweep_cache[cache_key] = Sweep(value.values, name=node.name.value)
         return self._sweep_cache[cache_key]
 
-    def visit_Render(self, node):
-        if len(node.entries) == 1 and node.entries[0][1] is None:
-            render_outcome = viewer.render_result(self.visit(node.entries[0][0]))
-            return render_outcome.output_path
-
-        entries = []
-        for expr, label in node.entries:
-            if label is None or label.token.type != STRING:
-                self.exception("render comparisons require explicit string labels")
-            entries.append((label.value, self.visit(expr)))
-        render_outcome = viewer.render_comparison(entries)
-        return render_outcome.output_path
-
     def visit_Call(self, node):
         function_name = node.name.value
-        if function_name not in self.function_scope:
+        if function_name not in self.callable_scope:
             self.exception("Unknown function {}".format(function_name))
 
-        function = self.function_scope[function_name]
-        if len(node.args) != len(function.params):
-            self.exception(
-                "Function {} expected {} arguments but got {}".format(
-                    function_name,
-                    len(function.params),
-                    len(node.args),
-                )
-            )
-        if function_name in self.call_stack:
-            self.exception("Recursion not supported for {}".format(function_name))
-
+        entry = self.callable_scope[function_name]
+        self._check_call_arity(entry, len(node.args))
         values = [self.visit(arg) for arg in node.args]
-        local_scope = {param.value: value for param, value in zip(function.params, values)}
-        self.call_stack.append(function_name)
-        self.local_scopes.append(local_scope)
-        try:
-            return self.visit(function.body)
-        finally:
-            self.local_scopes.pop()
-            self.call_stack.pop()
-
-    def visit_Sum(self, node):
-        count_value = _coerce_to_distributions(self.visit(node.count))
-        contributions = []
-
-        for count_coordinates, count_distrib in count_value.cells.items():
-            count_items = list(count_distrib.items())
-            if len(count_items) != 1:
-                self.exception("sum expects a deterministic count per sweep point")
-
-            count_outcome, count_probability = count_items[0]
-            if count_probability != 1:
-                self.exception("sum expects a deterministic count per sweep point")
-            if not isinstance(count_outcome, int) or count_outcome < 0:
-                self.exception("sum expects a non-negative integer count")
-
-            repeated = 0
-            for _ in range(count_outcome):
-                repeated = self.engine.add(repeated, self.visit(node.value))
-
-            repeated_value = _coerce_to_distributions(repeated)
-            count_selection = self._fixed_axis_distribution(count_value.axes, count_coordinates)
-            combined_axes = _union_axes([count_selection, repeated_value])
-            coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
-            cells = {}
-            for coordinates in coordinates_space:
-                if self._lookup_projected(count_value.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
-                    continue
-                cells[coordinates] = repeated_value.lookup(combined_axes, coordinates)
-            contributions.append((combined_axes, cells))
-
-        return self._accumulate_distribution_contributions(contributions)
+        if entry.kind == "dsl":
+            return self._call_dsl_function(entry, values)
+        return self._call_host_function(entry, values)
 
     def visit_Match(self, node):
         matched_value = _coerce_to_distributions(self.visit(node.value))

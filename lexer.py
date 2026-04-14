@@ -43,18 +43,10 @@ ASSIGN = "ASSIGN"                        # "="
 PRINT = "PRINT"                          # "print"
 STRING = "STRING"                        # anything inside ""
 
-# Rendering intrinsics
-PLOT = "PLOT"                            # legacy "plot"
-XLABEL = "XLABEL"                        # legacy "xlabel"
-YLABEL = "YLABEL"                        # legacy "ylabel"
-LABEL = "LABEL"                          # legacy "label"
-SHOW = "SHOW"                            # legacy "show"
-RENDER = "RENDER"                        # "render"
 MATCH = "MATCH"                          # "match"
 AS = "AS"                                # "as"
 OTHERWISE = "OTHERWISE"                  # "otherwise"
 IMPORT = "IMPORT"                        # "import"
-SUM = "SUM"                              # "sum"
 
 
 
@@ -112,17 +104,10 @@ class Lexer(object):
         token_re_list = [
             [r'".*?"', lambda x: Token(STRING, x[1:-1])],
             [r"print\b", lambda x: Token(PRINT, x)],
-            [r"xlabel\b", lambda x: Token(XLABEL, x)],
-            [r"ylabel\b", lambda x: Token(YLABEL, x)],
-            [r"label\b", lambda x: Token(LABEL, x)],
-            [r"plot\b", lambda x: Token(PLOT, x)],
-            [r"show\b", lambda x: Token(SHOW, x)],
-            [r"render\b", lambda x: Token(RENDER, x)],
             [r"match\b", lambda x: Token(MATCH, x)],
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
             [r"import\b", lambda x: Token(IMPORT, x)],
-            [r"sum\b", lambda x: Token(SUM, x)],
             # d+ needed to not confuse indexing (d20.20)
             [r"\n",    lambda x: Token(SEMI, x)],
             [r"\;",    lambda x: Token(SEMI, x)],

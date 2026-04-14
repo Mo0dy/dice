@@ -21,7 +21,6 @@ if str(ROOT) not in sys.path:
 import dice
 from dice import interpret_file, interpret_statement
 from diceengine import TRUE, FALSE, Distributions
-from directdiceengine import DirectDiceEngine
 
 
 def only_distribution(result):
@@ -146,19 +145,12 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (10, 11))
 
-    def test_sum_direct_backend_samples_independent_runs(self):
-        result = only_distribution(interpret_statement("sum(3, d2)", engine=DirectDiceEngine(seed=1)))
-        self.assertEqual(sum(result.probabilities()), 1)
-        self.assertEqual(len(list(result.items())), 1)
-        sampled_total = next(iter(result.keys()))
-        self.assertIn(sampled_total, (3, 4, 5, 6))
-
     def test_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic count"):
             interpret_statement("sum(d2, d6)")
 
     def test_interactive_parser_error_does_not_end_session(self):
-        args = SimpleNamespace(roundlevel=0, grepable=False, verbose=False, direct=False, seed=None)
+        args = SimpleNamespace(roundlevel=0, grepable=False, verbose=False)
         with mock.patch("builtins.input", side_effect=["1 +", "1 + 1", "exit"]):
             with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
                 with mock.patch("sys.stderr", new=io.StringIO()) as stderr:

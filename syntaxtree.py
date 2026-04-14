@@ -154,20 +154,6 @@ class Import(AST):
         return "Import: {}".format(self.path.value)
 
 
-class Sum(AST):
-    """Independent repeated evaluation and addition."""
-    def __init__(self, count, value, token):
-        self.count = count
-        self.value = value
-        self.token = token
-
-    def __repr__(self):
-        result = "Sum"
-        result += '\t|'.join(('\n' + "count: " + str(self.count).lstrip()).splitlines(True))
-        result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
-        return result
-
-
 class Named(AST):
     """Attach a semantic name to another AST value."""
     def __init__(self, name, value):
@@ -178,22 +164,6 @@ class Named(AST):
     def __repr__(self):
         result = "Named: {}".format(self.name.value)
         result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
-        return result
-
-
-class Render(AST):
-    """Declarative render statement."""
-    def __init__(self, entries, token):
-        self.entries = entries
-        self.token = token
-
-    def __repr__(self):
-        result = "Render"
-        for value, label in self.entries:
-            rendered = str(value).lstrip()
-            if label is not None:
-                rendered += ' as "{}"'.format(label.value)
-            result += '\t|'.join(('\n' + "entry: " + rendered).splitlines(True))
         return result
 
 
