@@ -21,6 +21,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `|/` is shorthand for “else, use half damage”.
 - `[a:b]` creates an unnamed sweep over an inclusive integer range.
 - `[a, b, c]` creates an unnamed sweep over explicit values.
+- `[name:a:b]` creates a named sweep over an inclusive integer range.
+- `[name:a, b, c]` creates a named sweep over explicit values.
 - `expr[index]` filters a distribution by one value or sweep of values.
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
@@ -64,6 +66,7 @@ There are a few different ways to read the result depending on what you want:
   `d20 >= 11` returns a distribution over `true` and `false`.
 - Swept distributions:
   `d20 >= [5:10]` returns one boolean distribution for each sweep value.
+  `d20 >= [AC:10:20]` does the same, but keeps the axis name for later display.
 - Branched distributions:
   `d20 >= 11 -> 5 | 0` returns a weighted outcome distribution.
 - Scalar summaries:
@@ -136,6 +139,7 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 ```dice
 hit(ac) = d20 >= ac; hit(11)
 hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
+hit(ac) = d20 >= ac; hit([AC:10:15])
 crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
@@ -145,6 +149,7 @@ d20
 2d6
 d20 >= 11
 [5:7]
+[AC:5:7]
 d20 == [5:7]
 d20 >= [5,11]
 d20 >= 11 -> 5

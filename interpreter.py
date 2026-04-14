@@ -164,6 +164,16 @@ class Interpreter():
             self.current_dir = previous_dir
             self.import_stack.pop()
 
+    def visit_Named(self, node):
+        value = self.visit(node.value)
+        if not isinstance(value, Sweep):
+            self.exception("Named brackets require a sweep value")
+
+        cache_key = (id(node), value.values, node.name.value)
+        if cache_key not in self._sweep_cache:
+            self._sweep_cache[cache_key] = Sweep(value.values, name=node.name.value)
+        return self._sweep_cache[cache_key]
+
     def visit_Call(self, node):
         function_name = node.name.value
         if function_name not in self.function_scope:

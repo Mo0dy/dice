@@ -4,7 +4,7 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum
+from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Sum, Named
 from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, LABEL, XLABEL, YLABEL, PLOT, SHOW, DOT, MATCH, AS, OTHERWISE, IMPORT, SUM
 
 
@@ -78,13 +78,19 @@ class DiceParser(Parser):
     def brack(self):
         token = self.current_token
         self.eat(LBRACK)
+        sweep_name = None
+        if self.current_token.type == ID and self.peek_token.type == COLON:
+            sweep_name = Val(self.current_token)
+            self.eat(ID)
+            self.eat(COLON)
         value1 = self.expr()
         if self.current_token.type == COLON:
             token = self.current_token
             self.eat(COLON)
             value2 = self.expr()
             self.eat(RBRACK)
-            return BinOp(value1, token, value2)
+            node = BinOp(value1, token, value2)
+            return Named(sweep_name, node) if sweep_name else node
 
         # Comma seperated values could also be implemented with a bounch of unary operators appending to a list
         # Somehow this (variadic operator) seems more straigtforward to me
@@ -93,7 +99,8 @@ class DiceParser(Parser):
             self.eat(COMMA)
             nodes.append(self.expr())
         self.eat(RBRACK)
-        return VarOp(token, nodes)
+        node = VarOp(token, nodes)
+        return Named(sweep_name, node) if sweep_name else node
 
     def match_expr(self):
         token = self.current_token

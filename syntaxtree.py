@@ -168,6 +168,19 @@ class Sum(AST):
         return result
 
 
+class Named(AST):
+    """Attach a semantic name to another AST value."""
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+        self.token = name.token
+
+    def __repr__(self):
+        result = "Named: {}".format(self.name.value)
+        result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

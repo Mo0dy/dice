@@ -39,6 +39,20 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result.cells[(5,)][TRUE], 0.8)
         self.assertAlmostEqual(result.cells[(7,)][FALSE], 0.3)
 
+    def test_named_range_sweep_carries_axis_name(self):
+        result = interpret_statement("d20 >= [AC:5:7]")
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "AC")
+        self.assertEqual(result.axes[0].values, (5, 6, 7))
+        self.assertAlmostEqual(result.cells[(5,)][TRUE], 0.8)
+
+    def test_named_explicit_sweep_carries_axis_name(self):
+        result = interpret_statement("d20 >= [AC:5, 7, 9]")
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "AC")
+        self.assertEqual(result.axes[0].values, (5, 7, 9))
+        self.assertAlmostEqual(result.cells[(9,)][TRUE], 0.6)
+
     def test_branching_returns_distribution_not_table(self):
         result = only_distribution(interpret_statement("d20 >= 11 -> 5 | 0"))
         self.assertAlmostEqual(result[5], 0.5)
@@ -122,6 +136,11 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(result.axes[0].values, (1, 2, 3))
         self.assertAlmostEqual(result.cells[(1,)][1], 0.5)
         self.assertAlmostEqual(result.cells[(3,)][6], 0.125)
+
+    def test_sum_preserves_named_sweep_axes(self):
+        result = interpret_statement("sum(2, d20 >= [AC:10:11] -> 1 | 0)")
+        self.assertEqual(result.axes[0].name, "AC")
+        self.assertEqual(result.axes[0].values, (10, 11))
 
     def test_sum_direct_backend_samples_independent_runs(self):
         result = only_distribution(interpret_statement("sum(3, d2)", engine=DirectDiceEngine(seed=1)))
