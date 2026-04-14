@@ -6,7 +6,7 @@
 
 from diceparser import DiceParser
 from lexer import Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, PLUS, MINUS, MUL, DIV, RES, ELSE, EOF, COLON, ADV, DIS, ELSEDIV, HIGH, LOW, LBRACK, AVG, PROP, ID, ASSIGN, SEMI, PRINT, STRING, XLABEL, YLABEL, LABEL, PLOT, SHOW, DOT
-from diceengine import Diceengine
+from diceengine import Diceengine, Sweep
 import viewer
 
 
@@ -54,14 +54,13 @@ class Interpreter():
             return last_result
 
         elif node.op.type == LBRACK:
-            # construct list of integers from subnodes in node.nodes
-            ret_val = []
+            values = []
             for node in node.nodes:
                 new_val = self.visit(node)
-                if type(new_val) != int:
-                    self.exception("Constructing list expected int got: {}".format(type(new_val)))
-                ret_val.append(new_val)
-            return ret_val
+                if type(new_val) not in [int, str]:
+                    self.exception("Constructing sweep expected scalar got: {}".format(type(new_val)))
+                values.append(new_val)
+            return Sweep(values)
 
         self.exception("{} not implemented".format(node))
 
@@ -103,14 +102,14 @@ class Interpreter():
         if node.op.type == ELSEDIV:
             return Diceengine.reselsediv(self.visit(node.left), self.visit(node.right))
         if node.op.type == COLON:
-            # generate A list ranging value1 to value2 of integers
+            # generate a sweep ranging value1 to value2 of integers
             val1 = self.visit(node.left)
             if type(val1) != int:
                 self.exception("Expected int got {}".format(type(val1)))
             val2 = self.visit(node.right)
             if type(val2) != int:
                 self.exception("Expected int got {}".format(type(val2)))
-            return [x for x in range(val1, val2 + 1)]
+            return Sweep(range(val1, val2 + 1))
         if node.op.type == LBRACK:
             return Diceengine.choose(self.visit(node.left), self.visit(node.right))
         if node.op.type == DOT:

@@ -15,7 +15,7 @@ The repository implements a small domain-specific language for dice and probabil
 - `interpreter.py`
   Walks the AST and dispatches actual semantics to `Diceengine` or `viewer`.
 - `diceengine.py`
-  Holds the core math and type behavior: distributions, result lists, rolling, comparisons, resolving damage, indexing, and arithmetic.
+  Holds the core math and type behavior: distributions, sweeps, branching, indexing, and arithmetic.
 - `viewer.py`
   Provides Matplotlib-backed plotting helpers and a lightweight command protocol for labels, axes, and titles.
 
@@ -42,10 +42,10 @@ The repository implements a small domain-specific language for dice and probabil
   Plain scalar values.
 - `Distrib`
   Probability distribution of outcome -> probability.
-- `ResultList`
-  Target/value mapping, typically used for chance-to-hit or resolved damage tables.
-- `list`
-  Python lists used for ranges and multi-target comparisons.
+- `Distributions`
+  Sweep-aware collection of one or more `Distrib` values.
+- `Sweep`
+  Finite input axis used to evaluate an expression over multiple values.
 
 ## Change Boundaries
 

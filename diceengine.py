@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 
-"""Does aritmetic on stochastical distributions.
+"""Sweep-aware probability primitives for the dice language."""
 
-Datatypes:
-Result List: Holds results and average values
-Distrib: Holds values and probabilities
-list: (Python) holds values
-int: (Pythoon) holds one value
-"""
-
-from math import floor, inf
+from dataclasses import dataclass
+from itertools import product
+from math import inf
 
 # note that comb only exists in python 3.8
 # but it's faster then just calculating factorials
@@ -22,592 +17,501 @@ except ImportError:
         return factorial(n) / factorial(k) / factorial(n - k)
 
 
-class ResultList(object):
-    """Holds a dictionary with values and results
-
-    e.g. {10: 0.7, 11: 0.8}"""
-   
-    def __init__(self, result_list=None):
-        # Using sentinel value to avoid mutable default
-        self.result_list = result_list if result_list else {}
-
-    def __repr__(self):
-        return str(self.result_list)
-
-    def __getitem__(self, key):
-        """Return value of key if existing else 0"""
-        return self.result_list[key] if key in self.result_list else 0
-
-    def __setitem__(self, key, value):
-        self.result_list[key] = value
-
-    def items(self):
-        """Return iterable of internal result list"""
-        return self.result_list.items()
+TRUE = "true"
+FALSE = "false"
 
 
 class Distrib(object):
-    """Holds a stocahstic distribution of values and probabilites
-
-    example: {1: 0.5, 2: 0.5} for a d2
-    """
+    """Probability distribution of outcomes to probability mass."""
 
     def __init__(self, distrib=None):
-        # Using sentinel value to avoid mutable default
         self.distrib = distrib if distrib else {}
 
     def __repr__(self):
         return str(self.distrib)
 
     def __getitem__(self, key):
-        """Returns probability of key if key exists else 0"""
         return self.distrib[key] if key in self.distrib else 0
 
     def __setitem__(self, key, value):
         self.distrib[key] = value
 
     def items(self):
-        """Return iterable of distribution"""
         return self.distrib.items()
 
-    def average(self):
-        """Returns average value of statistic distribution"""
-        # multiply every entry with changse to occur
-        return sum([dice * prop for dice, prop in self.items()])
+    def keys(self):
+        return self.distrib.keys()
 
     def probabilities(self):
-        """Returns iterable of probabilities"""
         return self.distrib.values()
 
+    def total_probability(self):
+        return sum(self.probabilities())
+
+    def average(self):
+        total = 0
+        for outcome, probability in self.items():
+            if not isinstance(outcome, (int, float)):
+                raise Exception("Distrib average expects numeric outcomes, got {}".format(type(outcome)))
+            total += outcome * probability
+        return total
+
+
+@dataclass(frozen=True)
+class SweepAxis:
+    key: str
+    name: str
+    values: tuple
+
+
+class Sweep(object):
+    """Finite sweep of candidate values, optionally named."""
+
+    counter = 0
+
+    def __init__(self, values, name=None):
+        deduped = tuple(dict.fromkeys(values))
+        if not deduped:
+            raise Exception("Sweep requires at least one value")
+        self.values = deduped
+        self.name = name
+        self.key = "sweep_{}".format(Sweep.counter)
+        Sweep.counter += 1
+
+    def axis(self):
+        axis_name = self.name if self.name else self.key
+        return SweepAxis(self.key, axis_name, self.values)
+
+    def __repr__(self):
+        label = "{}:".format(self.name) if self.name else ""
+        return "[{}{}]".format(label, ", ".join(str(value) for value in self.values))
+
+
+class Distributions(object):
+    """Set of distributions indexed by zero or more sweep axes."""
+
+    def __init__(self, axes=None, cells=None):
+        self.axes = tuple(axes or ())
+        self.cells = cells if cells else {(): Distrib()}
+
+    @staticmethod
+    def scalar(value):
+        return Distributions((), {(): _coerce_to_distrib(value)})
+
+    @staticmethod
+    def from_sweep(sweep):
+        axis = sweep.axis()
+        cells = {(value,): _coerce_to_distrib(value) for value in axis.values}
+        return Distributions((axis,), cells)
+
+    def is_unswept(self):
+        return len(self.axes) == 0
+
+    def only_distribution(self):
+        return self.cells[()]
+
+    def lookup(self, combined_axes, coordinates):
+        if self.is_unswept():
+            return self.only_distribution()
+
+        index_by_key = {axis.key: idx for idx, axis in enumerate(combined_axes)}
+        local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in self.axes)
+        return self.cells[local_coordinates]
+
+    def round_probabilities(self, digits):
+        if not digits:
+            return self
+        for distrib in self.cells.values():
+            for outcome, probability in list(distrib.items()):
+                distrib[outcome] = round(probability, digits)
+        return self
+
+    def _display_key(self, coordinates):
+        if len(self.axes) == 1:
+            axis = self.axes[0]
+            value = coordinates[0]
+            if axis.name.startswith("sweep_"):
+                return value
+            return "{}={}".format(axis.name, value)
+        parts = []
+        for axis, value in zip(self.axes, coordinates):
+            label = axis.name if not axis.name.startswith("sweep_") else axis.key
+            parts.append("{}={}".format(label, value))
+        return tuple(parts)
+
+    def __repr__(self):
+        if self.is_unswept():
+            return repr(self.only_distribution())
+        rendered = {}
+        for coordinates, distrib in self.cells.items():
+            rendered[self._display_key(coordinates)] = distrib.distrib
+        return str(rendered)
+
+
+def _coerce_to_distrib(value):
+    if isinstance(value, Distrib):
+        return value
+    if isinstance(value, Distributions):
+        if not value.is_unswept():
+            raise Exception("Expected an unswept Distributions value")
+        return value.only_distribution()
+    if isinstance(value, (int, float, str)):
+        return Distrib({value: 1})
+    raise Exception("Can't convert {} to Distrib".format(type(value)))
+
+
+def _coerce_to_distributions(value):
+    if isinstance(value, Distributions):
+        return value
+    if isinstance(value, Sweep):
+        return Distributions.from_sweep(value)
+    return Distributions.scalar(value)
+
+
+def _union_axes(distribution_sets):
+    axes = []
+    seen = set()
+    for distribution_set in distribution_sets:
+        for axis in distribution_set.axes:
+            if axis.key not in seen:
+                axes.append(axis)
+                seen.add(axis.key)
+    return tuple(axes)
+
+
+def lift_sweeps(function):
+    """Lift a plain distribution operator over all sweep assignments."""
+
+    def wrapped(*args):
+        distribution_sets = [_coerce_to_distributions(arg) for arg in args]
+        combined_axes = _union_axes(distribution_sets)
+        coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
+        cells = {}
+        for coordinates in coordinates_space:
+            plain_args = [distribution_set.lookup(combined_axes, coordinates) for distribution_set in distribution_sets]
+            cells[coordinates] = _coerce_to_distrib(function(*plain_args))
+        return Distributions(combined_axes, cells)
+
+    return wrapped
+
+
+def _require_numeric(value, opname):
+    if not isinstance(value, (int, float)):
+        raise Exception("{} expects numeric outcomes, got {}".format(opname, type(value)))
+
+
+def _require_int(value, opname):
+    if not isinstance(value, int):
+        raise Exception("{} expects integer outcomes, got {}".format(opname, type(value)))
+
+
+def _pairwise_numeric(left, right, operator, opname):
+    result = Distrib()
+    for left_value, left_probability in left.items():
+        _require_numeric(left_value, opname)
+        for right_value, right_probability in right.items():
+            _require_numeric(right_value, opname)
+            result[operator(left_value, right_value)] += left_probability * right_probability
+    return result
+
+
+def _bool_mass(condition):
+    invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
+    if invalid:
+        raise Exception("Branching expects boolean outcomes, got {}".format(invalid))
+    return condition[TRUE], condition[FALSE]
+
+
 class Diceengine(object):
-    """Arithmetic methods for handling distributions"""
-    # NOTE: leave in class wrapper as to not seem to similar to default methods
+    """Arithmetic and sweep-aware helpers for dice semantics."""
 
     @staticmethod
     def exception(message):
-        """Raises an exception of the Diceengine"""
-        # TODO: more nuonced custom exceptions
         raise Exception("Diceengine exception: {}".format(message))
 
     @staticmethod
-    def choose(left, right):
-        """Indexes Distrib (left) with list (right)"""
-        if not isinstance(left, Distrib) or not type(right) == list:
-            Diceengine.exception("Can't choose {} from {}".format(type(left), type(right)))
-        ret_distrib = Distrib()
-        for dice, prop in left.items():
-            if dice in right:
-                ret_distrib[dice] = prop
-        return ret_distrib
+    def _roll_plain(n, s):
+        _require_int(n, "roll")
+        _require_int(s, "roll")
+        if n < 0 or s <= 0:
+            Diceengine.exception("Roll expects positive sides and non-negative dice count")
+        if n == 0:
+            return Distrib({0: 1})
 
-    @staticmethod
-    def choose_single(left, right):
-        """Indexes Distrib (left) with single value (right)"""
-        if not isinstance(left, Distrib) or not type(right) == int:
-            Diceengine.exception("Can't choose {} from {}".format(type(left), type(right)))
-        return left[right]
-
-    @staticmethod
-    def res(result, distrib):
-        """Evaluates average damage (distrib) over result
-
-        This is used to convert a hitchangse over ac table to a damage over ac table"""
-        if type(distrib) == int:
-            distrib = Distrib({distrib: 1})
-        if not isinstance(result, ResultList) or not isinstance(distrib, Distrib):
-            Diceengine.exception("Can't resolve {} with {}".format(type(result), type(distrib)))
-
-        # cache average
-        distrib_average = distrib.average()
-
-        # place to store result
-        resolved_result = ResultList()
-
-        # to resolve check hitchangse (stored for every ac(key) as value)
-        # and multiply with distrib_average
-        for value, prop in result.items():
-            resolved_result[value] = prop * distrib_average
-        return resolved_result
-
-    @staticmethod
-    def resunary(value):
-        """Return resolution (average) of a single entry.
-
-        Implemented for Distribution only as average.
-        For int just return value of int"""
-        # NOTE: value is wrapped in a ResultList because it fundamentaly is a result
-        # and this language has no float type
-        if type(value) == int:
-            return ResultList({"Int": value})
-
-        if isinstance(value, Distrib):
-            return value.average()
-
-        if isinstance(value, ResultList):
-            Diceengine.exception("Result List not implemented")
-
-        Diceengine.exception("Can't resolve {}".format(type(value)))
-
-
-    @staticmethod
-    def prop(value):
-        """Return summed probability of all events"""
-        if isinstance(value, Distrib):
-            return sum(value.probabilities())
-
-        Diceengine.exception("Can't generate probability for {}".format(value))
-
-
-    @staticmethod
-    def reselse(result, distrib_if, distrib_else):
-        """Evaluates average damage of two distributions over one result (damage on hit and miss)
-        This is used to convert a hitchangse over ac table to damage over ac table.
-
-        result: hitchangse
-        distrib_if: when hit then do this damage.
-        distrib_else: when miss then do this damage
-        """
-
-        # convert integer to 100% change distribution
-        if type(distrib_if) == int:
-            distrib_if = Distrib({distrib_if: 1})
-        if type(distrib_else) == int:
-            distrib_else = Distrib({distrib_else: 1})
-
-        if not isinstance(result, ResultList) \
-           or not isinstance(distrib_if, Distrib) \
-           or not isinstance(distrib_else, Distrib):
-            Diceengine.exception("Can't resolve {} with {} and {}".format(type(result),
-                                                                          type(distrib_if),
-                                                                          type(distrib_else)))
-
-        # sum distribution
-        average_value_if = distrib_if.average()
-        average_value_else = distrib_else.average()
-
-        # to store result
-        resolved_result = ResultList()
-
-        # to resolve check hitchangse (stored for every ac(key) as value)
-        # and multiply with distrib_average on hit else with miss
-        for value, prop in result.items():
-            resolved_result[value] = prop * average_value_if + (1 - prop) * average_value_else
-        return resolved_result
-
-    @staticmethod
-    def reselsediv(result, distrib):
-        """Evaluates average damage over dc uses distrib if successful else divides (integer) by 2 if unsuccessful"""
-        return Diceengine.reselse(result, distrib, Diceengine.div(distrib, 2))
-
-    @staticmethod
-    def roll(n, s):
-        """Generate probability distribution for the roll of n dice with s sides"""
-        # NOTE: fallback for python < 3.8
-        # def nck(n, k):
-        #     return factorial(n) / (factorial(k)) / factorial(n - k)
         results = Distrib()
         for p in range(1, s * n + 1):
             c = (p - n) // s
-            P = sum([(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1) ]) / s ** n
-            if P != 0:
-                results[p] = P
+            probability = sum(
+                [(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1)]
+            ) / s ** n
+            if probability != 0:
+                results[p] = probability
         return results
 
     @staticmethod
+    @lift_sweeps
+    def choose(left, right):
+        result = Distrib()
+        for selected_value, selection_probability in right.items():
+            if selected_value in left.keys():
+                result[selected_value] += left[selected_value] * selection_probability
+        return result
+
+    @staticmethod
+    @lift_sweeps
+    def choose_single(left, right):
+        result = Distrib()
+        for selected_value, selection_probability in right.items():
+            result[left[selected_value]] += selection_probability
+        return result
+
+    @staticmethod
+    @lift_sweeps
+    def res(condition, distrib):
+        true_mass, _ = _bool_mass(condition)
+        result = Distrib()
+        for outcome, probability in distrib.items():
+            result[outcome] += true_mass * probability
+        return result
+
+    @staticmethod
+    @lift_sweeps
+    def resunary(value):
+        return Distrib({value.average(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def prop(value):
+        return Distrib({value.total_probability(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def reselse(condition, distrib_if, distrib_else):
+        true_mass, false_mass = _bool_mass(condition)
+        result = Distrib()
+        for outcome, probability in distrib_if.items():
+            result[outcome] += true_mass * probability
+        for outcome, probability in distrib_else.items():
+            result[outcome] += false_mass * probability
+        return result
+
+    @staticmethod
+    def reselsediv(condition, distrib):
+        return Diceengine.reselse(condition, distrib, Diceengine.div(distrib, 2))
+
+    @staticmethod
+    @lift_sweeps
+    def roll(n, s):
+        result = Distrib()
+        for dice_count, dice_count_probability in n.items():
+            _require_int(dice_count, "roll")
+            for sides, sides_probability in s.items():
+                _require_int(sides, "roll")
+                rolled = Diceengine._roll_plain(dice_count, sides)
+                weight = dice_count_probability * sides_probability
+                for outcome, probability in rolled.items():
+                    result[outcome] += weight * probability
+        return result
+
+    @staticmethod
     def rollsingle(dice):
-        """Generates distribution for one single diceroll"""
-        if type(dice) != int:
-            Diceengine.exception("Can't roll with {}".format(type(dice)))
-        return Distrib({n: 1 / dice for n in range(1, dice + 1)})
+        return Diceengine.roll(1, dice)
 
     @staticmethod
+    @lift_sweeps
     def rolladvantage(dice):
-        """Generates distribution for one roll with advantage
-        (Roll twice and pick the highest)"""
-        # returns probability to roll x with advantage
-        advroll = lambda x: 2 / dice ** 2 * (x - 1) + (1 / dice) ** 2
-        if type(dice) != int:
-            Diceengine.exception("Can't roll with {}".format(type(dice)))
-        return Distrib({n: advroll(n) for n in range(1, dice + 1)})
+        result = Distrib()
+        for dice_sides, dice_probability in dice.items():
+            _require_int(dice_sides, "advantage")
+            if dice_sides <= 0:
+                Diceengine.exception("Can't roll advantage with non-positive dice sides")
+            for outcome in range(1, dice_sides + 1):
+                advantage_probability = 2 / dice_sides ** 2 * (outcome - 1) + (1 / dice_sides) ** 2
+                result[outcome] += dice_probability * advantage_probability
+        return result
 
     @staticmethod
+    @lift_sweeps
     def rolldisadvantage(dice):
-        """Generates distribution for one roll with disadvantage
-        (Roll twice and pick the lowest)"""
-        # returns probability to roll x with disadvantage
-        disadvroll = lambda x: 2 / dice ** 2 * (dice - x) + (1 / dice) ** 2
-        if type(dice) != int:
-            Diceengine.exception("Can't roll with {}".format(type(dice)))
-        return Distrib({n: disadvroll(n) for n in range(1, dice + 1)})
+        result = Distrib()
+        for dice_sides, dice_probability in dice.items():
+            _require_int(dice_sides, "disadvantage")
+            if dice_sides <= 0:
+                Diceengine.exception("Can't roll disadvantage with non-positive dice sides")
+            for outcome in range(1, dice_sides + 1):
+                disadvantage_probability = 2 / dice_sides ** 2 * (dice_sides - outcome) + (1 / dice_sides) ** 2
+                result[outcome] += dice_probability * disadvantage_probability
+        return result
 
     @staticmethod
-    def rollhigh(n, s, nh):
-        """Roll n s sided dice and pick the highest nh"""
+    def _rollhigh_plain(n, s, nh):
+        _require_int(n, "rollhigh")
+        _require_int(s, "rollhigh")
+        _require_int(nh, "rollhigh")
+        if n < 0 or s <= 0 or nh < 0:
+            Diceengine.exception("rollhigh expects positive sides and non-negative counts")
 
-        if type(n) != int or type(s) != int or type(nh) != int:
-            Diceengine.exception("Can't rollhigh with {}, {} and {}".format(type(n), type(s), type(nh)))
-
-        # TODO HACK proper maths
-        #
-        # This basically summs up all paths that lead to a certain outcome by traversing all of them.
-        # Number of calls to count_children is s ** n + 1 or something so yeah ... quite big
-
-        # traverses every dice roll combination
-        def count_children(s, n_left, results, distrib):
-            """Traverses every dice roll combination by recursion
-            s: dicesides
-            n_left: rolls left
-            results: currently picked results(max rolls)
-            distrib: place to hold results"""
-
+        def count_children(sides, n_left, results, distrib):
             if n_left == 0:
-                # last node. Count one more path to the result
                 distrib[sum(results)] += 1
                 return
-            # traverse the tree
-            for i in range(1, s + 1):
+            for value in range(1, sides + 1):
                 results_min = min(results)
                 new_results = results.copy()
-                if i > results_min:
-                    new_results[results.index(results_min)] = i
-                count_children(s, n_left - 1, new_results, distrib)
+                if value > results_min:
+                    new_results[results.index(results_min)] = value
+                count_children(sides, n_left - 1, new_results, distrib)
 
-        # use distrib to store combinations because after dividing by total number of
-        # possible combinations it becomes a probability and because it is 0 initialized
         combinations = Distrib()
-
-        # count possible results for every outcome
         count_children(s, n, [0] * nh, combinations)
-
-        # total number of combinations
         total = s ** n
-        for key, value in combinations.items():
+        for key, value in list(combinations.items()):
             combinations[key] = value / total
-        return Distrib(combinations)
+        return combinations
 
     @staticmethod
-    def rolllow(n, s, nl):
-        # NOTE: copied from rollhigh
-        """Roll n s sided dice and take nl of the lowest rolls
+    def _rolllow_plain(n, s, nl):
+        _require_int(n, "rolllow")
+        _require_int(s, "rolllow")
+        _require_int(nl, "rolllow")
+        if n < 0 or s <= 0 or nl < 0:
+            Diceengine.exception("rolllow expects positive sides and non-negative counts")
 
-        n = dicenum
-        s = dicesides
-        nh = number of heighest rolls picked
-        """
-
-        # TODO HACK proper maths
-        #
-        # This basically summs up all paths that lead to a certain outcome by traversing all of them.
-        # Number of calls to count_children is s ** n + 1 or something so yeah ... quite big
-
-        if type(n) != int or type(s) != int or type(nl) != int:
-            Diceengine.exception("Can't rolllow with {}, {} and {}".format(type(n), type(s), type(nl)))
-
-        # traverses every dice roll combination
-        def count_children(s, n_left, results, distrib):
-            """Traverses every dice roll combination by recursion
-            s: dicesides
-            n_left: rolls left
-            results: currently picked results(max rolls)
-            distrib: place to hold results"""
+        def count_children(sides, n_left, results, distrib):
             if n_left == 0:
                 distrib[sum(results)] += 1
                 return
-            # traverse the tree
-            for i in range(1, s + 1):
+            for value in range(1, sides + 1):
                 results_max = max(results)
                 new_results = results.copy()
-                if i < results_max:
-                    new_results[results.index(results_max)] = i
-                count_children(s, n_left - 1, new_results, distrib)
+                if value < results_max:
+                    new_results[results.index(results_max)] = value
+                count_children(sides, n_left - 1, new_results, distrib)
 
-        # use distrib to store combinations because after dividing by total number of
-        # possible combinations it becomes a probability and because it is 0 initialized
         combinations = Distrib()
-
-        # count possible results for every outcome
         count_children(s, n, [inf] * nl, combinations)
-
-        # total number of combinations
         total = s ** n
-        for key, value in combinations.items():
+        for key, value in list(combinations.items()):
             combinations[key] = value / total
-        return Distrib(combinations)
+        return combinations
 
     @staticmethod
+    @lift_sweeps
+    def rollhigh(n, s, nh):
+        result = Distrib()
+        for dice_count, dice_count_probability in n.items():
+            for sides, sides_probability in s.items():
+                for keep_count, keep_probability in nh.items():
+                    rolled = Diceengine._rollhigh_plain(dice_count, sides, keep_count)
+                    weight = dice_count_probability * sides_probability * keep_probability
+                    for outcome, probability in rolled.items():
+                        result[outcome] += weight * probability
+        return result
+
+    @staticmethod
+    @lift_sweeps
+    def rolllow(n, s, nl):
+        result = Distrib()
+        for dice_count, dice_count_probability in n.items():
+            for sides, sides_probability in s.items():
+                for keep_count, keep_probability in nl.items():
+                    rolled = Diceengine._rolllow_plain(dice_count, sides, keep_count)
+                    weight = dice_count_probability * sides_probability * keep_probability
+                    for outcome, probability in rolled.items():
+                        result[outcome] += weight * probability
+        return result
+
+    @staticmethod
+    @lift_sweeps
     def add(left, right):
-        """Add two variables together.
-
-        add is cumtative
-
-        int + int = int               (adds two ints)
-        int + list = list             (adds int to every entry)
-        int + distrib = distrib       (adds int to every key)
-        distrib + disrib = distrib    (generates probabilities for all combinations of adding values)
-        result + result = result      (combines list adding values where keys match)
-        """
-        # Note that adding is cumutative so it only has to be implemented one way
-        # TODO: do this better with error handling
-        if type(left) in [int, float]:
-            if type(right) in [int, float]:
-                return left + right
-            elif type(right) == list:
-                return [x + left for x in right]
-            elif isinstance(right, Distrib):
-                # new distrib to store results because keys change
-                new_distrib = Distrib()
-                for dice, prop in right.items():
-                    new_distrib[dice + left] = prop
-                return new_distrib
-            # NOTE: copied from Diceengine.mul
-            elif isinstance(right, ResultList):
-                new_results = ResultList()
-                for key, value in right.items():
-                    new_results[key] = value + left
-                return new_results
-
-        elif type(left) == list:
-            if type(right) in [int, float]:
-                # has already been implemented
-                return Diceengine.add(right, left)
-        elif isinstance(left, Distrib):
-            if type(right) in [int, float]:
-                # has already been implemented
-                return Diceengine.add(right, left)
-            elif isinstance(right, Distrib):
-                # add Distrib to Distrib
-                new_distrib = Distrib()
-                # adding two distributions together (e.g. 1d20 + 1d4) generates all possible
-                # combinations and summes their changses over a given value
-                for d1, p1 in left.items():
-                    for d2, p2 in right.items():
-                        new_distrib[d1 + d2] += p1 * p2
-                return new_distrib
-        elif isinstance(left, ResultList):
-            if type(right) in [int, float]:
-                # already implemented
-                return Diceengine.add(right, left)
-            elif isinstance(right, ResultList):
-                ret_list = ResultList()
-                # add Resultlist to resultlist
-                for result, value in left.items():
-                    ret_list[result] += value
-                for result, value in right.items():
-                    ret_list[result] += value
-                return ret_list
-
-        Diceengine.exception("Can't add {} to {}".format(type(left), type(right)))
+        return _pairwise_numeric(left, right, lambda a, b: a + b, "add")
 
     @staticmethod
+    @lift_sweeps
     def sub(left, right):
-        """ Subtracts one variable from another
-
-        int - int = int               (subtracts two ints)
-        list - int = list             (subtracts int from every entry)
-        int - list = list             (subtracts every list entry from int to generate new list)
-        int - distrib = distrib       (subtracts every distrib key form int to generate new distrib)
-        distrib - int = distrib       (subtracts int from every key)
-        distrib - disrib = distrib    (generates probabilities for all combinations of subtracting values)
-        """
-        # This basically just calls the add method
-      
-        # NOTE: copied from add
-        if type(left) == int:
-            if type(right) == int:
-                # sub int from int
-                return left - right
-            elif type(right) == list:
-                # sub list from int
-                return [left - x for x in right]
-            elif isinstance(right, Distrib):
-                # sub distrib from int
-                new_distrib = Distrib()
-                # sub every key in distrib from left
-                for dice, prop in right.items():
-                    new_distrib[left - dice] = prop
-                return new_distrib
-        elif type(left) == list:
-            if type(right) == int:
-                # NOTE: copyied from above
-                # sub int from list
-                return [x - right for x in left]
-        elif isinstance(left, Distrib):
-            if type(right) == int:
-                # NOTE: copied form above
-                # sub int from Distrib
-                new_distrib = Distrib()
-                # sub int from every key in Distrib
-                for dice, prop in left.items():
-                    new_distrib[dice - right] = prop
-                return new_distrib
-            elif isinstance(right, Distrib):
-                # sub Distrib from Distrib
-                new_distrib = Distrib()
-                # subbing two distributions from another (e.g. 1d20 + 1d4) generates all possible
-                # combinations and summes their(outcomes) changses over a given value
-                for d1, p1 in left.items():
-                    for d2, p2 in right.items():
-                        new_distrib[d1 - d2] += p1 * p2
-                return new_distrib
-
-        Diceengine.exception("Can't sub {} from {}".format(type(left), type(right)))
+        return _pairwise_numeric(left, right, lambda a, b: a - b, "sub")
 
     @staticmethod
+    @lift_sweeps
     def mul(left, right):
-        """Multiplies two variables
-
-        is cumutative
-       
-        int * int = int
-        int * list = list
-        int * distrib = distrib
-        """
-
-        # TODO: cleanup with proper exception handling
-
-        if type(left) in [int, float]:
-            if type(right) in [int, float]:
-                return left * right
-            elif type(right) == list:
-                return [x * left for x in right]
-            elif isinstance(right, Distrib):
-                # NOTE: copied from sub
-                new_distrib = Distrib()
-                # mul every key in distrib with left
-                for dice, prop in right.items():
-                    new_distrib[left * dice] = prop
-                return new_distrib
-            elif isinstance(right, ResultList):
-                new_results = ResultList()
-                for key, value in right.items():
-                    new_results[key] = value * left
-                return new_results
-        elif type(left) == list:
-            if type(right) in [int, float]:
-                # already implemented before
-                return Diceengine.mul(right, left)
-        elif isinstance(left, Distrib):
-            if type(right) in [int, float]:
-                # already implemented
-                return Diceengine.mul(right, left)
-        elif isinstance(left, ResultList):
-            if type(right) in [int, float]:
-                # already implemented
-                return Diceengine.mul(right, left)
-
-        Diceengine.exception("Can't multiply {} with {}".format(type(left), type(right)))
+        return _pairwise_numeric(left, right, lambda a, b: a * b, "mul")
 
     @staticmethod
+    @lift_sweeps
     def div(left, right):
-        """Divides two variables with INTEGER DIVISION
-
-        int / int = int
-        list / int = list
-        distrib / int = distrib"""
-        if type(left) == int:
-            if type(right) == int:
-                # NOTE: Integer division!
-                return left // right
-        elif type(left) == list:
-            if type(right) == int:
-                # integer division for every element. Remove extra elements
-                return list(set([x // right for x in left]))
-        elif isinstance(left, Distrib):
-            if type(right) == int:
-                # integer divide every key
-                # NOTE: careful this can generate multiple new entries
-                new_distrib = Distrib()
-                for dice, prop in left.items():
-                    new_distrib[dice // 2] += prop
-                return new_distrib
-
-        Diceengine.exception("Can't divide {} by {}".format(type(left), type(right)))
+        result = Distrib()
+        for left_value, left_probability in left.items():
+            _require_numeric(left_value, "div")
+            for right_value, right_probability in right.items():
+                _require_numeric(right_value, "div")
+                if right_value == 0:
+                    Diceengine.exception("Can't divide by zero")
+                result[left_value // right_value] += left_probability * right_probability
+        return result
 
     @staticmethod
-    def compare(left, right, operator):
-        """Calculates changse for distrib to result true if compared with operator for every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-
-        if operator not in ['<=', '>=', '<', '>', '==']:
+    def _compare_plain(left, right, operator):
+        if operator not in ["<=", ">=", "<", ">", "=="]:
             Diceengine.exception("Unknown operator {}".format(operator))
 
-        # Only compare against lists
-        if type(left) == int:
-            left = [left]
-        if type(right) == int:
-            right = [right]
-
-        # assume to be comparing distrib to list input
-        distrib = left
-        list_input = right
-
-
-        # switch direction for rest of the code
-        # (so we only have to handle the case where left is the distribution)
-        if type(distrib) == list and isinstance(list_input, Distrib):
-            if operator == '<=':
-                operator = '>='
-            if operator == ">=":
-                operator = "<="
-            if operator == "<":
-                operator = ">"
-            if operator == ">":
-                operator = "<"
-
-        if type(list_input) != list or not isinstance(distrib, Distrib):
-            Diceengine.exception("Can't compare {} with {}".format(type(list_input), type(distrib)))
-
-        resultlist = ResultList()
-
-        # summes win changse for every list entry and adds to result_list
-        # TODO: could be done with list comprehension not sure if it's cleaner
-        for comp in list_input:
-            win_changse = 0
-            for dice, prop in distrib.items():
-                # compare to operator. distrib (dice) is left and list(comp) is right
-                # sum winchangses
-                if operator == '<=' and dice <= comp:
-                    win_changse += prop
-                elif operator == '>=' and dice >= comp:
-                    win_changse += prop
-                elif operator == '<' and dice < comp:
-                    win_changse += prop
-                elif operator == '>' and dice > comp:
-                    win_changse += prop
-                elif operator == '==' and dice == comp:
-                    win_changse += prop
-            resultlist[comp] = win_changse
-        return resultlist
+        result = Distrib()
+        for left_value, left_probability in left.items():
+            for right_value, right_probability in right.items():
+                comparison_true = False
+                if operator == "<=":
+                    comparison_true = left_value <= right_value
+                elif operator == ">=":
+                    comparison_true = left_value >= right_value
+                elif operator == "<":
+                    comparison_true = left_value < right_value
+                elif operator == ">":
+                    comparison_true = left_value > right_value
+                elif operator == "==":
+                    comparison_true = left_value == right_value
+                outcome = TRUE if comparison_true else FALSE
+                result[outcome] += left_probability * right_probability
+        return result
 
     @staticmethod
     def greaterorequal(left, right):
-        """Calculates changse for distrib to be greater or equal then for every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-        return Diceengine.compare(left, right, '>=')
+        @lift_sweeps
+        def apply(distrib_left, distrib_right):
+            return Diceengine._compare_plain(distrib_left, distrib_right, ">=")
+
+        return apply(left, right)
 
     @staticmethod
     def greater(left, right):
-        """Calculates changse for distrib to be greater then every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-        return Diceengine.compare(left, right, '>')
+        @lift_sweeps
+        def apply(distrib_left, distrib_right):
+            return Diceengine._compare_plain(distrib_left, distrib_right, ">")
+
+        return apply(left, right)
 
     @staticmethod
     def equal(left, right):
-        """Calculates changse for distrib to be equal to every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-        return Diceengine.compare(left, right, '==')
+        @lift_sweeps
+        def apply(distrib_left, distrib_right):
+            return Diceengine._compare_plain(distrib_left, distrib_right, "==")
+
+        return apply(left, right)
 
     @staticmethod
     def lessorequal(left, right):
-        """Calculates changse for distrib to be less or equal to every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-        return Diceengine.compare(left, right, "<=")
+        @lift_sweeps
+        def apply(distrib_left, distrib_right):
+            return Diceengine._compare_plain(distrib_left, distrib_right, "<=")
+
+        return apply(left, right)
 
     @staticmethod
     def less(left, right):
-        """Calculates changse for distrib to be less then every list entry
-        and returns ResultList with list_input as keys and probability for success as value"""
-        return Diceengine.compare(left, right, "<")
+        @lift_sweeps
+        def apply(distrib_left, distrib_right):
+            return Diceengine._compare_plain(distrib_left, distrib_right, "<")
+
+        return apply(left, right)
+
 
 if __name__ == "__main__":
     print(Diceengine.rollhigh(3, 20, 1))

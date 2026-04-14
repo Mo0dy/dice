@@ -6,8 +6,8 @@ The language is built around tabletop dice math:
 
 - rolling dice distributions such as `d20` or `2d6`
 - comparisons such as `d20 >= 15`
-- resolving hit chance into average damage such as `d20 >= 15 -> 2d6 + 3`
-- list/range driven calculations such as `[14:20]`
+- branching weighted outcome distributions such as `d20 >= 15 -> 2d6 + 3 | 0`
+- sweep-driven calculations such as `[14:20]`
 - advantage/disadvantage and pick-high/pick-low forms
 - optional plotting commands for graph output
 
@@ -45,9 +45,10 @@ AST node families in `syntaxtree.py`:
 `diceengine.py` is the semantic center of the project. Important behaviors include:
 
 - probability distribution generation
+- sweep-aware lifting over multiple evaluation points
 - distribution arithmetic
-- comparison operators returning `ResultList`
-- resolving `ResultList` against damage distributions
+- comparison operators returning boolean distributions
+- branching and summary operators over distributions
 - indexing/selecting subsets of distributions
 - advantage/disadvantage and high/low roll helpers
 

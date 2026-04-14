@@ -13,7 +13,7 @@ import tempfile
 os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "dice-mplconfig"))
 import matplotlib.pyplot as plt
 
-from diceengine import ResultList, Distrib
+from diceengine import Distrib
 
 def show():
     """Opens window to show final result"""

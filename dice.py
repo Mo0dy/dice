@@ -17,7 +17,7 @@ except ImportError:
     timeout_decorator = _TimeoutFallback()
 
 from interpreter import Interpreter
-from diceengine import ResultList, Distrib
+from diceengine import Distributions
 from diceparser import DiceParser
 from lexer import Lexer
 import viewer
@@ -26,14 +26,15 @@ import viewer
 timeout_seconds = 5
 
 def _round_result(result, roundlevel=0):
-    if roundlevel and isinstance(result, (ResultList, Distrib)):
-        for key, value in result.items():
-            result[key] = round(value, roundlevel)
+    if roundlevel and isinstance(result, Distributions):
+        result.round_probabilities(roundlevel)
     return result
 
 @timeout_decorator.timeout(timeout_seconds)
 def interpret_statement(text, roundlevel=0):
-    result = Interpreter(DiceParser(Lexer(text)).statement()).interpret()
+    parser = DiceParser(Lexer(text))
+    ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
+    result = Interpreter(ast).interpret()
     return _round_result(result, roundlevel)
 
 @timeout_decorator.timeout(timeout_seconds)

@@ -11,6 +11,7 @@ Secondary surfaces:
 - `dice.py`: CLI entry point
 - `viewer.py`: Matplotlib plotting helper
 - `README.md`: brief user-facing language reference during the rewrite
+- `DICE_REWRITE_PLAN.md`: active rewrite design and implementation plan
 - `scripts/`: sample dice programs
 - `notes.org`: legacy design notes
 
@@ -31,10 +32,12 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - Programs are parsed as EOF-delimited statement sequences rather than `BEGIN ... END` wrappers.
 - The legacy preprocessor and Discord bot have been removed from the active surface.
 - `README.md` examples are part of the executable contract through the test suite.
+- The current ongoing task is the semantic rewrite described in `DICE_REWRITE_PLAN.md`.
 
 ## Where To Read Next
 
 - `README.md`: current user-facing language semantics and executable examples
+- `DICE_REWRITE_PLAN.md`: active rewrite target for unifying distributions and sweeps
 - `docs/README.md`: documentation map
 - `docs/architecture.md`: module responsibilities and execution flow
 - `docs/language-runtime.md`: language model, data types, and sample program surfaces
@@ -43,6 +46,8 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 ## Working Notes For Agents
 
 - Keep `README.md` brief during development. Its main job is to be the current user-facing reference for tested language semantics.
+- Treat `DICE_REWRITE_PLAN.md` as the active design brief for ongoing semantic changes.
+- During this rewrite, every semantic feature change should come with sensible end-to-end tests where practical.
 - Do not recreate parallel user docs like the removed `documentation.org` / `documentation.html` unless the user explicitly asks for them.
 - For syntax changes, update `lexer.py`, `diceparser.py`, and `interpreter.py` together.
 - For semantic changes, check `diceengine.py` first; most operator behavior lives there.
