@@ -229,7 +229,7 @@ class RuntimeTest(unittest.TestCase):
         )
 
     def test_interactive_parser_error_does_not_end_session(self):
-        args = SimpleNamespace(roundlevel=0, grepable=False, verbose=False)
+        args = SimpleNamespace(roundlevel=0, verbose=False)
         with mock.patch("builtins.input", side_effect=["1 +", "1 + 1", "exit"]):
             with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
                 with mock.patch("sys.stderr", new=io.StringIO()) as stderr:

@@ -27,7 +27,6 @@ from interpreter import Interpreter
 from diceengine import Distributions
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
-import viewer
 
 
 timeout_seconds = 5
@@ -433,7 +432,6 @@ def runinteractive(args):
             if result is not None:
                 print_result(
                     result,
-                    args.grepable,
                     args.verbose,
                     text,
                     json_output=json_output,
@@ -444,30 +442,23 @@ def runinteractive(args):
     return 2
 
 
-def print_result(result, grepable=False, verbose=False, line="", json_output=False, roundlevel=0):
+def print_result(result, verbose=False, line="", json_output=False, roundlevel=0):
     """Print a result to stdout."""
     rendered = _format_result_json(result, roundlevel) if json_output else _format_result_text(result, roundlevel)
-    if grepable:
-        rendered = " ".join(rendered.splitlines())
 
     if verbose:
-        if grepable:
-            sys.stdout.write("dice> " + line.strip() + " :: " + rendered + "\n")
-        else:
-            sys.stdout.write("dice> " + line + "\n" + rendered + "\n")
+        sys.stdout.write("dice> " + line + "\n" + rendered + "\n")
         return
     sys.stdout.write(rendered + "\n")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Process some inputs.")
-    parser.add_argument("-g", "--grepable", action="store_true", help="Enable grepable output")
     parser.add_argument("-R", "--round", "--roundlevel", dest="roundlevel", type=int, default=DEFAULT_ROUNDLEVEL, help="Set rounding level")
     parser.add_argument("-i", "--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("-f", "--file", dest="file", help="Execute a dice source file")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Print structured JSON output")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
-    parser.add_argument("-p", "--plot", action="store_true", help="Enable plotting")
     parser.add_argument("command", nargs="*", help="Command to execute")
 
     # Parse arguments
@@ -490,23 +481,11 @@ def main():
         if result is not None:
             print_result(
                 result,
-                args.grepable,
                 args.verbose,
                 args.file,
                 json_output=args.json_output,
                 roundlevel=args.roundlevel,
             )
-        if args.plot and result is not None:
-            render_outcome = viewer.render_result(result)
-            if render_outcome.output_path is not None:
-                print_result(
-                    render_outcome.output_path,
-                    args.grepable,
-                    args.verbose,
-                    args.file,
-                    json_output=args.json_output,
-                    roundlevel=args.roundlevel,
-                )
         return 0
 
     if not args.command:
@@ -517,23 +496,11 @@ def main():
     if result is not None:
         print_result(
             result,
-            args.grepable,
             args.verbose,
             command,
             json_output=args.json_output,
             roundlevel=args.roundlevel,
         )
-    if args.plot and result is not None:
-        render_outcome = viewer.render_result(result)
-        if render_outcome.output_path is not None:
-            print_result(
-                render_outcome.output_path,
-                args.grepable,
-                args.verbose,
-                command,
-                json_output=args.json_output,
-                roundlevel=args.roundlevel,
-            )
     return 0
 
 

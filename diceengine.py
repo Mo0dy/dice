@@ -4,6 +4,7 @@
 
 from dataclasses import dataclass
 from functools import wraps
+import importlib
 from itertools import product
 from math import inf, sqrt
 import random
@@ -21,10 +22,18 @@ except ImportError:
 
 TRUE = "true"
 FALSE = "false"
+_viewer_module = None
 
 
 def exception(message):
     raise Exception("Diceengine exception: {}".format(message))
+
+
+def _get_viewer():
+    global _viewer_module
+    if _viewer_module is None:
+        _viewer_module = importlib.import_module("viewer")
+    return _viewer_module
 
 
 class Distrib(object):
@@ -713,7 +722,7 @@ def total(value):
 
 
 def render(*args):
-    import viewer
+    viewer = _get_viewer()
 
     if not args:
         raise Exception("render expects at least one expression")

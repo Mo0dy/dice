@@ -1,5 +1,4 @@
 import os
-import io
 import sys
 import tempfile
 import unittest
@@ -18,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import dice
+import diceengine
 import viewer
 from dice import interpret_file, interpret_statement
 from diceengine import Distributions
@@ -60,6 +60,22 @@ class RenderStatementTest(unittest.TestCase):
     def test_render_comparison_requires_label_for_every_expression(self):
         with self.assertRaisesRegex(Exception, "require a label for every expression"):
             interpret_statement('render(d20, "a", d20)')
+
+    def test_render_lazily_loads_viewer_once(self):
+        diceengine._viewer_module = None
+        mock_viewer = mock.Mock()
+        mock_viewer.render_result.side_effect = [
+            viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "first"),
+            viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "second"),
+        ]
+        try:
+            with mock.patch("diceengine.importlib.import_module", return_value=mock_viewer) as import_module:
+                self.assertEqual(diceengine.render("one"), "first")
+                self.assertEqual(diceengine.render("two"), "second")
+            import_module.assert_called_once_with("viewer")
+            self.assertEqual(mock_viewer.render_result.call_count, 2)
+        finally:
+            diceengine._viewer_module = None
 
 
 class ViewerSpecTest(unittest.TestCase):
@@ -128,18 +144,6 @@ class ViewerBackendTest(unittest.TestCase):
             show.assert_called_once()
         finally:
             viewer.plt.close(figure)
-
-
-class CliRenderTest(unittest.TestCase):
-    def test_execute_plot_flag_uses_render_result(self):
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "/tmp/example.png")
-        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            with mock.patch.object(sys, "argv", ["dice.py", "-p", "d20"]):
-                with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
-                    exit_code = dice.main()
-        self.assertEqual(exit_code, 0)
-        render_result.assert_called_once()
-        self.assertIn("/tmp/example.png", stdout.getvalue())
 
 
 if __name__ == "__main__":

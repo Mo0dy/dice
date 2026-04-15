@@ -92,7 +92,7 @@ class CliFormattingTest(unittest.TestCase):
 
 class CliInteractiveTest(unittest.TestCase):
     def test_set_round_command_updates_repl_rounding(self):
-        args = SimpleNamespace(roundlevel=2, grepable=False, verbose=False, json_output=False)
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
         with mock.patch("builtins.input", side_effect=["$ set_round 3", "~(d20 >= 11 -> 5 | 0)", "exit"]):
             with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
                 with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
