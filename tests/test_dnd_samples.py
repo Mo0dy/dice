@@ -16,7 +16,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from dice import interpret_file
+from dice import interpret_file, interpret_statement
 
 
 def sample_files():
@@ -33,6 +33,34 @@ class DndSampleLibraryTest(unittest.TestCase):
             with self.subTest(sample=str(path.relative_to(ROOT))):
                 result = interpret_file(path.read_text(encoding="utf-8"), current_dir=path.parent)
                 self.assertIsNotNone(result)
+
+    def test_crit_longsword_matches_inline_match_logic(self):
+        helper_result = interpret_file(
+            'import "weapons.dice"\ncrit_longsword(16, 7, 4)',
+            current_dir=SAMPLES / "lib",
+        )
+        inline_result = interpret_statement(
+            "match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0"
+        )
+        self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_paladin_smite_matches_inline_match_logic(self):
+        helper_result = interpret_file(
+            'import "weapons.dice"\npaladin_smite(17, 8, 4, 3)',
+            current_dir=SAMPLES / "lib",
+        )
+        inline_result = interpret_statement(
+            "match d20 as roll | roll == 20 = 2 d 8 + 4 + 6 d 8 | roll + 8 >= 17 = 1 d 8 + 4 + 3 d 8 | otherwise = 0"
+        )
+        self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_crit_helper_preserves_ac_sweep_shape(self):
+        result = interpret_file(
+            'import "weapons.dice"\n~crit_longsword([10:22], 7, 4)',
+            current_dir=SAMPLES / "lib",
+        )
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].values, tuple(range(10, 23)))
 
 
 if __name__ == "__main__":
