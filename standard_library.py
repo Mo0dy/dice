@@ -15,6 +15,21 @@ import viewer
 
 def register_standard_library(interpreter, callable_entry_type):
     interpreter._register_callable(
+        callable_entry_type("mean", "host", arity=1, function=lambda value: builtin_mean(interpreter, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("sample", "host", arity=1, function=lambda value: builtin_sample(interpreter, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("mass", "host", arity=1, function=lambda value: builtin_mass(interpreter, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("var", "host", arity=1, function=lambda value: builtin_var(interpreter, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("std", "host", arity=1, function=lambda value: builtin_std(interpreter, value))
+    )
+    interpreter._register_callable(
         callable_entry_type("sum", "host", arity=2, function=lambda count, value: builtin_sum(interpreter, count, value))
     )
     interpreter._register_callable(
@@ -59,6 +74,26 @@ def builtin_sum(interpreter, count, value):
         contributions.append((combined_axes, cells))
 
     return interpreter._accumulate_distribution_contributions(contributions)
+
+
+def builtin_mean(interpreter, value):
+    return interpreter.engine.mean(value)
+
+
+def builtin_sample(interpreter, value):
+    return interpreter.engine.sample(value)
+
+
+def builtin_mass(interpreter, value):
+    return interpreter.engine.mass(value)
+
+
+def builtin_var(interpreter, value):
+    return interpreter.engine.variance(value)
+
+
+def builtin_std(interpreter, value):
+    return interpreter.engine.stddev(value)
 
 
 def builtin_render(interpreter, *args):

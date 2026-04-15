@@ -45,13 +45,20 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertAlmostEqual(probability, 1)
 
     def test_direct_backend_keeps_deterministic_summary_semantics(self):
-        avg_result = direct_sample("~2d6", seed=123).only_distribution()
-        prop_result = direct_sample("!d20[20]", seed=123)
+        avg_result = direct_sample("2d6 $ mean", seed=123).only_distribution()
+        prop_result = direct_sample("mass(d20[20])", seed=123)
         outcome, probability = next(iter(avg_result.items()))
         self.assertAlmostEqual(outcome, 7.0)
         self.assertEqual(probability, 1)
         self.assertEqual(prop_result.axes[0].values, (20,))
         self.assertEqual(prop_result.cells[(20,)][0.05], 1)
+
+    def test_direct_backend_sample_operator_returns_one_outcome(self):
+        result = direct_sample("!d20", seed=123).only_distribution()
+        self.assertEqual(result.total_probability(), 1)
+        sampled_outcomes = list(result.keys())
+        self.assertEqual(len(sampled_outcomes), 1)
+        self.assertIn(sampled_outcomes[0], range(1, 21))
 
     def test_interpret_statement_accepts_direct_engine_backend(self):
         result = interpret_statement("d20 >= 11", engine=DirectDiceEngine(seed=123))

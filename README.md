@@ -32,12 +32,16 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
 - `render(expr)` renders one result with smart defaults.
 - `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
+- `expr $ f` passes `expr` as the first argument to `f`.
+- `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
 - `import "path/to/file.dice"` loads another dice file once, relative to the current file.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
-- `!expr` returns total probability mass as a degenerate distribution.
+- `!expr` samples one outcome and returns it as a degenerate distribution.
 - `~expr` returns expectation as a degenerate distribution.
+- `mean(expr)`, `sample(expr)`, and `mass(expr)` are explicit summary helpers.
+- `var(expr)` and `std(expr)` return variance and standard deviation as degenerate distributions.
 - `( ... )` groups expressions.
 
 ## Running Dice
@@ -116,7 +120,7 @@ python3 dice.py --file path/to/plot.dice
 ```
 
 ```text
-render(~(d20 >= [AC:10:20] -> 5 | 0))
+render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
 
 ## Functions
@@ -138,7 +142,7 @@ match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
-render(~(d20 >= [AC:10:20] -> 5 | 0))
+render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
 
 ## Whitespace
@@ -223,8 +227,12 @@ d20[20] >= 14 -> 10
 d2 + d2
 [1:2] + 1
 d+20
-!d20[19:20]
+mass(d20[19:20])
 ~2d6
+d20 >= 11 -> 5 | 0 $ mean
+d20 $ sample
+d2 $ var
+d2 $ std
 d-20
 3d20h1
 3d20l1

@@ -21,6 +21,7 @@ MINUS = "MINUS"                          # "-"
 MUL = "MUL"                              # "*"
 DIV = "DIV"                              # "/"
 RES = "RES"                              # "->"
+PIPE = "PIPE"                            # "$"
 AVG = "AVG"                              # "~"
 PROP = "PROP"                            # "!"
 ELSE = "ELSE"                            # "|"
@@ -124,6 +125,7 @@ class Lexer(object):
             [r"\[",   lambda x: Token(LBRACK, x)],
             [r"\]",   lambda x: Token(RBRACK, x)],
             [r"\-\>", lambda x: Token(RES, x)],
+            [r"\$",   lambda x: Token(PIPE, x)],
             [r"~",    lambda x: Token(AVG, x)],
             [r"\!",   lambda x: Token(PROP, x)],
             [r"\|",   lambda x: Token(ELSE, x)],

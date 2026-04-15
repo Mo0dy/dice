@@ -124,13 +124,15 @@ d20 < 14 -> 2d10 |/
 
 The result is still a probability distribution.
 
-Expected-value style rendering should be done later through summarization functions such as `~`.
+Expected-value style rendering should be done later through summarization functions such as `~` or `mean(...)`.
 
 ### Summaries
 
 `~expr` should compute expectation pointwise over the current distribution set.
 
-`!expr` should compute total probability mass pointwise over the current distribution set.
+`!expr` should sample one outcome pointwise over the current distribution set.
+
+`mass(expr)` should compute total probability mass pointwise over the current distribution set.
 
 These should preserve sweep structure.
 

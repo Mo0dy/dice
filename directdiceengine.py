@@ -13,6 +13,7 @@ from diceengine import (
     Distrib,
     Distributions,
     Sweep,
+    _sample_from_distribution,
     _require_keep_count,
     lift_sweeps,
 )
@@ -27,29 +28,6 @@ class SampledDistrib(Distrib):
     def __init__(self, sampled=None, exact=None):
         super().__init__(sampled)
         self.exact = exact if exact is not None else Distrib(dict(self.distrib))
-
-
-def _sample_from_distribution(distrib, rng):
-    total = sum(distrib.probabilities())
-    if total < 0:
-        raise Exception("Distribution has negative total probability")
-    if total == 0:
-        return None
-    if total > 1 + 1e-9:
-        raise Exception("Direct sampling expects probability mass <= 1, got {}".format(total))
-
-    threshold = rng.random()
-    if threshold > total:
-        return None
-    cumulative = 0
-    last_outcome = None
-    for outcome, probability in distrib.items():
-        last_outcome = outcome
-        cumulative += probability
-        if threshold <= cumulative:
-            return outcome
-    return last_outcome
-
 
 def _degenerate(outcome):
     if outcome is None:
@@ -84,7 +62,8 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(distrib):
             exact = _exact_of(distrib)
-            return _sampled_result(operation(_sample_from_distribution(distrib, self.rng)), exact)
+            sampled = _sample_from_distribution(distrib, self.rng)
+            return _sampled_result(operation(next(iter(sampled.keys()), None)), exact)
 
         return apply(value)
 
@@ -96,8 +75,8 @@ class DirectDiceEngine(object):
                 if exact_operation is not None
                 else None
             )
-            left_sample = _sample_from_distribution(left_distrib, self.rng)
-            right_sample = _sample_from_distribution(right_distrib, self.rng)
+            left_sample = next(iter(_sample_from_distribution(left_distrib, self.rng).keys()), None)
+            right_sample = next(iter(_sample_from_distribution(right_distrib, self.rng).keys()), None)
             return _sampled_result(operation(left_sample, right_sample), exact)
 
         return apply(left, right)
@@ -110,9 +89,9 @@ class DirectDiceEngine(object):
                 if exact_operation is not None
                 else None
             )
-            left_sample = _sample_from_distribution(left_distrib, self.rng)
-            middle_sample = _sample_from_distribution(middle_distrib, self.rng)
-            right_sample = _sample_from_distribution(right_distrib, self.rng)
+            left_sample = next(iter(_sample_from_distribution(left_distrib, self.rng).keys()), None)
+            middle_sample = next(iter(_sample_from_distribution(middle_distrib, self.rng).keys()), None)
+            right_sample = next(iter(_sample_from_distribution(right_distrib, self.rng).keys()), None)
             return _sampled_result(operation(left_sample, middle_sample, right_sample), exact)
 
         return apply(left, middle, right)
@@ -121,8 +100,8 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(left_distrib, right_distrib):
             exact = _exact_call(Diceengine.choose, _exact_of(left_distrib), _exact_of(right_distrib))
-            sampled_left = _sample_from_distribution(left_distrib, self.rng)
-            sampled_right = _sample_from_distribution(right_distrib, self.rng)
+            sampled_left = next(iter(_sample_from_distribution(left_distrib, self.rng).keys()), None)
+            sampled_right = next(iter(_sample_from_distribution(right_distrib, self.rng).keys()), None)
             if sampled_left is None or sampled_right is None:
                 return _sampled_result(None, exact)
             return _sampled_result(sampled_left if sampled_left == sampled_right else None, exact)
@@ -133,7 +112,7 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(left_distrib, right_distrib):
             exact = _exact_call(Diceengine.choose_single, _exact_of(left_distrib), _exact_of(right_distrib))
-            sampled_value = _sample_from_distribution(exact, self.rng)
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
         return apply(left, right)
@@ -150,16 +129,49 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(distrib):
             exact = _exact_call(Diceengine.resunary, _exact_of(distrib))
-            sampled_value = _sample_from_distribution(exact, self.rng)
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
         return apply(value)
+
+    def mean(self, value):
+        return self.resunary(value)
 
     def prop(self, value):
         @lift_sweeps
         def apply(distrib):
             exact = _exact_call(Diceengine.prop, _exact_of(distrib))
-            sampled_value = _sample_from_distribution(exact, self.rng)
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(value)
+
+    def mass(self, value):
+        return self.prop(value)
+
+    def variance(self, value):
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_call(Diceengine.variance, _exact_of(distrib))
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(value)
+
+    def stddev(self, value):
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_call(Diceengine.stddev, _exact_of(distrib))
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(value)
+
+    def sample(self, value):
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_of(distrib)
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
         return apply(value)
@@ -209,7 +221,8 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(distrib):
             exact = _exact_call(Diceengine.rolladvantage, _exact_of(distrib))
-            return _sampled_result(operation(_sample_from_distribution(distrib, self.rng)), exact)
+            sampled = next(iter(_sample_from_distribution(distrib, self.rng).keys()), None)
+            return _sampled_result(operation(sampled), exact)
 
         return apply(dice)
 
@@ -223,7 +236,8 @@ class DirectDiceEngine(object):
         @lift_sweeps
         def apply(distrib):
             exact = _exact_call(Diceengine.rolldisadvantage, _exact_of(distrib))
-            return _sampled_result(operation(_sample_from_distribution(distrib, self.rng)), exact)
+            sampled = next(iter(_sample_from_distribution(distrib, self.rng).keys()), None)
+            return _sampled_result(operation(sampled), exact)
 
         return apply(dice)
 

@@ -416,9 +416,9 @@ class Interpreter():
         elif node.op.type == RES:
             return self.engine.resunary(self.visit(node.value))
         elif node.op.type == AVG:
-            return self.engine.resunary(self.visit(node.value))
+            return self.engine.mean(self.visit(node.value))
         elif node.op.type == PROP:
-            return self.engine.prop(self.visit(node.value))
+            return self.engine.sample(self.visit(node.value))
         elif node.op.type == PRINT:
             print(self.visit(node.value))
             return

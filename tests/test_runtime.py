@@ -68,11 +68,38 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(outcome, 2.5)
         self.assertAlmostEqual(probability, 1)
 
-    def test_probability_summary_preserves_sweeps(self):
-        result = interpret_statement("!d20[19:20]")
+    def test_mass_function_preserves_sweeps(self):
+        result = interpret_statement("mass(d20[19:20])")
         self.assertEqual(result.axes[0].values, (19, 20))
         self.assertAlmostEqual(result.cells[(19,)][0.05], 1)
         self.assertAlmostEqual(result.cells[(20,)][0.05], 1)
+
+    def test_sample_operator_returns_sampled_outcome(self):
+        result = only_distribution(interpret_statement("!d20"))
+        self.assertEqual(result.total_probability(), 1)
+        sampled_outcomes = list(result.keys())
+        self.assertEqual(len(sampled_outcomes), 1)
+        self.assertIn(sampled_outcomes[0], range(1, 21))
+
+    def test_pipeline_applies_function_to_whole_expression(self):
+        result = only_distribution(interpret_statement("d20 >= 11 -> 5 | 0 $ mean"))
+        outcome, probability = next(iter(result.items()))
+        self.assertAlmostEqual(outcome, 2.5)
+        self.assertAlmostEqual(probability, 1)
+
+    def test_pipeline_inserts_value_as_first_argument(self):
+        result = only_distribution(interpret_file("add(x, y) = x + y\n1 $ add(2)"))
+        self.assertEqual(result[3], 1)
+
+    def test_pipeline_chains_functions(self):
+        result = only_distribution(interpret_file("double(x) = x * 2\ninc(x) = x + 1\n3 $ double $ inc"))
+        self.assertEqual(result[7], 1)
+
+    def test_var_and_std_functions_return_scalar_summaries(self):
+        variance = only_distribution(interpret_statement("d2 $ var"))
+        stddev = only_distribution(interpret_statement("std(d2)"))
+        self.assertAlmostEqual(next(iter(variance.keys())), 0.25)
+        self.assertAlmostEqual(next(iter(stddev.keys())), 0.5)
 
     def test_index_then_compare_keeps_partial_probability_mass(self):
         result = interpret_statement("d20[20] >= 14")

@@ -5,7 +5,8 @@
 from dataclasses import dataclass
 from functools import wraps
 from itertools import product
-from math import inf
+from math import inf, sqrt
+import random
 
 # note that comb only exists in python 3.8
 # but it's faster then just calculating factorials
@@ -56,6 +57,18 @@ class Distrib(object):
                 raise Exception("Distrib average expects numeric outcomes, got {}".format(type(outcome)))
             total += outcome * probability
         return total
+
+    def variance(self):
+        mean = self.average()
+        total = 0
+        for outcome, probability in self.items():
+            if not isinstance(outcome, (int, float)):
+                raise Exception("Distrib variance expects numeric outcomes, got {}".format(type(outcome)))
+            total += ((outcome - mean) ** 2) * probability
+        return total
+
+    def stddev(self):
+        return sqrt(self.variance())
 
 
 @dataclass(frozen=True)
@@ -231,6 +244,30 @@ def _bool_mass(condition):
     return condition[TRUE], condition[FALSE]
 
 
+def _sample_from_distribution(distrib, rng=None):
+    total = sum(distrib.probabilities())
+    if total < 0:
+        raise Exception("Distribution has negative total probability")
+    if total == 0:
+        return Distrib()
+    if total > 1 + 1e-9:
+        raise Exception("Sampling expects probability mass <= 1, got {}".format(total))
+
+    rng = rng if rng is not None else random
+    threshold = rng.random()
+    if threshold > total:
+        return Distrib()
+
+    cumulative = 0
+    last_outcome = None
+    for outcome, probability in distrib.items():
+        last_outcome = outcome
+        cumulative += probability
+        if threshold <= cumulative:
+            return Distrib({outcome: 1})
+    return Distrib({last_outcome: 1}) if last_outcome is not None else Distrib()
+
+
 class Diceengine(object):
     """Arithmetic and sweep-aware helpers for dice semantics."""
 
@@ -290,8 +327,33 @@ class Diceengine(object):
 
     @staticmethod
     @lift_sweeps
+    def mean(value):
+        return Distrib({value.average(): 1})
+
+    @staticmethod
+    @lift_sweeps
     def prop(value):
         return Distrib({value.total_probability(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def mass(value):
+        return Distrib({value.total_probability(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def variance(value):
+        return Distrib({value.variance(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def stddev(value):
+        return Distrib({value.stddev(): 1})
+
+    @staticmethod
+    @lift_sweeps
+    def sample(value):
+        return _sample_from_distribution(value)
 
     @staticmethod
     @lift_sweeps

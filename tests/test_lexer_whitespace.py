@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, ROLL, SEMI, STRING, Lexer
+from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, PIPE, ROLL, SEMI, STRING, Lexer
 
 
 def tokens(text):
@@ -74,6 +74,9 @@ class LexerWhitespaceTest(unittest.TestCase):
 
     def test_render_name_tokenizes_as_identifier(self):
         self.assertEqual(tokens('render(d20, "hit")'), [(ID, "render"), ("LPAREN", "("), (ROLL, "d"), (INTEGER, 20), ("COMMA", ","), (STRING, "hit"), ("RPAREN", ")")])
+
+    def test_pipeline_tokenizes(self):
+        self.assertEqual(tokens("d20 $ mean"), [(ROLL, "d"), (INTEGER, 20), (PIPE, "$"), (ID, "mean")])
 
 
 if __name__ == "__main__":

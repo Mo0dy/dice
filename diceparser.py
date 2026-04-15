@@ -5,7 +5,7 @@
 
 
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Named
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, DOT, MATCH, AS, OTHERWISE, IMPORT
+from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PIPE, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, DOT, MATCH, AS, OTHERWISE, IMPORT
 
 
 class ParserError(Exception):
@@ -62,18 +62,19 @@ class DiceParser(Parser):
     """Parser for the Dice language
 
     Grammar:
-        expr      :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
+        expr      :  resolve (PIPE pipeline_target)*
+        resolve   :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
         comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
-        side      :  term ((ADD | SUB) term)*
-        term      :  res ((MUL | DIV) res)*
-        res       :  (PROP | ADV)? index
+        side      :  term ((PLUS | MINUS) term)*
+        term      :  index ((MUL | DIV) index)*
         index     :  roll (brack | dot)?
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | STRING | ID | LPAREN exp RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
+        factor    :  INTEGER | STRING | ID | LPAREN expr RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
         brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
         match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
         match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
         dot       :  DOT (INTEGER | ID)
+        pipeline_target : ID | ID LPAREN expr (COMMA expr)* RPAREN
     """
 
     # This just implements the grammar
@@ -251,23 +252,13 @@ class DiceParser(Parser):
                 self.exception("Expected INTEGER or ID")
         return node
 
-    def res(self):
-        token = None
-        if self.current_token.type == PROP:
-            token = self.current_token
-            self.eat(PROP)
-        elif self.current_token.type == AVG:
-            token = self.current_token
-            self.eat(AVG)
-        return UnOp(self.index(), token) if token else self.index()
-
     def term(self):
-        node = self.res()
+        node = self.index()
         while self.current_token.type in [MUL, DIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.res())
+            node = BinOp(node, token, self.index())
         return node
 
     def side(self):
@@ -288,7 +279,7 @@ class DiceParser(Parser):
             node = BinOp(node, token, self.side())
         return node
 
-    def expr(self):
+    def resolve(self):
         node = self.comp()
         if self.current_token.type == RES:
             # store token for AST
@@ -307,6 +298,30 @@ class DiceParser(Parser):
             else:
                 # no tenery operator just normal resolve
                 node = BinOp(node, token, new_node1)
+        return node
+
+    def pipeline_target(self, value):
+        if self.current_token.type != ID:
+            self.exception("Expected function name after $")
+
+        name = Val(self.current_token)
+        self.eat(ID)
+        args = [value]
+        if self.current_token.type == LPAREN:
+            self.eat(LPAREN)
+            if self.current_token.type != RPAREN:
+                args.append(self.expr())
+                while self.current_token.type == COMMA:
+                    self.eat(COMMA)
+                    args.append(self.expr())
+            self.eat(RPAREN)
+        return Call(name, args)
+
+    def expr(self):
+        node = self.resolve()
+        while self.current_token.type == PIPE:
+            self.eat(PIPE)
+            node = self.pipeline_target(node)
         return node
 
     def statement(self):
