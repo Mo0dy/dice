@@ -134,7 +134,7 @@ class CliRenderTest(unittest.TestCase):
     def test_execute_plot_flag_uses_render_result(self):
         mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "/tmp/example.png")
         with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            with mock.patch.object(sys, "argv", ["dice.py", "-p", "execute", "d20"]):
+            with mock.patch.object(sys, "argv", ["dice.py", "-p", "d20"]):
                 with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
                     exit_code = dice.main()
         self.assertEqual(exit_code, 0)

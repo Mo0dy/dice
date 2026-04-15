@@ -44,42 +44,75 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 
 The CLI has three modes:
 
-- REPL: `python3 dice.py interactive`
-- Direct one-off evaluation: `python3 dice.py execute "d20 >= 11 -> 5"`
-- Run a dice program from a file: `python3 dice.py file path/to/program.dice`
+- REPL: `python3 dice.py --interactive`
+- Direct one-off evaluation: `python3 dice.py "d20 >= 11 -> 5"`
+- Run a dice program from a file: `python3 dice.py --file path/to/program.dice`
 
-The `file` mode parses a dice program, not Markdown or plain notes. Multi-line programs are separated by newlines or `;`.
+The `--file` mode parses a dice program, not Markdown or plain notes. Multi-line programs are separated by newlines or `;`.
 Use `import "relative/path.dice"` inside files when you want to share helpers across programs.
 
 Useful flags:
 
-- `-r N` rounds numeric output, for example `python3 dice.py -r 2 execute "d20 >= 11"`
+- `-R N` or `--round N` rounds displayed numeric output. The CLI defaults to `-R 2`.
+- `--json` prints structured JSON objects for tool-facing integrations.
 - `-g` prints a grep-friendly single-line result
 - `-v` prints the input together with the result
-- `-p` renders the final result after `execute` using the same smart renderer as `render(...)`
+- `-p` renders the final result after command execution using the same smart renderer as `render(...)`
+
+The interactive shell also supports a few lightweight host commands before parsing dice source:
+
+- `$ set_round N` changes the REPL display rounding for later commands
+- `Ctrl-P` / `Ctrl-N` navigate command history on terminals with `readline` support
+- command history is persisted between sessions when the local state directory is writable
 
 ## Output Modes
 
-There are a few different ways to read the result depending on what you want:
+There are two main CLI output modes:
 
-- Raw distribution output:
-  `d20` or `2d6` returns a probability distribution.
-- Boolean distributions:
-  `d20 >= 11` returns a distribution over `true` and `false`.
-- Swept distributions:
-  `d20 >= [5:10]` returns one boolean distribution for each sweep value.
-  `d20 >= [AC:10:20]` does the same, but keeps the axis name for later display.
-- Branched distributions:
-  `d20 >= 11 -> 5 | 0` returns a weighted outcome distribution.
-- Scalar summaries:
-  `~(d20 >= 11 -> 5 | 0)` returns a degenerate distribution containing the expected value and `!d20[19:20]` returns probability mass for each selected branch.
-- Rendering through Matplotlib:
-  use `render(...)` in a program, or `-p` on `execute`, when you want a graph.
+- default text mode for humans
+- `--json` for tools and scripts
+
+Default text mode prettifies common result shapes:
+
+- deterministic distributions collapse to one displayed value
+- unswept distributions print as `value: probability` lines
+- one-axis scalar sweeps print one value per line with the axis name shown at most once
+- one-axis full distributions print as tables with outcomes on rows and sweep values on columns
+- two-axis scalar sweeps print as tables with a compact corner label such as `AC/BONUS`
+- unnamed axes stay blank in table headers instead of using fallback labels
+
+Examples:
+
+```text
+false: 0.50
+true: 0.50
+```
+
+```text
+/AC
+10: 2.75
+11: 2.50
+12: 2.25
+```
+
+```text
+  /AC    10    11    12
+false  0.45  0.50  0.55
+ true  0.55  0.50  0.45
+```
+
+```text
+AC/BONUS      1      2
+      10  11.00  12.00
+      11  12.00  13.00
+```
+
+Use `render(...)` in a program, or `-p` on a direct command, when you want a graph instead of text output.
 
 Example rendering program:
 
 ```bash
-python3 dice.py file path/to/plot.dice
+python3 dice.py --file path/to/plot.dice
 ```
 
 ```text
