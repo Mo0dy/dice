@@ -38,7 +38,7 @@ AST node families in `syntaxtree.py`:
 
 ### Evaluation
 
-`interpreter.py` uses a visitor pattern. It keeps a `global_scope` for assigned identifiers and dispatches nearly all math to `Diceengine`.
+`interpreter.py` uses a visitor pattern. It keeps a `global_scope` for assigned identifiers and dispatches nearly all math to an `Executor`, which defaults to the exact backend.
 
 ### Semantics
 

@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
-"""Sampling-based reference engine and stochastic validation helpers."""
+"""Sampling-based reference executor and stochastic validation helpers."""
 
 from collections import defaultdict
 import random
 import time
 
+import diceengine
 from diceengine import (
     FALSE,
     TRUE,
-    Diceengine,
     Distrib,
     Distributions,
     Sweep,
-    _sample_from_distribution,
     _require_keep_count,
+    _sample_from_distribution,
     lift_sweeps,
 )
 from diceparser import DiceParser
+from executor import ExactExecutor
 from interpreter import Interpreter
 from lexer import Lexer
 
@@ -28,6 +29,7 @@ class SampledDistrib(Distrib):
     def __init__(self, sampled=None, exact=None):
         super().__init__(sampled)
         self.exact = exact if exact is not None else Distrib(dict(self.distrib))
+
 
 def _degenerate(outcome):
     if outcome is None:
@@ -52,20 +54,12 @@ def _sampled_result(outcome, exact):
     return SampledDistrib(_degenerate(outcome).distrib, exact=exact)
 
 
-class DirectDiceEngine(object):
-    """Sampling backend mirroring the exact engine one execution at a time."""
+class DirectExecutor(ExactExecutor):
+    """Sampling backend mirroring the exact executor one execution at a time."""
 
     def __init__(self, seed=None, rng=None):
         self.rng = rng if rng is not None else random.Random(seed)
-
-    def _lift_unary(self, value, operation):
-        @lift_sweeps
-        def apply(distrib):
-            exact = _exact_of(distrib)
-            sampled = _sample_from_distribution(distrib, self.rng)
-            return _sampled_result(operation(next(iter(sampled.keys()), None)), exact)
-
-        return apply(value)
+        super().__init__()
 
     def _lift_binary(self, left, right, operation, exact_operation=None):
         @lift_sweeps
@@ -99,7 +93,7 @@ class DirectDiceEngine(object):
     def choose(self, left, right):
         @lift_sweeps
         def apply(left_distrib, right_distrib):
-            exact = _exact_call(Diceengine.choose, _exact_of(left_distrib), _exact_of(right_distrib))
+            exact = _exact_call(diceengine.choose, _exact_of(left_distrib), _exact_of(right_distrib))
             sampled_left = next(iter(_sample_from_distribution(left_distrib, self.rng).keys()), None)
             sampled_right = next(iter(_sample_from_distribution(right_distrib, self.rng).keys()), None)
             if sampled_left is None or sampled_right is None:
@@ -111,7 +105,7 @@ class DirectDiceEngine(object):
     def choose_single(self, left, right):
         @lift_sweeps
         def apply(left_distrib, right_distrib):
-            exact = _exact_call(Diceengine.choose_single, _exact_of(left_distrib), _exact_of(right_distrib))
+            exact = _exact_call(diceengine.choose_single, _exact_of(left_distrib), _exact_of(right_distrib))
             sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
@@ -122,46 +116,40 @@ class DirectDiceEngine(object):
             condition,
             distrib,
             lambda sampled_condition, sampled_value: sampled_value if sampled_condition == TRUE else None,
-            exact_operation=lambda cond, dist: _exact_call(Diceengine.res, cond, dist),
+            exact_operation=lambda cond, dist: _exact_call(diceengine.res, cond, dist),
         )
 
-    def resunary(self, value):
-        @lift_sweeps
-        def apply(distrib):
-            exact = _exact_call(Diceengine.resunary, _exact_of(distrib))
-            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
-            return _sampled_result(sampled_value, exact)
-
-        return apply(value)
-
     def mean(self, value):
-        return self.resunary(value)
-
-    def prop(self, value):
         @lift_sweeps
         def apply(distrib):
-            exact = _exact_call(Diceengine.prop, _exact_of(distrib))
+            exact = _exact_call(diceengine.mean, _exact_of(distrib))
             sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
         return apply(value)
 
     def mass(self, value):
-        return self.prop(value)
-
-    def variance(self, value):
         @lift_sweeps
         def apply(distrib):
-            exact = _exact_call(Diceengine.variance, _exact_of(distrib))
+            exact = _exact_call(diceengine.mass, _exact_of(distrib))
             sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
         return apply(value)
 
-    def stddev(self, value):
+    def var(self, value):
         @lift_sweeps
         def apply(distrib):
-            exact = _exact_call(Diceengine.stddev, _exact_of(distrib))
+            exact = _exact_call(diceengine.var, _exact_of(distrib))
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(value)
+
+    def std(self, value):
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_call(diceengine.std, _exact_of(distrib))
             sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
             return _sampled_result(sampled_value, exact)
 
@@ -185,7 +173,7 @@ class DirectDiceEngine(object):
             distrib_if,
             distrib_else,
             operation,
-            exact_operation=lambda cond, if_dist, else_dist: _exact_call(Diceengine.reselse, cond, if_dist, else_dist),
+            exact_operation=lambda cond, if_dist, else_dist: _exact_call(diceengine.reselse, cond, if_dist, else_dist),
         )
 
     def reselsediv(self, condition, distrib):
@@ -198,14 +186,14 @@ class DirectDiceEngine(object):
             sampled_n = int(sampled_n)
             sampled_s = int(sampled_s)
             if sampled_n < 0 or sampled_s <= 0:
-                Diceengine.exception("Roll expects positive sides and non-negative dice count")
+                diceengine.exception("Roll expects positive sides and non-negative dice count")
             return sum(self.rng.randint(1, sampled_s) for _ in range(sampled_n))
 
         return self._lift_binary(
             n,
             s,
             operation,
-            exact_operation=lambda left, right: _exact_call(Diceengine.roll, left, right),
+            exact_operation=lambda left, right: _exact_call(diceengine.roll, left, right),
         )
 
     def rollsingle(self, dice):
@@ -220,7 +208,7 @@ class DirectDiceEngine(object):
 
         @lift_sweeps
         def apply(distrib):
-            exact = _exact_call(Diceengine.rolladvantage, _exact_of(distrib))
+            exact = _exact_call(diceengine.rolladvantage, _exact_of(distrib))
             sampled = next(iter(_sample_from_distribution(distrib, self.rng).keys()), None)
             return _sampled_result(operation(sampled), exact)
 
@@ -235,7 +223,7 @@ class DirectDiceEngine(object):
 
         @lift_sweeps
         def apply(distrib):
-            exact = _exact_call(Diceengine.rolldisadvantage, _exact_of(distrib))
+            exact = _exact_call(diceengine.rolldisadvantage, _exact_of(distrib))
             sampled = next(iter(_sample_from_distribution(distrib, self.rng).keys()), None)
             return _sampled_result(operation(sampled), exact)
 
@@ -257,7 +245,7 @@ class DirectDiceEngine(object):
             s,
             nh,
             operation,
-            exact_operation=lambda left, middle, right: _exact_call(Diceengine.rollhigh, left, middle, right),
+            exact_operation=lambda left, middle, right: _exact_call(diceengine.rollhigh, left, middle, right),
         )
 
     def rolllow(self, n, s, nl):
@@ -276,7 +264,7 @@ class DirectDiceEngine(object):
             s,
             nl,
             operation,
-            exact_operation=lambda left, middle, right: _exact_call(Diceengine.rolllow, left, middle, right),
+            exact_operation=lambda left, middle, right: _exact_call(diceengine.rolllow, left, middle, right),
         )
 
     def add(self, left, right):
@@ -284,7 +272,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else a + b,
-            exact_operation=lambda l, r: _exact_call(Diceengine.add, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.add, l, r),
         )
 
     def sub(self, left, right):
@@ -292,7 +280,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else a - b,
-            exact_operation=lambda l, r: _exact_call(Diceengine.sub, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.sub, l, r),
         )
 
     def mul(self, left, right):
@@ -300,7 +288,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else a * b,
-            exact_operation=lambda l, r: _exact_call(Diceengine.mul, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.mul, l, r),
         )
 
     def div(self, left, right):
@@ -308,17 +296,17 @@ class DirectDiceEngine(object):
             if sampled_left is None or sampled_right is None:
                 return None
             if sampled_right == 0:
-                Diceengine.exception("Can't divide by zero")
+                diceengine.exception("Can't divide by zero")
             return sampled_left // sampled_right
 
-        return self._lift_binary(left, right, operation, exact_operation=lambda l, r: _exact_call(Diceengine.div, l, r))
+        return self._lift_binary(left, right, operation, exact_operation=lambda l, r: _exact_call(diceengine.div, l, r))
 
     def greaterorequal(self, left, right):
         return self._lift_binary(
             left,
             right,
             lambda a, b: None if a is None or b is None else (TRUE if a >= b else FALSE),
-            exact_operation=lambda l, r: _exact_call(Diceengine.greaterorequal, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.greaterorequal, l, r),
         )
 
     def greater(self, left, right):
@@ -326,7 +314,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else (TRUE if a > b else FALSE),
-            exact_operation=lambda l, r: _exact_call(Diceengine.greater, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.greater, l, r),
         )
 
     def equal(self, left, right):
@@ -334,7 +322,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else (TRUE if a == b else FALSE),
-            exact_operation=lambda l, r: _exact_call(Diceengine.equal, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.equal, l, r),
         )
 
     def lessorequal(self, left, right):
@@ -342,7 +330,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else (TRUE if a <= b else FALSE),
-            exact_operation=lambda l, r: _exact_call(Diceengine.lessorequal, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.lessorequal, l, r),
         )
 
     def less(self, left, right):
@@ -350,7 +338,7 @@ class DirectDiceEngine(object):
             left,
             right,
             lambda a, b: None if a is None or b is None else (TRUE if a < b else FALSE),
-            exact_operation=lambda l, r: _exact_call(Diceengine.less, l, r),
+            exact_operation=lambda l, r: _exact_call(diceengine.less, l, r),
         )
 
 
@@ -372,8 +360,8 @@ def exact_evaluate(text):
 def direct_sample(text, seed=None):
     _reset_sweeps()
     ast = _parse_text(text)
-    engine = DirectDiceEngine(seed=seed)
-    return Interpreter(ast, engine=engine).interpret()
+    executor = DirectExecutor(seed=seed)
+    return Interpreter(ast, executor=executor).interpret()
 
 
 def _accumulate_sample_counts(counts, sampled, samples_seen):
@@ -434,12 +422,12 @@ def monte_carlo_validate(text, min_samples=2000, max_samples=40000, batch_size=2
         if time.monotonic() - start > timeout_seconds:
             break
 
-        batch_engine = DirectDiceEngine(rng=rng)
+        batch_executor = DirectExecutor(rng=rng)
         batch_end = min(samples_seen + batch_size, max_samples)
         while samples_seen < batch_end:
             _reset_sweeps()
             ast = _parse_text(text)
-            sampled = Interpreter(ast, engine=batch_engine).interpret()
+            sampled = Interpreter(ast, executor=batch_executor).interpret()
             samples_seen += 1
             _accumulate_sample_counts(counts, sampled, samples_seen)
 

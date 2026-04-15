@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from directdiceengine import DirectDiceEngine, direct_sample
+from directdiceengine import DirectExecutor, direct_sample
 from dice import interpret_statement
 from diceengine import FALSE, TRUE, Distributions
 
@@ -61,7 +61,7 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertIn(sampled_outcomes[0], range(1, 21))
 
     def test_interpret_statement_accepts_direct_engine_backend(self):
-        result = interpret_statement("d20 >= 11", engine=DirectDiceEngine(seed=123))
+        result = interpret_statement("d20 >= 11", executor=DirectExecutor(seed=123))
         self.assertTrue(result.is_unswept())
         distrib = result.only_distribution()
         self.assertIn(distrib.total_probability(), (0, 1))

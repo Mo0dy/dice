@@ -13,5 +13,5 @@ The samples now intentionally exercise:
 - `import "..."` for reusable combat helpers
 - `// ...` comments inside `.dice` files
 - reusable shared-roll crit helpers built on `match ... as ...`
-- `sum(n, expr)` for repeated independent attacks or beams
+- `repeat_sum(n, expr)` for repeated independent attacks or beams
 - sweep-based build analysis across AC, save bonuses, or dart counts

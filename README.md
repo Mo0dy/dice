@@ -27,7 +27,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
-- `sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
+- `repeat_sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
 - `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
 - `render(expr)` renders one result with smart defaults.
@@ -42,6 +42,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `~expr` returns expectation as a degenerate distribution.
 - `mean(expr)`, `sample(expr)`, and `mass(expr)` are explicit summary helpers.
 - `var(expr)` and `std(expr)` return variance and standard deviation as degenerate distributions.
+- operator-backed semantics are also available as functions such as `add(...)`, `roll(...)`, `greaterorequal(...)`, and `reselse(...)`.
 - `( ... )` groups expressions.
 
 ## Running Dice
@@ -140,7 +141,7 @@ hit(ac) = d20 >= ac
 damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
-sum(3, d2)
+repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
 render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
@@ -179,21 +180,23 @@ You can also keep a persistent dice session from Python:
 
 ```python
 from dice import dice_interpreter
+from diceengine import greaterorequal, rollsingle
 
 session = dice_interpreter()
 result = session("d20 >= [AC:10:12] -> 5 | 0")
 session.assign("cached", result)
 session("render(cached)")
+
+direct = greaterorequal(rollsingle(20), 11)
 ```
 
-Register Python functions with `session.register_function(...)`. Registered functions receive eagerly evaluated runtime values and may return `int`, `float`, `str`, `Distrib`, `Distributions`, or `Sweep`. Use `@lift_sweeps` when you want a Python function to operate pointwise across sweep axes.
+Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backend. Register Python functions with `session.register_function(...)`. Registered functions receive eagerly evaluated runtime values and may return `int`, `float`, `str`, `Distrib`, `Distributions`, or `Sweep`. Use `@lift_sweeps` when you want a Python function to operate pointwise across sweep axes.
 
 ## Comments And Imports
 
 - `// ...` starts a line comment and can also appear after code on the same line.
 - `import "helpers.dice"` imports another dice file once.
 - Imports are resolved relative to the file that contains the import.
-- Imports are meant for reusable helpers and sample libraries, not for reviving the old macro/preprocessor layer.
 
 ## Examples
 
@@ -205,10 +208,14 @@ crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
-sum(3, d2)
+repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
 render(d20)
+add(1, 1)
+greaterorequal(d20, 11)
+rollhigh(3, 20, 1)
+d20 >= 11 $ reselse(5, 0)
 d20
 2d6
 d20 >= 11

@@ -333,9 +333,9 @@ def _round_result(result, roundlevel=0):
     return result
 
 
-def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None, current_dir=None):
+def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_dir=None):
     if interpreter is None:
-        interpreter = Interpreter(ast, engine=engine, current_dir=current_dir)
+        interpreter = Interpreter(ast, executor=executor, current_dir=current_dir)
     else:
         interpreter.ast = ast
         if current_dir is not None:
@@ -345,19 +345,19 @@ def _interpret_ast(ast, roundlevel=0, engine=None, interpreter=None, current_dir
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, engine=None, interpreter=None, current_dir=None):
+def interpret_statement(text, roundlevel=0, executor=None, interpreter=None, current_dir=None):
     parser = DiceParser(Lexer(text))
     ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
-    return _interpret_ast(ast, roundlevel, engine=engine, interpreter=interpreter, current_dir=current_dir)
+    return _interpret_ast(ast, roundlevel, executor=executor, interpreter=interpreter, current_dir=current_dir)
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0, engine=None, interpreter=None, current_dir=None):
+def interpret_file(text, roundlevel=0, executor=None, interpreter=None, current_dir=None):
     """Interpret a semicolon or newline separated program."""
     return _interpret_ast(
         DiceParser(Lexer(text)).parse(),
         roundlevel,
-        engine=engine,
+        executor=executor,
         interpreter=interpreter,
         current_dir=current_dir,
     )
@@ -366,10 +366,10 @@ def interpret_file(text, roundlevel=0, engine=None, interpreter=None, current_di
 class DiceSession(object):
     """Stateful Python-facing wrapper around the dice interpreter."""
 
-    def __init__(self, roundlevel=0, engine=None, current_dir=None):
+    def __init__(self, roundlevel=0, executor=None, current_dir=None):
         self.roundlevel = roundlevel
         self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
-        self.interpreter = Interpreter(None, engine=engine, current_dir=self.current_dir)
+        self.interpreter = Interpreter(None, executor=executor, current_dir=self.current_dir)
 
     def __call__(self, text, current_dir=None):
         call_dir = self.current_dir if current_dir is None else os.path.abspath(current_dir)
@@ -391,8 +391,8 @@ class DiceSession(object):
         return self.interpreter.register_function(function, name=name)
 
 
-def dice_interpreter(roundlevel=0, current_dir=None, engine=None):
-    return DiceSession(roundlevel=roundlevel, current_dir=current_dir, engine=engine)
+def dice_interpreter(roundlevel=0, current_dir=None, executor=None):
+    return DiceSession(roundlevel=roundlevel, current_dir=current_dir, executor=executor)
 
 
 def print_interactive_error(error):

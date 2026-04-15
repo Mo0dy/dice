@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from dice import interpret_file, interpret_statement
 from diceengine import Distributions
-from directdiceengine import DirectDiceEngine
+from directdiceengine import DirectExecutor
 
 
 def only_distribution(result):
@@ -75,7 +75,7 @@ class MatchExpressionTest(unittest.TestCase):
     def test_match_works_with_direct_backend(self):
         result = interpret_statement(
             "match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0",
-            engine=DirectDiceEngine(seed=123),
+            executor=DirectExecutor(seed=123),
         )
         distrib = result.only_distribution()
         self.assertEqual(distrib.total_probability(), 1)

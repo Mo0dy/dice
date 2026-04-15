@@ -13,9 +13,11 @@ The repository implements a small domain-specific language for dice and probabil
 - `syntaxtree.py`
   Defines the AST node types used by the parser and interpreter.
 - `interpreter.py`
-  Walks the AST and dispatches actual semantics to `Diceengine` or `viewer`.
+  Walks the AST and dispatches actual semantics to an `Executor` backend or `viewer`.
 - `diceengine.py`
-  Holds the core math and type behavior: distributions, sweeps, branching, indexing, and arithmetic.
+  Holds the pure math and type behavior: distributions, sweeps, branching, indexing, arithmetic, and reusable callable helpers.
+- `executor.py`
+  Defines the interpreter-facing executor interface plus the default exact backend.
 - `viewer.py`
   Provides Matplotlib-backed rendering over runtime `Distributions`, including smart defaults for bars, lines, heatmaps, and simple comparisons.
 
@@ -26,7 +28,7 @@ The repository implements a small domain-specific language for dice and probabil
 1. Source text is tokenized by `Lexer`.
 2. `DiceParser` turns tokens into AST nodes from `syntaxtree.py`.
 3. `Interpreter` evaluates the AST.
-4. Operator semantics are delegated to `Diceengine`.
+4. Operator semantics are delegated to the active `Executor`.
 5. Render statements call into `viewer.py`.
 
 ### Entry points

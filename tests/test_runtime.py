@@ -88,7 +88,7 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(probability, 1)
 
     def test_pipeline_inserts_value_as_first_argument(self):
-        result = only_distribution(interpret_file("add(x, y) = x + y\n1 $ add(2)"))
+        result = only_distribution(interpret_file("plus(x, y) = x + y\n1 $ plus(2)"))
         self.assertEqual(result[3], 1)
 
     def test_pipeline_chains_functions(self):
@@ -147,28 +147,28 @@ class RuntimeTest(unittest.TestCase):
         result = interpret_statement('"fire bolt"')
         self.assertEqual(result, "fire bolt")
 
-    def test_sum_repeats_independent_evaluations(self):
-        result = only_distribution(interpret_statement("sum(3, d2)"))
+    def test_repeat_sum_repeats_independent_evaluations(self):
+        result = only_distribution(interpret_statement("repeat_sum(3, d2)"))
         self.assertAlmostEqual(result[3], 0.125)
         self.assertAlmostEqual(result[4], 0.375)
         self.assertAlmostEqual(result[5], 0.375)
         self.assertAlmostEqual(result[6], 0.125)
 
-    def test_sum_preserves_sweeps_from_inner_expression(self):
-        result = interpret_statement("sum(2, d20 >= [10:11] -> 1 | 0)")
+    def test_repeat_sum_preserves_sweeps_from_inner_expression(self):
+        result = interpret_statement("repeat_sum(2, d20 >= [10:11] -> 1 | 0)")
         self.assertEqual(result.axes[0].values, (10, 11))
         self.assertAlmostEqual(result.cells[(10,)][0], 0.2025)
         self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
         self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
 
-    def test_sum_accepts_swept_counts(self):
-        result = interpret_statement("sum([1:3], d2)")
+    def test_repeat_sum_accepts_swept_counts(self):
+        result = interpret_statement("repeat_sum([1:3], d2)")
         self.assertEqual(result.axes[0].values, (1, 2, 3))
         self.assertAlmostEqual(result.cells[(1,)][1], 0.5)
         self.assertAlmostEqual(result.cells[(3,)][6], 0.125)
 
-    def test_sum_preserves_named_sweep_axes(self):
-        result = interpret_statement("sum(2, d20 >= [AC:10:11] -> 1 | 0)")
+    def test_repeat_sum_preserves_named_sweep_axes(self):
+        result = interpret_statement("repeat_sum(2, d20 >= [AC:10:11] -> 1 | 0)")
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (10, 11))
 
@@ -203,9 +203,30 @@ class RuntimeTest(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "numeric outcomes"):
             interpret_statement('sumover("party", d20 >= [party:10, 11])')
 
-    def test_sum_rejects_non_deterministic_count(self):
+    def test_repeat_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic count"):
-            interpret_statement("sum(d2, d6)")
+            interpret_statement("repeat_sum(d2, d6)")
+
+    def test_add_function_matches_operator(self):
+        self.assertEqual(str(interpret_statement("1 + 2")), str(interpret_statement("add(1, 2)")))
+
+    def test_comparison_function_matches_operator(self):
+        self.assertEqual(
+            str(interpret_statement("d20 >= 11")),
+            str(interpret_statement("greaterorequal(d20, 11)")),
+        )
+
+    def test_rollhigh_function_matches_operator(self):
+        self.assertEqual(
+            str(interpret_statement("3d20h1")),
+            str(interpret_statement("rollhigh(3, 20, 1)")),
+        )
+
+    def test_reselse_function_matches_operator(self):
+        self.assertEqual(
+            str(interpret_statement("d20 >= 11 -> 5 | 0")),
+            str(interpret_statement("d20 >= 11 $ reselse(5, 0)")),
+        )
 
     def test_interactive_parser_error_does_not_end_session(self):
         args = SimpleNamespace(roundlevel=0, grepable=False, verbose=False)

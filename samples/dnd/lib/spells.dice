@@ -2,7 +2,7 @@
 import "core.dice"
 
 eldritch_blast(ac, bonus, cha) = damage_on_hit(ac, bonus, 1 d 10 + cha)
-eldritch_blast_action(beams, ac, bonus, cha) = sum(beams, eldritch_blast(ac, bonus, cha))
+eldritch_blast_action(beams, ac, bonus, cha) = repeat_sum(beams, eldritch_blast(ac, bonus, cha))
 guiding_bolt(ac, bonus) = damage_on_hit(ac, bonus, 4 d 6)
 inflict_wounds(ac, bonus) = damage_on_hit(ac, bonus, 3 d 10)
 fireball(dc, save_bonus) = save_half(dc, save_bonus, 8 d 6)

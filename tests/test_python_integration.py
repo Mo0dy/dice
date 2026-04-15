@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from dice import dice_interpreter
 from diceengine import Distrib, Distributions, TRUE, FALSE, lift_sweeps
+from executor import ExactExecutor
 
 
 def only_distribution(result):
@@ -26,6 +27,11 @@ def only_distribution(result):
 
 
 class PythonIntegrationTest(unittest.TestCase):
+    def test_session_accepts_explicit_executor(self):
+        session = dice_interpreter(executor=ExactExecutor())
+        result = only_distribution(session("1 + 1"))
+        self.assertEqual(result[2], 1)
+
     def test_session_persists_assigned_runtime_values(self):
         session = dice_interpreter()
         result = session("d20 >= 11")
