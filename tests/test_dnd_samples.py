@@ -36,8 +36,8 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_crit_longsword_matches_inline_match_logic(self):
         helper_result = interpret_file(
-            'import "weapons.dice"\ncrit_longsword(16, 7, 4)',
-            current_dir=SAMPLES / "lib",
+            'import "std:dnd/weapons.dice"\ncrit_longsword(16, 7, 4)',
+            current_dir=ROOT,
         )
         inline_result = interpret_statement(
             "match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0"
@@ -46,8 +46,8 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_paladin_smite_matches_inline_match_logic(self):
         helper_result = interpret_file(
-            'import "weapons.dice"\npaladin_smite(17, 8, 4, 3)',
-            current_dir=SAMPLES / "lib",
+            'import "std:dnd/weapons.dice"\npaladin_smite(17, 8, 4, 3)',
+            current_dir=ROOT,
         )
         inline_result = interpret_statement(
             "match d20 as roll | roll == 20 = 2 d 8 + 4 + 6 d 8 | roll + 8 >= 17 = 1 d 8 + 4 + 3 d 8 | otherwise = 0"
@@ -56,8 +56,8 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_crit_helper_preserves_ac_sweep_shape(self):
         result = interpret_file(
-            'import "weapons.dice"\n~crit_longsword([10:22], 7, 4)',
-            current_dir=SAMPLES / "lib",
+            'import "std:dnd/weapons.dice"\n~crit_longsword([10:22], 7, 4)',
+            current_dir=ROOT,
         )
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].values, tuple(range(10, 23)))

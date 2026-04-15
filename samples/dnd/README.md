@@ -5,12 +5,14 @@ Executable sample programs for stressing the current dice language with D&D-like
 - `at_table/`: concrete actions you might evaluate during play
 - `analysis/`: sweep-based setup comparisons and expected-value views
 - `lib/`: reusable helper libraries imported by the sample programs
+- `stdlib/` equivalents are available to end users through imports such as `import "std:dnd/weapons.dice"`
 
 The mechanics are intentionally approximate. Their main purpose is to exercise the language surface and reveal modeling gaps.
 
 The samples now intentionally exercise:
 
-- `import "..."` for reusable combat helpers
+- relative `import "..."` for reusable combat helpers inside the sample tree
+- packaged stdlib imports such as `import "std:dnd/weapons.dice"` for reusable shared helpers
 - `// ...` comments inside `.dice` files
 - reusable shared-roll crit helpers built on `match ... as ...`
 - `repeat_sum(n, expr)` for repeated independent attacks or beams

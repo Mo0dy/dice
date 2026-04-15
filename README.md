@@ -34,7 +34,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
 - `expr $ f` passes `expr` as the first argument to `f`.
 - `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
-- `import "path/to/file.dice"` loads another dice file once, relative to the current file.
+- `import "path/to/file.dice"` loads another dice file once. Relative paths resolve from the importing file, absolute paths resolve from the filesystem root, and `std:...` resolves from dice's packaged standard library.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
@@ -54,7 +54,7 @@ The CLI has three modes:
 - Run a dice program from a file: `python3 dice.py --file path/to/program.dice`
 
 The `--file` mode parses a dice program, not Markdown or plain notes. Multi-line programs are separated by newlines or `;`.
-Use `import "relative/path.dice"` inside files when you want to share helpers across programs.
+Use `import "relative/path.dice"` inside files when you want to share helpers across programs. Use `import "/absolute/path/to/file.dice"` for explicit filesystem imports and `import "std:dnd/weapons.dice"` for packaged helpers.
 
 Useful flags:
 
@@ -196,7 +196,9 @@ Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backe
 
 - `// ...` starts a line comment and can also appear after code on the same line.
 - `import "helpers.dice"` imports another dice file once.
-- Imports are resolved relative to the file that contains the import.
+- Relative imports are resolved from the file that contains the import.
+- Absolute paths such as `import "/tmp/helpers.dice"` are supported.
+- `std:...` imports such as `import "std:dnd/weapons.dice"` resolve inside dice's packaged standard library.
 
 ## Examples
 
@@ -205,6 +207,7 @@ hit(ac) = d20 >= ac; hit(11)
 hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
 hit(ac) = d20 >= ac; hit([AC:10:15])
 crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
+import "std:dnd/weapons.dice"; crit_longsword(16, 7, 4)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0

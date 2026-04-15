@@ -24,6 +24,9 @@ from diceengine import (
 from executor import ExactExecutor
 
 
+STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
+
+
 class CallableEntry(object):
     """User-defined callable exposed to dice source."""
 
@@ -52,6 +55,7 @@ class Interpreter():
         self.call_stack = []
         self.executor = executor if executor is not None else ExactExecutor()
         self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
+        self.stdlib_root = os.path.abspath(STDLIB_ROOT)
         self.imported_files = imported_files if imported_files is not None else set()
         self.import_stack = import_stack if import_stack is not None else []
         self._sweep_cache = {}
@@ -112,6 +116,21 @@ class Interpreter():
     def exception(self, message=""):
         """Raises an exception for the Interpreter"""
         raise Exception("Interpreter exception: {}".format(message))
+
+    def _resolve_import_path(self, import_path):
+        if import_path.startswith("std:"):
+            stdlib_path = import_path[len("std:"):].lstrip("/\\")
+            if not stdlib_path:
+                self.exception("Could not import {}".format(import_path))
+            resolved_path = os.path.abspath(os.path.join(self.stdlib_root, stdlib_path))
+            if os.path.commonpath([self.stdlib_root, resolved_path]) != self.stdlib_root:
+                self.exception("Could not import {}".format(import_path))
+            return resolved_path
+
+        if os.path.isabs(import_path):
+            return os.path.abspath(import_path)
+
+        return os.path.abspath(os.path.join(self.current_dir, import_path))
 
     def _validate_runtime_value(self, value):
         if value is None:
@@ -193,7 +212,7 @@ class Interpreter():
 
     def visit_Import(self, node):
         import_path = node.path.value
-        resolved_path = os.path.abspath(os.path.join(self.current_dir, import_path))
+        resolved_path = self._resolve_import_path(import_path)
 
         if resolved_path in self.import_stack:
             cycle = " -> ".join(self.import_stack + [resolved_path])
