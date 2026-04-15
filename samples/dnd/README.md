@@ -16,4 +16,7 @@ The samples now intentionally exercise:
 - `// ...` comments inside `.dice` files
 - reusable shared-roll crit helpers built on `match ... as ...`
 - `repeat_sum(n, expr)` for repeated independent attacks or beams
+- advantage via higher-level helpers such as `reckless_great_weapon_master(...)`
+- keep-high syntax through `4 d 6 h 3` stat rolls
+- all current `stdlib/dnd/weapons.dice` and `stdlib/dnd/spells.dice` helper entry points
 - sweep-based build analysis across AC, save bonuses, or dart counts
