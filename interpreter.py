@@ -88,6 +88,7 @@ class Interpreter():
         self.callable_scope[entry.name] = entry
 
     def _register_builtin_functions(self):
+        # Keep interpreter builtin exposure in sync with standard_library.py.
         register_standard_library(self, CallableEntry)
 
     def register_function_definition(self, node):

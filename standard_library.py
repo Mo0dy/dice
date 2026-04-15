@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 
-"""Standard library callables registered into the dice interpreter."""
+"""Standard library callables registered into the dice interpreter.
+
+New builtins must be added here and registered in ``register_standard_library``.
+The interpreter only exposes standard-library functions that are wired through
+that registration path.
+"""
 
 from itertools import product
 
-from diceengine import Distrib, _coerce_to_distributions, _union_axes
+from diceengine import Distrib, Distributions, _coerce_to_distributions, _union_axes
 import viewer
 
 
 def register_standard_library(interpreter, callable_entry_type):
     interpreter._register_callable(
         callable_entry_type("sum", "host", arity=2, function=lambda count, value: builtin_sum(interpreter, count, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("sumover", "host", arity=2, function=lambda axis_name, value: builtin_sumover(interpreter, axis_name, value))
+    )
+    interpreter._register_callable(
+        callable_entry_type("total", "host", arity=1, function=lambda value: builtin_total(interpreter, value))
     )
     interpreter._register_callable(
         callable_entry_type("render", "host", variadic=True, function=lambda *args: builtin_render(interpreter, *args))
@@ -73,3 +84,70 @@ def builtin_render(interpreter, *args):
 
     render_outcome = viewer.render_comparison(entries)
     return render_outcome.output_path
+
+
+def _resolve_target_axis(interpreter, value, axis_name):
+    if not isinstance(axis_name, str):
+        interpreter.exception("sumover expects a string axis name")
+
+    matches = [axis for axis in value.axes if axis.name == axis_name and axis.name != axis.key]
+    if not matches:
+        interpreter.exception("sumover could not find named axis {}".format(axis_name))
+    if len(matches) > 1:
+        interpreter.exception("sumover found multiple axes named {}".format(axis_name))
+    return matches[0]
+
+
+def _resolve_total_axis(interpreter, value):
+    if not value.axes:
+        interpreter.exception("total expects exactly one named axis")
+    if len(value.axes) != 1:
+        interpreter.exception("total expects exactly one named axis")
+
+    axis = value.axes[0]
+    if axis.name == axis.key:
+        interpreter.exception("total expects exactly one named axis")
+    return axis
+
+
+def _coordinates_without_axis(axes, coordinates, target_key):
+    return tuple(
+        coordinate
+        for axis, coordinate in zip(axes, coordinates)
+        if axis.key != target_key
+    )
+
+
+def _sum_axis(interpreter, value, target_axis):
+    remaining_axes = tuple(axis for axis in value.axes if axis.key != target_axis.key)
+    grouped = {}
+
+    for coordinates, distrib in value.cells.items():
+        remaining_coordinates = _coordinates_without_axis(value.axes, coordinates, target_axis.key)
+        grouped.setdefault(remaining_coordinates, []).append(distrib)
+
+    cells = {}
+    for remaining_coordinates, distribs in grouped.items():
+        reduced = 0
+        for distrib in distribs:
+            reduced = interpreter.engine.add(reduced, distrib)
+        reduced_value = _coerce_to_distributions(reduced)
+        if not reduced_value.is_unswept():
+            interpreter.exception("sumover reduction produced an unexpected sweep")
+        cells[remaining_coordinates] = reduced_value.only_distribution()
+
+    if not cells:
+        return Distributions.scalar(0)
+    return Distributions(remaining_axes, cells)
+
+
+def builtin_sumover(interpreter, axis_name, value):
+    distributions = _coerce_to_distributions(value)
+    target_axis = _resolve_target_axis(interpreter, distributions, axis_name)
+    return _sum_axis(interpreter, distributions, target_axis)
+
+
+def builtin_total(interpreter, value):
+    distributions = _coerce_to_distributions(value)
+    target_axis = _resolve_total_axis(interpreter, distributions)
+    return _sum_axis(interpreter, distributions, target_axis)

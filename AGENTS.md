@@ -52,6 +52,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - During this rewrite, every semantic feature change should come with sensible end-to-end tests where practical.
 - Do not recreate parallel user docs like the removed `documentation.org` / `documentation.html` unless the user explicitly asks for them.
 - For syntax changes, update `lexer.py`, `diceparser.py`, and `interpreter.py` together.
+- When adding standard-library builtins in `standard_library.py`, register them in `register_standard_library()` and keep `interpreter.py`'s builtin registration path in sync.
 - For import behavior, keep resolution relative to the importing file and prefer explicit runtime syntax over hidden preprocessing.
 - For semantic changes, check `diceengine.py` first; most operator behavior lives there.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.

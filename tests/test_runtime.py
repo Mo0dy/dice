@@ -145,6 +145,37 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (10, 11))
 
+    def test_sumover_reduces_named_axis(self):
+        result = only_distribution(interpret_statement('sumover("party", [party:1, 2, 3])'))
+        self.assertEqual(result[6], 1)
+
+    def test_sumover_preserves_other_axes(self):
+        result = interpret_statement('sumover("party", [AC:10, 11] + [party:1, 2])')
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "AC")
+        self.assertEqual(result.cells[(10,)][23], 1)
+        self.assertEqual(result.cells[(11,)][25], 1)
+
+    def test_total_reduces_single_named_axis(self):
+        result = only_distribution(interpret_statement("total([party:1, 2, 3])"))
+        self.assertEqual(result[6], 1)
+
+    def test_sumover_rejects_missing_named_axis(self):
+        with self.assertRaisesRegex(Exception, "could not find named axis"):
+            interpret_statement('sumover("party", [1:3])')
+
+    def test_total_rejects_unnamed_axis(self):
+        with self.assertRaisesRegex(Exception, "exactly one named axis"):
+            interpret_statement("total([1:3])")
+
+    def test_total_rejects_multiple_axes(self):
+        with self.assertRaisesRegex(Exception, "exactly one named axis"):
+            interpret_statement("total([party:1, 2] + [AC:10, 11])")
+
+    def test_sumover_rejects_non_numeric_results(self):
+        with self.assertRaisesRegex(Exception, "numeric outcomes"):
+            interpret_statement('sumover("party", d20 >= [party:10, 11])')
+
     def test_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic count"):
             interpret_statement("sum(d2, d6)")
