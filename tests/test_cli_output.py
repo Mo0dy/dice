@@ -46,6 +46,13 @@ class CliFormattingTest(unittest.TestCase):
             "  /AC    10    11    12\nfalse  0.45  0.50  0.55\n true  0.55  0.50  0.45",
         )
 
+    def test_distribution_sweep_shows_integral_probabilities_without_decimal_padding(self):
+        rendered = dice._format_result_text(interpret_statement("d2 >= [AC:1:3]", roundlevel=2), roundlevel=2)
+        self.assertEqual(
+            rendered,
+            "  /AC  1     2  3\n true  1  0.50  0\nfalse  0  0.50  1",
+        )
+
     def test_numeric_distribution_sweep_includes_mean_row(self):
         rendered = dice._format_result_text(interpret_statement("d20 + 6 >= [AC:10:12] -> 2d6 + 4", roundlevel=2), roundlevel=2)
         self.assertEqual(
@@ -59,13 +66,13 @@ class CliFormattingTest(unittest.TestCase):
 
     def test_named_scalar_sweep_aligns_labels(self):
         rendered = dice._format_result_text(interpret_statement("~(d20 >= [AC:8:12] -> 5 | 0)", roundlevel=2), roundlevel=2)
-        self.assertEqual(rendered, "/AC\n 8: 3.25\n 9: 3.00\n10: 2.75\n11: 2.50\n12: 2.25")
+        self.assertEqual(rendered, "/AC\n 8: 3.25\n 9: 3\n10: 2.75\n11: 2.50\n12: 2.25")
 
     def test_two_axis_scalar_result_uses_corner_label(self):
         rendered = dice._format_result_text(interpret_statement("~([AC:10:11] + [BONUS:1:2])", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "AC/BONUS      1      2\n      10  11.00  12.00\n      11  12.00  13.00",
+            "AC/BONUS   1   2\n      10  11  12\n      11  12  13",
         )
 
     def test_json_output_returns_structured_object(self):
@@ -131,7 +138,7 @@ class CliMainIntegrationTest(unittest.TestCase):
                 with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
                     exit_code = dice.main()
             self.assertEqual(exit_code, 0)
-            self.assertEqual(stdout.getvalue(), "2.00\n")
+            self.assertEqual(stdout.getvalue(), "2\n")
         finally:
             os.unlink(path)
 

@@ -58,6 +58,7 @@ Use `import "relative/path.dice"` inside files when you want to share helpers ac
 Useful flags:
 
 - `-R N` or `--round N` rounds displayed numeric output. The CLI defaults to `-R 2`.
+- Rounded values that land exactly on an integer display without trailing decimal zeros.
 - `--json` prints structured JSON objects for tool-facing integrations.
 - `-g` prints a grep-friendly single-line result
 - `-v` prints the input together with the result
@@ -106,9 +107,9 @@ false  0.45  0.50  0.55
 ```
 
 ```text
-AC/BONUS      1      2
-      10  11.00  12.00
-      11  12.00  13.00
+AC/BONUS   1   2
+      10  11  12
+      11  12  13
 ```
 
 Use `render(...)` in a program, or `-p` on a direct command, when you want a graph instead of text output.

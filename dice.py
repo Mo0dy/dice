@@ -71,29 +71,33 @@ def _round_numeric(value, roundlevel):
     return value
 
 
+def _format_rounded_numeric(value, roundlevel=0):
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if not roundlevel:
+            return str(value)
+        rounded = _round_numeric(value, roundlevel)
+        if rounded.is_integer():
+            return str(int(rounded))
+        return f"{rounded:.{roundlevel}f}"
+    return str(value)
+
+
 def _format_scalar(value, roundlevel=0):
     if _is_numeric(value):
-        if roundlevel:
-            return f"{float(value):.{roundlevel}f}"
-        return str(value)
+        return _format_rounded_numeric(value, roundlevel)
     return str(value)
 
 
 def _format_label(value, roundlevel=0):
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        rounded = _round_numeric(value, roundlevel)
-        if roundlevel:
-            return f"{rounded:.{roundlevel}f}"
-        return str(rounded)
+    if _is_numeric(value):
+        return _format_rounded_numeric(value, roundlevel)
     return str(value)
 
 
 def _format_probability(value, roundlevel=0):
-    if roundlevel:
-        return f"{float(value):.{roundlevel}f}"
-    return str(value)
+    return _format_rounded_numeric(value, roundlevel)
 
 
 def _axis_header(name):
