@@ -68,6 +68,18 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(outcome, 2.5)
         self.assertAlmostEqual(probability, 1)
 
+    def test_choice_distribution_mean_returns_true_probability(self):
+        result = only_distribution(interpret_statement("d20 >= 11 $ mean"))
+        outcome, probability = next(iter(result.items()))
+        self.assertAlmostEqual(outcome, 0.5)
+        self.assertAlmostEqual(probability, 1)
+
+    def test_choice_distribution_var_and_std_use_bernoulli_projection(self):
+        variance = only_distribution(interpret_statement("d20 >= 11 $ var"))
+        stddev = only_distribution(interpret_statement("d20 >= 11 $ std"))
+        self.assertAlmostEqual(next(iter(variance.keys())), 0.25)
+        self.assertAlmostEqual(next(iter(stddev.keys())), 0.5)
+
     def test_mass_function_preserves_sweeps(self):
         result = interpret_statement("mass(d20[19:20])")
         self.assertEqual(result.axes[0].values, (19, 20))

@@ -72,24 +72,15 @@ class Distrib(object):
     def average(self):
         total = 0
         for outcome, probability in self.items():
-            if not isinstance(outcome, (int, float)):
-                runtime_error(
-                    "mean expects numeric outcomes, got {}".format(type(outcome)),
-                    hint="Apply mean only to numeric distributions.",
-                )
-            total += outcome * probability
+            total += _summary_numeric_outcome(outcome, "mean") * probability
         return total
 
     def variance(self):
         mean = self.average()
         total = 0
         for outcome, probability in self.items():
-            if not isinstance(outcome, (int, float)):
-                runtime_error(
-                    "variance expects numeric outcomes, got {}".format(type(outcome)),
-                    hint="Apply variance only to numeric distributions.",
-                )
-            total += ((outcome - mean) ** 2) * probability
+            numeric_outcome = _summary_numeric_outcome(outcome, "variance")
+            total += ((numeric_outcome - mean) ** 2) * probability
         return total
 
     def stddev(self):
@@ -248,6 +239,19 @@ def _require_numeric(value, opname):
             "{} expects numeric outcomes, got {}".format(opname, type(value)),
             hint="Convert the expression to numbers before using {}.".format(opname),
         )
+
+
+def _summary_numeric_outcome(value, opname):
+    if isinstance(value, (int, float)):
+        return value
+    if value == FALSE:
+        return 0
+    if value == TRUE:
+        return 1
+    runtime_error(
+        "{} expects numeric or choice outcomes, got {}".format(opname, type(value)),
+        hint="Apply {} to numeric distributions or boolean comparisons.".format(opname),
+    )
 
 
 def _require_int(value, opname):

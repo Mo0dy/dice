@@ -26,7 +26,7 @@ from dice import interpret_statement
 class CliFormattingTest(unittest.TestCase):
     def test_unswept_distribution_uses_pretty_lines(self):
         rendered = dice._format_result_text(interpret_statement("d20 >= 11", roundlevel=2), roundlevel=2)
-        self.assertEqual(rendered, "false: 0.50\n true: 0.50")
+        self.assertEqual(rendered, "false: 0.50\n true: 0.50\n  (E): 0.50")
 
     def test_unswept_distribution_aligns_numeric_labels(self):
         rendered = dice._format_result_text(interpret_statement("d20", roundlevel=2), roundlevel=2)
@@ -43,14 +43,14 @@ class CliFormattingTest(unittest.TestCase):
         rendered = dice._format_result_text(interpret_statement("d20 >= [AC:10:12]", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "  /AC    10    11    12\nfalse  0.45  0.50  0.55\n true  0.55  0.50  0.45",
+            "  /AC    10    11    12\nfalse  0.45  0.50  0.55\n true  0.55  0.50  0.45\n  (E)  0.55  0.50  0.45",
         )
 
     def test_distribution_sweep_shows_integral_probabilities_without_decimal_padding(self):
         rendered = dice._format_result_text(interpret_statement("d2 >= [AC:1:3]", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "  /AC  1     2  3\n true  1  0.50  0\nfalse  0  0.50  1",
+            "  /AC  1     2  3\n true  1  0.50  0\nfalse  0  0.50  1\n  (E)  1  0.50  0",
         )
 
     def test_numeric_distribution_sweep_includes_mean_row(self):

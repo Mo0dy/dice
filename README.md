@@ -16,6 +16,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `d20` rolls one die and returns a probability distribution.
 - `2d6` rolls multiple dice and sums them.
 - `>=`, `<=`, `<`, `>`, `==` return boolean distributions over `true` and `false`.
+- `mean`, `var`, and `std` treat `false` as `0` and `true` as `1`, so comparisons summarize like Bernoulli distributions.
 - `->` applies the `true` branch of a boolean distribution to another distribution.
 - `|` adds an else-branch to `->`.
 - `|/` is shorthand for “else, use half damage”.

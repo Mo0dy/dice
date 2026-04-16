@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from diceengine import Distributions
+from diceengine import Distributions, FALSE, TRUE
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -126,12 +126,14 @@ def _format_key_value_lines(entries):
 
 
 def _distribution_mean(distrib):
-    if _is_deterministic_distribution(distrib):
-        return None
     outcomes = list(distrib.keys())
-    if not outcomes or not all(_is_numeric(outcome) for outcome in outcomes):
+    if not outcomes or not all(_is_summary_scalar(outcome) for outcome in outcomes):
         return None
     return distrib.average()
+
+
+def _is_summary_scalar(value):
+    return _is_numeric(value) or value in (FALSE, TRUE)
 
 
 def _format_unswept_distribution(distrib, roundlevel=0):
