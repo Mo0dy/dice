@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from diceengine import Distributions, RenderConfig
+from diceengine import Distributions, RenderConfig, wait_for_rendered_figures
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -33,7 +33,8 @@ from lexer import Lexer, LexerError
 timeout_seconds = 5
 DEFAULT_ROUNDLEVEL = 2
 REPL_HISTORY_LENGTH = 1000
-NON_BLOCKING_RENDER_CONFIG = RenderConfig(interactive_blocking=False)
+NON_BLOCKING_RENDER_CONFIG = RenderConfig.from_mode("nonblocking")
+DEFERRED_RENDER_CONFIG = RenderConfig.from_mode("deferred")
 REPL_COMPLETER_DELIMS = " \t\n\"'`(){}[];,|&<>!=+*"
 
 
@@ -98,8 +99,16 @@ def _format_label(value, roundlevel=0):
     return str(value)
 
 
-def _format_probability(value, roundlevel=0):
-    return "{}%".format(_format_rounded_numeric(value * 100, roundlevel))
+def _resolve_probability_mode(probability_mode=None, json_output=False):
+    if probability_mode is not None:
+        return probability_mode
+    return "raw" if json_output else "percent"
+
+
+def _format_probability(value, roundlevel=0, probability_mode="percent"):
+    if probability_mode == "percent":
+        return "{}%".format(_format_rounded_numeric(value * 100, roundlevel))
+    return _format_rounded_numeric(value, roundlevel)
 
 
 def _axis_header(name):
@@ -134,11 +143,14 @@ def _distribution_mean(distrib):
     return distrib.average()
 
 
-def _format_unswept_distribution(distrib, roundlevel=0):
+def _format_unswept_distribution(distrib, roundlevel=0, probability_mode="percent"):
     if _is_deterministic_distribution(distrib):
         return _format_scalar(_deterministic_outcome(distrib), roundlevel)
     entries = [
-        (_format_label(outcome, roundlevel), _format_probability(distrib[outcome], roundlevel))
+        (
+            _format_label(outcome, roundlevel),
+            _format_probability(distrib[outcome], roundlevel, probability_mode=probability_mode),
+        )
         for outcome in _ordered_labels(distrib.keys())
     ]
     mean = _distribution_mean(distrib)
@@ -166,7 +178,7 @@ def _format_scalar_sweep(result, roundlevel=0):
     return "\n".join(lines)
 
 
-def _format_distribution_sweep(result, roundlevel=0):
+def _format_distribution_sweep(result, roundlevel=0, probability_mode="percent"):
     axis = result.axes[0]
     outcomes = []
     seen = set()
@@ -183,7 +195,14 @@ def _format_distribution_sweep(result, roundlevel=0):
     for outcome in outcomes:
         rows.append(
             [_format_label(outcome, roundlevel)]
-            + [_format_probability(result.cells[(value,)][outcome], roundlevel) for value in axis.values]
+            + [
+                _format_probability(
+                    result.cells[(value,)][outcome],
+                    roundlevel,
+                    probability_mode=probability_mode,
+                )
+                for value in axis.values
+            ]
         )
     if all(mean is not None for mean in means):
         rows.append(["(E)"] + [_format_scalar(mean, roundlevel) for mean in means])
@@ -202,14 +221,22 @@ def _format_scalar_heatmap(result, roundlevel=0):
     return _string_table(rows)
 
 
-def _format_result_text(result, roundlevel=0):
+def _format_result_text(result, roundlevel=0, probability_mode="percent"):
     if isinstance(result, Distributions):
         if result.is_unswept():
-            return _format_unswept_distribution(result.only_distribution(), roundlevel)
+            return _format_unswept_distribution(
+                result.only_distribution(),
+                roundlevel,
+                probability_mode=probability_mode,
+            )
         if len(result.axes) == 1:
             if _all_scalar(result):
                 return _format_scalar_sweep(result, roundlevel)
-            return _format_distribution_sweep(result, roundlevel)
+            return _format_distribution_sweep(
+                result,
+                roundlevel,
+                probability_mode=probability_mode,
+            )
         if len(result.axes) == 2 and _all_scalar(result):
             return _format_scalar_heatmap(result, roundlevel)
     if isinstance(result, float) and roundlevel:
@@ -217,19 +244,20 @@ def _format_result_text(result, roundlevel=0):
     return str(result)
 
 
-def _serialize_distribution(distrib, roundlevel=0):
+def _serialize_distribution(distrib, roundlevel=0, probability_mode="raw"):
+    scale = 100.0 if probability_mode == "percent" else 1.0
     entries = []
     for outcome in _ordered_labels(distrib.keys()):
         entries.append(
             {
                 "outcome": _round_numeric(outcome, roundlevel) if _is_numeric(outcome) else outcome,
-                "probability": _round_numeric(distrib[outcome], roundlevel),
+                "probability": _round_numeric(distrib[outcome] * scale, roundlevel),
             }
         )
     return entries
 
 
-def _serialize_result(result, roundlevel=0):
+def _serialize_result(result, roundlevel=0, probability_mode="raw"):
     if isinstance(result, Distributions):
         axes = [
             {
@@ -253,7 +281,11 @@ def _serialize_result(result, roundlevel=0):
             cells.append(
                 {
                     "coordinates": coordinate_entries,
-                    "distribution": _serialize_distribution(distrib, roundlevel),
+                    "distribution": _serialize_distribution(
+                        distrib,
+                        roundlevel,
+                        probability_mode=probability_mode,
+                    ),
                 }
             )
         return {
@@ -268,8 +300,11 @@ def _serialize_result(result, roundlevel=0):
     return {"type": type(result).__name__, "value": str(result)}
 
 
-def _format_result_json(result, roundlevel=0):
-    return json.dumps(_serialize_result(result, roundlevel), indent=2)
+def _format_result_json(result, roundlevel=0, probability_mode="raw"):
+    return json.dumps(
+        _serialize_result(result, roundlevel, probability_mode=probability_mode),
+        indent=2,
+    )
 
 
 def _history_file_path():
@@ -334,7 +369,7 @@ def _setup_repl_completion(interpreter, readline_module=None):
     return completer
 
 
-def _handle_repl_command(text, state):
+def _handle_repl_command(text, state, interpreter):
     stripped = text.strip()
     if not stripped.startswith("$"):
         return False
@@ -352,6 +387,23 @@ def _handle_repl_command(text, state):
             raise InteractiveCommandError("set_round expects a non-negative integer")
         state["roundlevel"] = roundlevel
         return "round = {}".format(roundlevel)
+    if parts[0] == "set_render_mode":
+        if len(parts) != 2:
+            raise InteractiveCommandError(
+                "set_render_mode expects exactly one mode argument"
+            )
+        interpreter.executor.set_render_mode(parts[1])
+        mode_name = interpreter.executor.render_config.mode_name()
+        state["render_mode"] = mode_name
+        return "render_mode = {}".format(mode_name)
+    if parts[0] == "set_probability_mode":
+        if len(parts) != 2:
+            raise InteractiveCommandError(
+                "set_probability_mode expects exactly one mode argument"
+            )
+        probability_mode = interpreter.executor.set_probability_mode(parts[1])
+        state["probability_mode"] = probability_mode
+        return "probability_mode = {}".format(probability_mode)
     raise InteractiveCommandError("Unknown interpreter command {}".format(parts[0]))
 
 
@@ -476,13 +528,20 @@ def print_interactive_error(error):
 
 def runinteractive(args):
     """Run a simple interactive shell."""
+    json_output = getattr(args, "json_output", False)
     interpreter = Interpreter(
         None,
         current_dir=os.getcwd(),
         render_config=NON_BLOCKING_RENDER_CONFIG,
     )
-    state = {"roundlevel": args.roundlevel}
-    json_output = getattr(args, "json_output", False)
+    state = {
+        "roundlevel": args.roundlevel,
+        "render_mode": interpreter.executor.render_config.mode_name(),
+        "probability_mode": _resolve_probability_mode(
+            interpreter.executor.render_config.probability_mode,
+            json_output=json_output,
+        ),
+    }
     history_path = _setup_repl_history()
     _setup_repl_completion(interpreter)
     try:
@@ -499,7 +558,7 @@ def runinteractive(args):
             if not text.strip():
                 continue
             try:
-                command_result = _handle_repl_command(text, state)
+                command_result = _handle_repl_command(text, state, interpreter)
                 if command_result is not False:
                     if command_result is not None:
                         sys.stdout.write(command_result + "\n")
@@ -520,15 +579,39 @@ def runinteractive(args):
                     text,
                     json_output=json_output,
                     roundlevel=state["roundlevel"],
+                    probability_mode=interpreter.executor.render_config.probability_mode,
                 )
     finally:
         _save_repl_history(history_path)
     return 2
 
 
-def print_result(result, verbose=False, line="", json_output=False, roundlevel=0):
+def print_result(
+    result,
+    verbose=False,
+    line="",
+    json_output=False,
+    roundlevel=0,
+    probability_mode=None,
+):
     """Print a result to stdout."""
-    rendered = _format_result_json(result, roundlevel) if json_output else _format_result_text(result, roundlevel)
+    effective_probability_mode = _resolve_probability_mode(
+        probability_mode,
+        json_output=json_output,
+    )
+    rendered = (
+        _format_result_json(
+            result,
+            roundlevel,
+            probability_mode=effective_probability_mode,
+        )
+        if json_output
+        else _format_result_text(
+            result,
+            roundlevel,
+            probability_mode=effective_probability_mode,
+        )
+    )
 
     if verbose:
         sys.stdout.write("dice> " + line + "\n" + rendered + "\n")
@@ -563,11 +646,17 @@ def main():
     if args.file:
         if args.command:
             parser.error("--file cannot be combined with a command")
+        interpreter = Interpreter(
+            None,
+            current_dir=os.path.dirname(os.path.abspath(args.file)),
+            render_config=DEFERRED_RENDER_CONFIG,
+        )
         with open(args.file) as f:
             try:
                 result = interpret_file(
                     f.read(),
                     args.roundlevel,
+                    interpreter=interpreter,
                     current_dir=os.path.dirname(os.path.abspath(args.file)),
                     source_name=os.path.abspath(args.file),
                 )
@@ -581,15 +670,27 @@ def main():
                 args.file,
                 json_output=args.json_output,
                 roundlevel=args.roundlevel,
+                probability_mode=interpreter.executor.render_config.probability_mode,
             )
+        wait_for_rendered_figures(interpreter.executor.render_config)
         return 0
 
     if not args.command:
         parser.error("expected a dice command, or use --interactive / --file")
 
     command = " ".join(args.command)
+    interpreter = Interpreter(
+        None,
+        current_dir=os.getcwd(),
+        render_config=DEFERRED_RENDER_CONFIG,
+    )
     try:
-        result = interpret_statement(command, args.roundlevel, source_name="<command>")
+        result = interpret_statement(
+            command,
+            args.roundlevel,
+            interpreter=interpreter,
+            source_name="<command>",
+        )
     except DiagnosticError as error:
         sys.stderr.write(format_diagnostic(error) + "\n")
         return 1
@@ -600,7 +701,9 @@ def main():
             command,
             json_output=args.json_output,
             roundlevel=args.roundlevel,
+            probability_mode=interpreter.executor.render_config.probability_mode,
         )
+    wait_for_rendered_figures(interpreter.executor.render_config)
     return 0
 
 

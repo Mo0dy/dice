@@ -43,6 +43,25 @@ class RenderStatementTest(unittest.TestCase):
         entries = render_comparison.call_args.args[0]
         self.assertEqual([label for label, _ in entries], ["a", "b"])
 
+    def test_render_single_expression_accepts_axis_label_and_title(self):
+        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), None)
+        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
+            result = interpret_statement('render(d20, "Roll", "Hit chances")')
+        self.assertIsNone(result)
+        render_result.assert_called_once()
+        self.assertEqual(render_result.call_args.kwargs["x_label"], "Roll")
+        self.assertEqual(render_result.call_args.kwargs["title"], "Hit chances")
+
+    def test_render_comparison_accepts_axis_label_and_trailing_title(self):
+        program = 'a = d20\nb = d20 + 1\nrender(a, "a", b, "b", "Roll", "Comparison")'
+        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_bar", "Outcome", "Probability", ("a", "b")), None)
+        with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
+            result = interpret_file(program)
+        self.assertIsNone(result)
+        render_comparison.assert_called_once()
+        self.assertEqual(render_comparison.call_args.kwargs["x_label"], "Roll")
+        self.assertEqual(render_comparison.call_args.kwargs["title"], "Comparison")
+
     def test_render_returns_output_path_in_headless_mode(self):
         result = interpret_statement("render(d20)")
         self.assertIsInstance(result, str)
@@ -50,12 +69,8 @@ class RenderStatementTest(unittest.TestCase):
         self.assertTrue(os.path.exists(result))
 
     def test_render_comparison_requires_labels(self):
-        with self.assertRaisesRegex(Exception, "render comparison labels must be strings"):
+        with self.assertRaisesRegex(Exception, "require an axis label before the title"):
             interpret_statement("render(d20, d20)")
-
-    def test_render_comparison_requires_two_expressions(self):
-        with self.assertRaisesRegex(Exception, "at least two expressions"):
-            interpret_statement('render(d20, "only")')
 
     def test_render_comparison_requires_label_for_every_expression(self):
         with self.assertRaisesRegex(Exception, "require a label for every expression"):
@@ -152,6 +167,55 @@ class ViewerSpecTest(unittest.TestCase):
 
 
 class ViewerBackendTest(unittest.TestCase):
+    def test_probability_bar_scales_to_percent_by_default(self):
+        result = interpret_statement("d2")
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer._plot_unswept_bar(ax, result)
+            heights = [patch.get_height() for patch in ax.patches]
+            self.assertEqual(heights, [50.0, 50.0])
+        finally:
+            viewer.plt.close(figure)
+
+    def test_probability_bar_can_use_raw_probabilities(self):
+        result = interpret_statement("d2")
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer._plot_unswept_bar(
+                ax,
+                result,
+                render_config=diceengine.RenderConfig(probability_mode="raw"),
+            )
+            heights = [patch.get_height() for patch in ax.patches]
+            self.assertEqual(heights, [0.5, 0.5])
+        finally:
+            viewer.plt.close(figure)
+
+    def test_titled_figure_sets_window_title(self):
+        figure = viewer.plt.figure()
+        original_manager = getattr(figure.canvas, "manager", None)
+        mock_manager = mock.Mock()
+        figure.canvas.manager = mock_manager
+        try:
+            viewer._set_window_title(figure, "Hit chances")
+            mock_manager.set_window_title.assert_called_once_with("Hit chances")
+        finally:
+            figure.canvas.manager = original_manager
+            viewer.plt.close(figure)
+
+    def test_multiple_figures_still_set_window_title(self):
+        figure = viewer.plt.figure()
+        original_manager = getattr(figure.canvas, "manager", None)
+        mock_manager = mock.Mock()
+        figure.canvas.manager = mock_manager
+        try:
+            with mock.patch.object(viewer.plt, "get_fignums", return_value=[1, 2]):
+                viewer._set_window_title(figure, "Hit chances")
+            mock_manager.set_window_title.assert_called_once_with("Hit chances")
+        finally:
+            figure.canvas.manager = original_manager
+            viewer.plt.close(figure)
+
     def test_qtagg_is_treated_as_interactive_backend(self):
         figure = viewer.plt.figure()
         try:
@@ -182,6 +246,44 @@ class ViewerBackendTest(unittest.TestCase):
             show.assert_called_once_with(block=False)
             pause.assert_called_once_with(0.001)
             close.assert_not_called()
+        finally:
+            viewer.plt.close(figure)
+
+    def test_wait_for_rendered_figures_blocks_until_close_in_deferred_mode(self):
+        figure = viewer.plt.figure()
+        try:
+            with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
+                with mock.patch.object(viewer.plt, "get_fignums", return_value=[figure.number]):
+                    with mock.patch.object(viewer.plt, "show") as show:
+                        viewer.wait_for_rendered_figures(
+                            render_config=diceengine.RenderConfig.from_mode("deferred")
+                        )
+            show.assert_called_once_with()
+        finally:
+            viewer.plt.close(figure)
+
+    def test_render_bar_uses_percent_probability_axis_label_by_default(self):
+        result = interpret_statement("d2")
+        figure, ax = viewer.plt.subplots()
+        try:
+            with mock.patch.object(viewer.plt, "subplots", return_value=(figure, ax)):
+                with mock.patch.object(viewer, "_show_figure", return_value=None):
+                    viewer.render_result(result)
+            self.assertEqual(ax.get_ylabel(), "Probability (%)")
+        finally:
+            viewer.plt.close(figure)
+
+    def test_render_bar_can_use_raw_probability_axis_label(self):
+        result = interpret_statement("d2")
+        figure, ax = viewer.plt.subplots()
+        try:
+            with mock.patch.object(viewer.plt, "subplots", return_value=(figure, ax)):
+                with mock.patch.object(viewer, "_show_figure", return_value=None):
+                    viewer.render_result(
+                        result,
+                        render_config=diceengine.RenderConfig(probability_mode="raw"),
+                    )
+            self.assertEqual(ax.get_ylabel(), "Probability")
         finally:
             viewer.plt.close(figure)
 

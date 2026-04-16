@@ -90,6 +90,29 @@ class CliFormattingTest(unittest.TestCase):
             ],
         )
 
+    def test_raw_probability_mode_uses_raw_text_probabilities(self):
+        rendered = dice._format_result_text(
+            interpret_statement("d20 >= 11", roundlevel=2),
+            roundlevel=2,
+            probability_mode="raw",
+        )
+        self.assertEqual(rendered, "  0: 0.50\n  1: 0.50\n(E): 0.50")
+
+    def test_json_can_explicitly_use_percent_probabilities(self):
+        rendered = dice._format_result_json(
+            interpret_statement("d20 >= 11", roundlevel=2),
+            roundlevel=2,
+            probability_mode="percent",
+        )
+        payload = json.loads(rendered)
+        self.assertEqual(
+            payload["cells"][0]["distribution"],
+            [
+                {"outcome": 0, "probability": 50.0},
+                {"outcome": 1, "probability": 50.0},
+            ],
+        )
+
 
 class CliInteractiveTest(unittest.TestCase):
     def test_set_round_command_updates_repl_rounding(self):
@@ -101,6 +124,26 @@ class CliInteractiveTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(stdout.getvalue(), "round = 3\n2.500\n")
+
+    def test_set_render_mode_command_updates_repl_render_mode(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["$ set_render_mode blocking", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(stdout.getvalue(), "render_mode = blocking\n")
+
+    def test_set_probability_mode_command_updates_repl_probability_mode(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["$ set_probability_mode raw", "d20 >= 11", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(stdout.getvalue(), "probability_mode = raw\n  0: 0.50\n  1: 0.50\n(E): 0.50\n")
 
     def test_repl_history_uses_persistent_file(self):
         fake_readline = mock.Mock()
@@ -211,6 +254,55 @@ class CliMainIntegrationTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["type"], "distributions")
+
+    def test_main_waits_for_rendered_figures_after_file_execution(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            path = Path(tempdir) / "plot.dice"
+            path.write_text('render(d20, "Roll", "Title")\n', encoding="utf-8")
+            with mock.patch.object(sys, "argv", ["dice.py", "--file", str(path)]):
+                with mock.patch("dice.wait_for_rendered_figures") as wait_for_rendered_figures:
+                    with mock.patch("sys.stdout", new=io.StringIO()):
+                        exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        wait_for_rendered_figures.assert_called_once_with(
+            dice.RenderConfig.from_mode("deferred")
+        )
+
+    def test_main_honors_script_render_mode_toggle(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            path = Path(tempdir) / "plot.dice"
+            path.write_text('set_render_mode("blocking")\nrender(d20, "Roll", "Title")\n', encoding="utf-8")
+            with mock.patch.object(sys, "argv", ["dice.py", "--file", str(path)]):
+                with mock.patch("dice.wait_for_rendered_figures") as wait_for_rendered_figures:
+                    with mock.patch("sys.stdout", new=io.StringIO()):
+                        exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        wait_for_rendered_figures.assert_called_once_with(
+            dice.RenderConfig.from_mode("blocking")
+        )
+
+    def test_main_json_defaults_to_raw_probabilities_even_with_percent_text_default(self):
+        with mock.patch.object(sys, "argv", ["dice.py", "--json", "d20", ">=", "11"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual([entry["outcome"] for entry in payload["cells"][0]["distribution"]], [0, 1])
+        self.assertAlmostEqual(payload["cells"][0]["distribution"][0]["probability"], 0.5)
+        self.assertAlmostEqual(payload["cells"][0]["distribution"][1]["probability"], 0.5)
+
+    def test_main_json_honors_script_probability_mode_toggle(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            path = Path(tempdir) / "probabilities.dice"
+            path.write_text('set_probability_mode("percent")\nd20 >= 11\n', encoding="utf-8")
+            with mock.patch.object(sys, "argv", ["dice.py", "--json", "--file", str(path)]):
+                with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                    exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual([entry["outcome"] for entry in payload["cells"][0]["distribution"]], [0, 1])
+        self.assertAlmostEqual(payload["cells"][0]["distribution"][0]["probability"], 50.0)
+        self.assertAlmostEqual(payload["cells"][0]["distribution"][1]["probability"], 50.0)
 
     def test_main_json_defaults_to_unrounded_output(self):
         with mock.patch.object(sys, "argv", ["dice.py", "--json", "d3"]):

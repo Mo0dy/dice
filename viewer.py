@@ -67,6 +67,38 @@ def _show_figure(figure, render_config=None):
     return path
 
 
+def wait_for_rendered_figures(render_config=None):
+    render_config = render_config if render_config is not None else RenderConfig()
+    if not render_config.wait_for_figures_on_exit:
+        return
+    if not _is_interactive_backend(plt.get_backend()):
+        return
+    if not plt.get_fignums():
+        return
+    plt.show()
+
+
+def _set_window_title(figure, title):
+    if title is None:
+        return
+    manager = getattr(figure.canvas, "manager", None)
+    if manager is None:
+        return
+    set_window_title = getattr(manager, "set_window_title", None)
+    if set_window_title is None:
+        return
+    set_window_title(title)
+
+
+def _effective_render_config(render_config=None):
+    return render_config if render_config is not None else RenderConfig()
+
+
+def _scale_probability(value, render_config=None):
+    config = _effective_render_config(render_config)
+    return value * config.probability_scale(default="percent")
+
+
 def _is_scalar_distribution(distrib):
     items = list(distrib.items())
     return (
@@ -155,11 +187,14 @@ def build_comparison_spec(entries):
     raise Exception("Viewer exception: render comparison only supports unswept distributions or one-sweep scalar results")
 
 
-def _plot_unswept_bar(ax, result, label=None):
+def _plot_unswept_bar(ax, result, label=None, render_config=None):
     distrib = result.only_distribution()
     outcomes = _ordered_values(distrib.keys())
     positions, tick_labels = _category_positions(outcomes)
-    values = [distrib[outcome] for outcome in outcomes]
+    values = [
+        _scale_probability(distrib[outcome], render_config=render_config)
+        for outcome in outcomes
+    ]
     ax.bar(positions, values, alpha=0.85, label=label)
     if tick_labels is not None:
         ax.set_xticks(positions)
@@ -181,7 +216,7 @@ def _plot_scalar_line(ax, result, label=None):
         ax.legend()
 
 
-def _plot_distribution_heatmap(ax, result):
+def _plot_distribution_heatmap(ax, result, render_config=None):
     axis = result.axes[0]
     x_values = axis.values
     all_outcomes = []
@@ -195,7 +230,12 @@ def _plot_distribution_heatmap(ax, result):
     for outcome in all_outcomes:
         row = []
         for value in x_values:
-            row.append(result.cells[(value,)][outcome])
+            row.append(
+                _scale_probability(
+                    result.cells[(value,)][outcome],
+                    render_config=render_config,
+                )
+            )
         matrix.append(row)
     image = ax.imshow(matrix, aspect="auto", origin="lower")
     ax.set_xticks(range(len(x_values)))
@@ -222,33 +262,45 @@ def _plot_scalar_heatmap(ax, result):
     return image
 
 
-def render_result(result, label=None, render_config=None):
+def render_result(result, label=None, x_label=None, title=None, render_config=None):
     result = _coerce_to_distributions(result)
     spec = build_render_spec(result)
+    render_config = _effective_render_config(render_config)
     figure, ax = plt.subplots()
 
     if spec.kind == "bar":
-        _plot_unswept_bar(ax, result, label=label)
+        _plot_unswept_bar(ax, result, label=label, render_config=render_config)
     elif spec.kind == "line":
         _plot_scalar_line(ax, result, label=label)
     elif spec.kind == "heatmap_distribution":
-        image = _plot_distribution_heatmap(ax, result)
-        figure.colorbar(image, ax=ax, label="Probability")
+        image = _plot_distribution_heatmap(ax, result, render_config=render_config)
+        figure.colorbar(
+            image,
+            ax=ax,
+            label=render_config.probability_axis_label(default="percent"),
+        )
     elif spec.kind == "heatmap_scalar":
         image = _plot_scalar_heatmap(ax, result)
         figure.colorbar(image, ax=ax, label="Value")
     else:
         raise Exception("Viewer exception: unsupported render kind {}".format(spec.kind))
 
-    ax.set_xlabel(spec.x_label)
-    ax.set_ylabel(spec.y_label)
+    if title is not None:
+        ax.set_title(title)
+        _set_window_title(figure, title)
+    ax.set_xlabel(x_label if x_label is not None else spec.x_label)
+    if spec.kind == "bar":
+        ax.set_ylabel(render_config.probability_axis_label(default="percent"))
+    else:
+        ax.set_ylabel(spec.y_label)
     figure.tight_layout()
     output_path = _show_figure(figure, render_config=render_config)
     return RenderOutcome(spec, output_path)
 
 
-def render_comparison(entries, render_config=None):
+def render_comparison(entries, x_label=None, title=None, render_config=None):
     spec, results = build_comparison_spec(entries)
+    render_config = _effective_render_config(render_config)
     figure, ax = plt.subplots()
 
     if spec.kind == "compare_bar":
@@ -262,7 +314,10 @@ def render_comparison(entries, render_config=None):
         positions, tick_labels = _category_positions(all_outcomes)
         for label, result in zip(spec.series_labels, results):
             distrib = result.only_distribution()
-            values = [distrib[outcome] for outcome in all_outcomes]
+            values = [
+                _scale_probability(distrib[outcome], render_config=render_config)
+                for outcome in all_outcomes
+            ]
             ax.step(positions, values, where="mid", label=label)
             ax.plot(positions, values, marker="o")
         if tick_labels is not None:
@@ -280,8 +335,14 @@ def render_comparison(entries, render_config=None):
     else:
         raise Exception("Viewer exception: unsupported comparison render kind {}".format(spec.kind))
 
-    ax.set_xlabel(spec.x_label)
-    ax.set_ylabel(spec.y_label)
+    if title is not None:
+        ax.set_title(title)
+        _set_window_title(figure, title)
+    ax.set_xlabel(x_label if x_label is not None else spec.x_label)
+    if spec.kind == "compare_bar":
+        ax.set_ylabel(render_config.probability_axis_label(default="percent"))
+    else:
+        ax.set_ylabel(spec.y_label)
     ax.legend()
     figure.tight_layout()
     output_path = _show_figure(figure, render_config=render_config)

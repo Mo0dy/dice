@@ -2,7 +2,7 @@
 
 """Sweep-aware probability primitives for dice semantics and Python use."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import wraps
 import importlib
 from itertools import product
@@ -32,6 +32,51 @@ class RenderConfig:
     """Viewer behavior knobs shared across runtime entry points."""
 
     interactive_blocking: bool = True
+    wait_for_figures_on_exit: bool = False
+    probability_mode: str | None = None
+
+    @classmethod
+    def from_mode(cls, mode):
+        normalized = _normalize_render_mode(mode)
+        if normalized == "blocking":
+            return cls(interactive_blocking=True, wait_for_figures_on_exit=False)
+        if normalized == "nonblocking":
+            return cls(interactive_blocking=False, wait_for_figures_on_exit=False)
+        if normalized == "deferred":
+            return cls(interactive_blocking=False, wait_for_figures_on_exit=True)
+        runtime_error(
+            "unknown render mode {}".format(mode),
+            hint='Use "blocking", "nonblocking", or "deferred".',
+        )
+
+    def with_mode(self, mode):
+        updated = RenderConfig.from_mode(mode)
+        return replace(
+            self,
+            interactive_blocking=updated.interactive_blocking,
+            wait_for_figures_on_exit=updated.wait_for_figures_on_exit,
+        )
+
+    def with_probability_mode(self, mode):
+        return replace(self, probability_mode=_normalize_probability_mode(mode))
+
+    def mode_name(self):
+        if self.interactive_blocking:
+            return "blocking"
+        if self.wait_for_figures_on_exit:
+            return "deferred"
+        return "nonblocking"
+
+    def effective_probability_mode(self, default="percent"):
+        return self.probability_mode if self.probability_mode is not None else default
+
+    def probability_scale(self, default="percent"):
+        return 100.0 if self.effective_probability_mode(default) == "percent" else 1.0
+
+    def probability_axis_label(self, default="percent"):
+        if self.effective_probability_mode(default) == "percent":
+            return "Probability (%)"
+        return "Probability"
 
 
 def exception(message):
@@ -42,11 +87,35 @@ def runtime_error(message, hint=None):
     raise DiceRuntimeError(message, hint=hint)
 
 
+def _normalize_render_mode(mode):
+    if not isinstance(mode, str):
+        runtime_error("render mode must be a string")
+    return mode.strip().lower()
+
+
+def _normalize_probability_mode(mode):
+    if not isinstance(mode, str):
+        runtime_error("probability mode must be a string")
+    normalized = mode.strip().lower()
+    if normalized not in ("percent", "raw"):
+        runtime_error(
+            "unknown probability mode {}".format(mode),
+            hint='Use "percent" or "raw".',
+        )
+    return normalized
+
+
 def _get_viewer():
     global _viewer_module
     if _viewer_module is None:
         _viewer_module = importlib.import_module("viewer")
     return _viewer_module
+
+
+def wait_for_rendered_figures(render_config=None):
+    viewer = _get_viewer()
+    render_config = render_config if render_config is not None else RenderConfig()
+    viewer.wait_for_rendered_figures(render_config=render_config)
 
 
 class Distrib(object):
@@ -803,6 +872,12 @@ def total(value):
     return total_with(add, value)
 
 
+def _require_render_text(value, message, hint):
+    if not isinstance(value, str):
+        runtime_error(message, hint=hint)
+    return value
+
+
 def render(*args, render_config=None):
     viewer = _get_viewer()
     render_config = render_config if render_config is not None else RenderConfig()
@@ -820,24 +895,81 @@ def render(*args, render_config=None):
             runtime_error(message)
         return render_outcome.output_path
 
-    if len(args) % 2 != 0:
+    if len(args) == 2:
+        runtime_error(
+            "render titles require an axis label before the title",
+            hint='Call render(value, "Axis Label", "Title").',
+        )
+
+    if len(args) == 3:
+        axis_label = _require_render_text(
+            args[1],
+            "render axis labels must be strings",
+            'Call render(value, "Axis Label", "Title").',
+        )
+        if not isinstance(args[2], str):
+            runtime_error(
+                "render comparisons require a label for every expression",
+                hint='Call render(value1, "Label 1", value2, "Label 2").',
+            )
+        title = args[2]
+        try:
+            render_outcome = viewer.render_result(
+                args[0],
+                x_label=axis_label,
+                title=title,
+                render_config=render_config,
+            )
+        except Exception as error:
+            message = str(error)
+            if message.startswith("Viewer exception: "):
+                message = message[len("Viewer exception: "):]
+            runtime_error(message)
+        return render_outcome.output_path
+
+    comparison_axis_label = None
+    comparison_title = None
+    comparison_args = args
+
+    if len(args) >= 6 and isinstance(args[-2], str) and isinstance(args[-1], str):
+        potential_args = args[:-2]
+        if len(potential_args) >= 4 and len(potential_args) % 2 == 0:
+            comparison_args = potential_args
+            comparison_axis_label = args[-2]
+            comparison_title = args[-1]
+
+    if comparison_axis_label is None and len(args) % 2 != 0:
+        runtime_error(
+            "render titles require an axis label before the title",
+            hint='Call render(value, "Axis Label", "Title") or render(value1, "Label 1", value2, "Label 2", "Axis Label", "Title").',
+        )
+
+    if len(comparison_args) % 2 != 0:
         runtime_error(
             "render comparisons require a label for every expression",
             hint='Call render(value1, "Label 1", value2, "Label 2").',
         )
 
     entries = []
-    for index in range(0, len(args), 2):
-        label = args[index + 1]
+    for index in range(0, len(comparison_args), 2):
+        label = comparison_args[index + 1]
         if not isinstance(label, str):
             runtime_error("render comparison labels must be strings")
-        entries.append((label, args[index]))
+        entries.append((label, comparison_args[index]))
 
     if len(entries) < 2:
-        runtime_error("render comparisons need at least two expressions")
+        runtime_error(
+            "render comparisons need at least two expressions",
+            hint='Call render(value1, "Label 1", value2, "Label 2").',
+        )
 
     try:
-        render_outcome = viewer.render_comparison(entries, render_config=render_config)
+        render_outcome = viewer.render_comparison(
+            entries,
+            x_label=comparison_axis_label,
+            title=comparison_title,
+            render_config=render_config,
+        )
     except Exception as error:
         message = str(error)
         if message.startswith("Viewer exception: "):

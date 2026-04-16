@@ -39,9 +39,9 @@ summary(metric) = match metric as m
 
 summary_points = summary([METRIC:"single_mean", "single_std", "character_total_mean", "character_total_std"])
 
-render(one_score_exact)
-render(any_score_at_least_target)
-render(total_modifier_sum)
-render(at_least_one_exact_target)
-render(one_score_greater_than_x)
-render(summary_points)
+render(one_score_exact, "Ability score", "Single ability score distribution")
+render(any_score_at_least_target, "Target score", "Chance any of 6 scores reaches target")
+render(total_modifier_sum, "Total modifier sum", "Total modifier sum across 6 scores")
+render(at_least_one_exact_target, "Target score", "Chance any of 6 scores equals target")
+render(one_score_greater_than_x, "Threshold x", "Chance a single score is greater than x")
+render(summary_points, "Metric", "Ability score summary")

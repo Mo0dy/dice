@@ -69,6 +69,8 @@ Useful flags:
 The interactive shell also supports a few lightweight host commands before parsing dice source:
 
 - `$ set_round N` changes the REPL display rounding for later commands
+- `$ set_render_mode MODE` sets render behavior for later plots. Use `blocking`, `nonblocking`, or `deferred`.
+- `$ set_probability_mode MODE` sets probability display style for later output. Use `percent` or `raw`.
 - `Ctrl-P` / `Ctrl-N` navigate command history on terminals with `readline` support
 - `Tab` completes visible identifiers, function names, and import paths on terminals with `readline` support
 - command history is persisted between sessions when the local state directory is writable
@@ -88,6 +90,7 @@ Default text mode prettifies common result shapes:
 - one-axis full distributions print as tables with outcomes on rows and sweep values on columns
 - two-axis scalar sweeps print as tables with a compact corner label such as `AC/BONUS`
 - unnamed axes stay blank in table headers instead of using fallback labels
+- text-mode probabilities default to percentages; JSON probabilities default to raw probability mass
 
 Examples:
 
@@ -118,6 +121,7 @@ AC/BONUS   1   2
 ```
 
 Use `render(...)` in a program when you want a graph instead of text output.
+CLI script execution uses deferred rendering by default: each `render(...)` call opens a figure without blocking, then `dice.py --file ...` waits for all open figures to close before exiting.
 
 Example rendering program:
 
@@ -172,9 +176,14 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 ## Rendering
 
 - `render(expr)` renders one expression result immediately.
+- `render(expr, "axis label", "title")` renders one expression, overrides the x-axis label, and sets the figure title.
 - `render(expr1, "a", expr2, "b")` compares multiple compatible results on one chart.
+- `render(expr1, "a", expr2, "b", "axis label", "title")` compares multiple results, overrides the x-axis label, and sets the figure title.
+- `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` switch render behavior inside dice programs.
+- `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
 - Axis labels come from named sweeps like `[AC:10:20]`.
 - Unnamed sweeps still render, but use fallback axis labels.
+- render probability displays default to percentages.
 - Supported quick-render shapes are:
   unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.
 

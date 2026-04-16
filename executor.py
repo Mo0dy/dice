@@ -81,6 +81,8 @@ class Executor(ABC):
             "repeat_sum",
             "sumover",
             "total",
+            "set_render_mode",
+            "set_probability_mode",
         ]:
             self._register_host_function(getattr(self, name), name=name)
         self._register_host_function(self.render, name="render", variadic=True)
@@ -99,6 +101,14 @@ class Executor(ABC):
 
     def render(self, *args):
         return diceengine.render(*args, render_config=self.render_config)
+
+    def set_render_mode(self, mode):
+        self.render_config = self.render_config.with_mode(mode)
+        return self.render_config.mode_name()
+
+    def set_probability_mode(self, mode):
+        self.render_config = self.render_config.with_probability_mode(mode)
+        return self.render_config.effective_probability_mode()
 
     @abstractmethod
     def choose(self, left, right):
