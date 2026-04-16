@@ -72,7 +72,7 @@ The Troll version produces the same numbers, but only by driving multiple runs f
 
 We now also have an executable comparison in [tests/test_troll_comparison.py](/home/felix/_Documents/Projects/dice/tests/test_troll_comparison.py:1).
 
-That comparison now covers every sample program under `samples/dnd/at_table` and `samples/dnd/analysis`.
+That comparison now covers the dedicated D&D regression manifest in [tests/dnd_cases.py](/home/felix/_Documents/Projects/dice/tests/dnd_cases.py:1).
 
 The test handles three shapes:
 

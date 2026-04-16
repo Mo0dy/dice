@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from tests.dnd_cases import all_dnd_cases
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_RESULTS = ROOT / "tests" / "expected_results"
-SAMPLES = ROOT / "samples" / "dnd"
+SAMPLES = ROOT / "samples"
 PYTHON_SAMPLES = ROOT / "samples" / "python_extensions"
 
 
@@ -20,8 +22,9 @@ class JsonRegressionCase:
 
 
 def sample_files() -> list[Path]:
-    roots = [SAMPLES / "at_table", SAMPLES / "analysis"]
-    return sorted(path for root in roots for path in root.rglob("*.dice"))
+    if not SAMPLES.exists():
+        return []
+    return sorted(SAMPLES.rglob("*.dice"))
 
 
 def sample_cases() -> list[JsonRegressionCase]:
@@ -39,6 +42,19 @@ def sample_cases() -> list[JsonRegressionCase]:
             )
         )
     return cases
+
+
+def dnd_cases() -> list[JsonRegressionCase]:
+    return [
+        JsonRegressionCase(
+            name=case.name,
+            mode="file",
+            source=case.source,
+            current_dir=ROOT,
+            snapshot_path=case.snapshot_path,
+        )
+        for case in all_dnd_cases()
+    ]
 
 
 def python_sample_files() -> list[Path]:
@@ -93,4 +109,4 @@ def example_cases() -> list[JsonRegressionCase]:
 
 
 def all_cases() -> list[JsonRegressionCase]:
-    return sample_cases() + python_cases() + example_cases()
+    return dnd_cases() + sample_cases() + python_cases() + example_cases()

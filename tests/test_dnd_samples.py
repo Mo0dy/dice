@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.dnd_cases import all_dnd_cases
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLES = ROOT / "samples" / "dnd"
@@ -20,18 +22,28 @@ from dice import interpret_file, interpret_statement
 
 
 def sample_files():
-    roots = [SAMPLES / "at_table", SAMPLES / "analysis"]
-    return sorted(path for root in roots for path in root.rglob("*.dice"))
+    if not SAMPLES.exists():
+        return []
+    return sorted(SAMPLES.rglob("*.dice"))
 
 
 class DndSampleLibraryTest(unittest.TestCase):
-    def test_all_sample_files_execute(self):
+    def test_all_user_facing_sample_files_execute(self):
         files = sample_files()
         self.assertTrue(files, "expected at least one D&D sample file")
 
         for path in files:
             with self.subTest(sample=str(path.relative_to(ROOT))):
                 result = interpret_file(path.read_text(encoding="utf-8"), current_dir=path.parent)
+                self.assertIsNotNone(result)
+
+    def test_all_dnd_test_cases_execute(self):
+        cases = all_dnd_cases()
+        self.assertTrue(cases, "expected at least one D&D test case")
+
+        for case in cases:
+            with self.subTest(sample=case.name):
+                result = interpret_file(case.source, current_dir=ROOT, source_name=case.name)
                 self.assertIsNotNone(result)
 
     def test_crit_longsword_matches_inline_match_logic(self):

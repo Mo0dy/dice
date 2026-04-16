@@ -7,9 +7,10 @@ import sys
 import unittest
 from pathlib import Path
 
+from tests.dnd_cases import all_dnd_cases
+
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLES = ROOT / "samples" / "dnd"
 TROLL = ROOT / "tests" / "troll" / "run_troll.sh"
 TROLL_README = ROOT / "tests" / "troll" / "README.md"
 LOCAL_CAMLRUNM = ROOT / ".tools" / "mosml" / "bin" / "camlrunm"
@@ -33,13 +34,7 @@ TROLL_AVAILABLE = _has_troll_runtime()
 TROLL_SKIP_REASON = "Troll is not available. See {}".format(TROLL_README)
 
 
-def _sample_files():
-    roots = [SAMPLES / "at_table", SAMPLES / "analysis"]
-    return sorted(path for root in roots for path in root.rglob("*.dice"))
-
-
-def _relative_sample(path):
-    return str(path.relative_to(ROOT))
+CASE_SOURCES = {case.name: case.source for case in all_dnd_cases()}
 
 
 def _parse_troll_distribution(output):
@@ -105,82 +100,82 @@ def _spells_args(mode, *, scale=1, **overrides):
 
 
 FULL_DISTRIBUTION_CASES = {
-    "samples/dnd/at_table/bless_longsword_attack.dice": {"args": _weapons_args(5, AC=16, BONUS=7, MOD=4)},
-    "samples/dnd/at_table/crit_longsword_attack.dice": {"args": _weapons_args(6, AC=16, BONUS=7, MOD=4)},
-    "samples/dnd/at_table/eldritch_blast.dice": {"args": _spells_args(1, AC=15, BONUS=7, STAT=4)},
-    "samples/dnd/at_table/eldritch_blast_three_beams.dice": {"args": _spells_args(2, AC=15, BONUS=7, STAT=4, COUNT=3)},
-    "samples/dnd/at_table/fighter_extra_attack.dice": {"args": _weapons_args(9, AC=16, BONUS=7, MOD=4, ATTACKS=2)},
-    "samples/dnd/at_table/fireball_save.dice": {"args": _spells_args(5, DC=15, SAVEBONUS=2)},
-    "samples/dnd/at_table/great_weapon_master_attack.dice": {"args": _weapons_args(2, AC=17, BONUS=8, MOD=4)},
-    "samples/dnd/at_table/guiding_bolt.dice": {"args": _spells_args(3, AC=15, BONUS=7)},
-    "samples/dnd/at_table/inflict_wounds.dice": {"args": _spells_args(4, AC=15, BONUS=7)},
-    "samples/dnd/at_table/longsword_attack.dice": {"args": _weapons_args(1, AC=16, BONUS=7, MOD=4)},
-    "samples/dnd/at_table/magic_missile.dice": {"args": _spells_args(7, COUNT=3)},
-    "samples/dnd/at_table/paladin_smite_attack.dice": {"args": _weapons_args(8, AC=17, BONUS=8, MOD=4, EXTRA=3)},
-    "samples/dnd/at_table/rogue_sneak_attack.dice": {"args": _weapons_args(4, AC=16, BONUS=7, MOD=4, EXTRA=3)},
-    "samples/dnd/at_table/sacred_flame.dice": {"args": _spells_args(6, DC=15, SAVEBONUS=2)},
-    "samples/dnd/analysis/stat_roll_4d6h3.dice": {"stdin": "sum largest 3 4d6\n"},
+    "tests/dnd_cases/at_table/bless_longsword_attack.dice": {"args": _weapons_args(5, AC=16, BONUS=7, MOD=4)},
+    "tests/dnd_cases/at_table/crit_longsword_attack.dice": {"args": _weapons_args(6, AC=16, BONUS=7, MOD=4)},
+    "tests/dnd_cases/at_table/eldritch_blast.dice": {"args": _spells_args(1, AC=15, BONUS=7, STAT=4)},
+    "tests/dnd_cases/at_table/eldritch_blast_three_beams.dice": {"args": _spells_args(2, AC=15, BONUS=7, STAT=4, COUNT=3)},
+    "tests/dnd_cases/at_table/fighter_extra_attack.dice": {"args": _weapons_args(9, AC=16, BONUS=7, MOD=4, ATTACKS=2)},
+    "tests/dnd_cases/at_table/fireball_save.dice": {"args": _spells_args(5, DC=15, SAVEBONUS=2)},
+    "tests/dnd_cases/at_table/great_weapon_master_attack.dice": {"args": _weapons_args(2, AC=17, BONUS=8, MOD=4)},
+    "tests/dnd_cases/at_table/guiding_bolt.dice": {"args": _spells_args(3, AC=15, BONUS=7)},
+    "tests/dnd_cases/at_table/inflict_wounds.dice": {"args": _spells_args(4, AC=15, BONUS=7)},
+    "tests/dnd_cases/at_table/longsword_attack.dice": {"args": _weapons_args(1, AC=16, BONUS=7, MOD=4)},
+    "tests/dnd_cases/at_table/magic_missile.dice": {"args": _spells_args(7, COUNT=3)},
+    "tests/dnd_cases/at_table/paladin_smite_attack.dice": {"args": _weapons_args(8, AC=17, BONUS=8, MOD=4, EXTRA=3)},
+    "tests/dnd_cases/at_table/rogue_sneak_attack.dice": {"args": _weapons_args(4, AC=16, BONUS=7, MOD=4, EXTRA=3)},
+    "tests/dnd_cases/at_table/sacred_flame.dice": {"args": _spells_args(6, DC=15, SAVEBONUS=2)},
+    "tests/dnd_cases/analysis/stat_roll_4d6h3.dice": {"stdin": "sum largest 3 4d6\n"},
 }
 
 
 SCALAR_SWEEP_CASES = {
-    "samples/dnd/analysis/bless_longsword_vs_ac.dice": {
+    "tests/dnd_cases/analysis/bless_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(5, AC=value, BONUS=7, MOD=4),
     },
-    "samples/dnd/analysis/crit_longsword_vs_ac.dice": {
+    "tests/dnd_cases/analysis/crit_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(6, AC=value, BONUS=7, MOD=4),
     },
-    "samples/dnd/analysis/eldritch_blast_three_beams_vs_ac.dice": {
+    "tests/dnd_cases/analysis/eldritch_blast_three_beams_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _spells_args(2, AC=value, BONUS=7, STAT=4, COUNT=3),
     },
-    "samples/dnd/analysis/eldritch_blast_vs_ac.dice": {
+    "tests/dnd_cases/analysis/eldritch_blast_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _spells_args(1, AC=value, BONUS=7, STAT=4),
     },
-    "samples/dnd/analysis/fighter_longsword_vs_ac.dice": {
+    "tests/dnd_cases/analysis/fighter_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(1, AC=value, BONUS=7, MOD=4),
     },
-    "samples/dnd/analysis/fighter_two_attacks_vs_ac.dice": {
+    "tests/dnd_cases/analysis/fighter_two_attacks_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(9, AC=value, BONUS=7, MOD=4, ATTACKS=2),
     },
-    "samples/dnd/analysis/fireball_vs_save_bonus.dice": {
+    "tests/dnd_cases/analysis/fireball_vs_save_bonus.dice": {
         "axis_values": list(range(0, 10)),
         "builder": lambda value: _spells_args(5, DC=15, SAVEBONUS=value),
     },
-    "samples/dnd/analysis/guiding_bolt_vs_ac.dice": {
+    "tests/dnd_cases/analysis/guiding_bolt_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _spells_args(3, AC=value, BONUS=7),
     },
-    "samples/dnd/analysis/gwm_vs_ac.dice": {
+    "tests/dnd_cases/analysis/gwm_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(2, AC=value, BONUS=8, MOD=4),
     },
-    "samples/dnd/analysis/inflict_wounds_vs_ac.dice": {
+    "tests/dnd_cases/analysis/inflict_wounds_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _spells_args(4, AC=value, BONUS=7),
     },
-    "samples/dnd/analysis/magic_missile_vs_darts.dice": {
+    "tests/dnd_cases/analysis/magic_missile_vs_darts.dice": {
         "axis_values": list(range(1, 7)),
         "builder": lambda value: _spells_args(7, COUNT=value),
     },
-    "samples/dnd/analysis/paladin_smite_vs_ac.dice": {
+    "tests/dnd_cases/analysis/paladin_smite_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(8, AC=value, BONUS=8, MOD=4, EXTRA=3),
     },
-    "samples/dnd/analysis/reckless_gwm_vs_ac.dice": {
+    "tests/dnd_cases/analysis/reckless_gwm_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(3, AC=value, BONUS=8, MOD=4),
     },
-    "samples/dnd/analysis/sacred_flame_vs_save_bonus.dice": {
+    "tests/dnd_cases/analysis/sacred_flame_vs_save_bonus.dice": {
         "axis_values": list(range(0, 10)),
         "builder": lambda value: _spells_args(6, DC=15, SAVEBONUS=value),
     },
-    "samples/dnd/analysis/sharpshooter_vs_ac.dice": {
+    "tests/dnd_cases/analysis/sharpshooter_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
         "builder": lambda value: _weapons_args(7, AC=value, BONUS=8, MOD=4),
     },
@@ -188,7 +183,7 @@ SCALAR_SWEEP_CASES = {
 
 
 SCALAR_CASES = {
-    "samples/dnd/analysis/fireball_party_total.dice": {
+    "tests/dnd_cases/analysis/fireball_party_total.dice": {
         "components": [
             _spells_args(5, DC=15, SAVEBONUS=0),
             _spells_args(5, DC=15, SAVEBONUS=2),
@@ -202,24 +197,24 @@ SCALAR_CASES = {
 ALL_CASES = set(FULL_DISTRIBUTION_CASES) | set(SCALAR_SWEEP_CASES) | set(SCALAR_CASES)
 UNCOMPARED_CASES = {
     # This is a multi-render exploratory program, not one semantic result.
-    "samples/dnd/analysis/ability_scores_4d6h3.dice",
+    "tests/dnd_cases/analysis/ability_scores_4d6h3.dice",
 }
 
 
 class TrollDistributionComparisonTest(unittest.TestCase):
     @unittest.skipUnless(TROLL_AVAILABLE, TROLL_SKIP_REASON)
     def test_all_dnd_examples_have_troll_comparisons(self):
-        discovered = {_relative_sample(path) for path in _sample_files()}
+        discovered = set(CASE_SOURCES)
         self.assertEqual(discovered, ALL_CASES | UNCOMPARED_CASES)
 
     @unittest.skipUnless(TROLL_AVAILABLE, TROLL_SKIP_REASON)
     def test_troll_matches_all_full_distribution_examples(self):
         for relative_path, spec in sorted(FULL_DISTRIBUTION_CASES.items()):
             with self.subTest(sample=relative_path):
-                sample_path = ROOT / relative_path
                 dice_distribution = interpret_file(
-                    sample_path.read_text(encoding="utf-8"),
-                    current_dir=sample_path.parent,
+                    CASE_SOURCES[relative_path],
+                    current_dir=ROOT,
+                    source_name=relative_path,
                 ).only_distribution()
                 scale = spec.get("scale", 1)
                 if scale != 1:
@@ -247,8 +242,7 @@ class TrollDistributionComparisonTest(unittest.TestCase):
     def test_troll_matches_all_scalar_sweep_examples(self):
         for relative_path, spec in sorted(SCALAR_SWEEP_CASES.items()):
             with self.subTest(sample=relative_path):
-                sample_path = ROOT / relative_path
-                result = interpret_file(sample_path.read_text(encoding="utf-8"), current_dir=sample_path.parent)
+                result = interpret_file(CASE_SOURCES[relative_path], current_dir=ROOT, source_name=relative_path)
                 self.assertEqual(len(result.axes), 1)
                 self.assertEqual(list(result.axes[0].values), spec["axis_values"])
 
@@ -269,8 +263,7 @@ class TrollDistributionComparisonTest(unittest.TestCase):
     def test_troll_matches_all_scalar_examples(self):
         for relative_path, spec in sorted(SCALAR_CASES.items()):
             with self.subTest(sample=relative_path):
-                sample_path = ROOT / relative_path
-                result = interpret_file(sample_path.read_text(encoding="utf-8"), current_dir=sample_path.parent)
+                result = interpret_file(CASE_SOURCES[relative_path], current_dir=ROOT, source_name=relative_path)
                 dice_scalar = _only_scalar(result.only_distribution())
                 troll_scalar = sum(
                     _parse_troll_average(subprocess.check_output([str(TROLL)] + args, cwd=ROOT, text=True))

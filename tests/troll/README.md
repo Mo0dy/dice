@@ -30,7 +30,9 @@ If Troll is unavailable, the comparison test will skip and point back to this fi
 
 Current intentional exclusions:
 
-- `samples/dnd/analysis/ability_scores_4d6h3.dice`
-  This is a multi-render exploratory program rather than one comparable semantic result.
+- `samples/dnd/*`
+  These are user-facing examples rather than one-to-one Troll parity fixtures.
+- `tests/dnd_cases/analysis/ability_scores_4d6h3.dice`
+  This is a richer semantic regression program rather than one comparable Troll result.
 - `samples/python_extensions/*`
   Host Python integration is outside Troll's language model.
