@@ -33,7 +33,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `[name:a, b, c]` creates a named sweep over explicit values.
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
-- `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
+- `match expr as name | guard = expr | ... | otherwise = expr` binds one shared outcome of `expr`, checks clauses top-to-bottom, and sends only the still-unmatched cases to later clauses.
 - `repeat_sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
 - `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
@@ -161,6 +161,39 @@ sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
 render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
+
+## Match
+
+Use `match` when you want to roll once and make several decisions from that same roll.
+
+Straightforward:
+
+- `match expr as name` means “take one outcome from `expr` and call it `name`”.
+- Clauses are checked from top to bottom.
+- Later clauses only see cases that earlier clauses did not already take.
+- `otherwise` catches whatever is left.
+
+Example:
+
+`match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0`
+
+This is easiest to read as:
+
+- if the roll is `20`, return `10`
+- otherwise, if the roll is `10` through `19`, return `5`
+- otherwise, return `0`
+
+So the second clause is effectively “`roll + 5 >= 15`, but only for rolls that were not already matched by `roll == 20`”.
+
+Exact:
+
+- Evaluate `expr` once as a distribution and bind each possible outcome to `name`.
+- For each bound outcome, evaluate the clauses in order.
+- Each guard must be a Bernoulli result with outcomes only in `0` and `1`.
+- A guarded clause takes the probability mass where its guard is `1`.
+- The remaining probability mass, where the guard is `0`, continues to the next clause.
+- `otherwise` takes all remaining mass.
+- If no clause covers some remaining mass, `match` raises an error instead of silently dropping cases.
 
 ## Whitespace
 
