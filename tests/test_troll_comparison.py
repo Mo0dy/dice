@@ -193,13 +193,17 @@ SCALAR_CASES = {
 
 
 ALL_CASES = set(FULL_DISTRIBUTION_CASES) | set(SCALAR_SWEEP_CASES) | set(SCALAR_CASES)
+UNCOMPARED_CASES = {
+    # Exploratory multi-render analysis sample with no direct Troll parity harness yet.
+    "samples/dnd/analysis/ability_scores_4d6h3.dice",
+}
 
 
 class TrollDistributionComparisonTest(unittest.TestCase):
     @unittest.skipUnless(TROLL_AVAILABLE, TROLL_SKIP_REASON)
     def test_all_dnd_examples_have_troll_comparisons(self):
         discovered = {_relative_sample(path) for path in _sample_files()}
-        self.assertEqual(discovered, ALL_CASES)
+        self.assertEqual(discovered, ALL_CASES | UNCOMPARED_CASES)
 
     @unittest.skipUnless(TROLL_AVAILABLE, TROLL_SKIP_REASON)
     def test_troll_matches_all_full_distribution_examples(self):

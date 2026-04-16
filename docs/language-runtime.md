@@ -47,7 +47,7 @@ AST node families in `syntaxtree.py`:
 - probability distribution generation
 - sweep-aware lifting over multiple evaluation points
 - distribution arithmetic
-- comparison operators returning boolean distributions
+- comparison operators returning Bernoulli `0` / `1` distributions
 - branching and summary operators over distributions
 - indexing/selecting subsets of distributions
 - advantage/disadvantage and high/low roll helpers

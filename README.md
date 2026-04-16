@@ -9,15 +9,14 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `Distrib`: one probability distribution such as a d20 roll
 - `Distributions`: one or more probability distributions indexed by zero or more sweep axes
 - `Sweep`: a finite set of input values, usually created with bracket syntax
-- symbolic outcomes such as `true` and `false`
+- numeric Bernoulli outcomes such as `0` and `1`
 
 ## Semantics
 
 - `d20` rolls one die and returns a probability distribution.
 - `2d6` rolls multiple dice and sums them.
-- `>=`, `<=`, `<`, `>`, `==` return boolean distributions over `true` and `false`.
-- `mean`, `var`, and `std` treat `false` as `0` and `true` as `1`, so comparisons summarize like Bernoulli distributions.
-- `->` applies the `true` branch of a boolean distribution to another distribution.
+- `>=`, `<=`, `<`, `>`, `==` return Bernoulli distributions over `1` and `0`.
+- `->` applies the `1` branch of a Bernoulli distribution to another distribution.
 - `|` adds an else-branch to `->`.
 - `|/` is shorthand for “else, use half damage”.
 - `[a:b]` creates an unnamed sweep over an inclusive integer range.
@@ -35,7 +34,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
 - `expr $ f` passes `expr` as the first argument to `f`.
 - `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
-- `import "path/to/file.dice"` loads another dice file once. Relative paths resolve from the importing file, absolute paths resolve from the filesystem root, and `std:...` resolves from dice's packaged standard library.
+- `import "path/to/file"` loads another dice file once. Relative paths resolve from the importing file, absolute paths resolve from the filesystem root, and `std:...` resolves from dice's packaged standard library. When the target is a `.dice` file, the extension is optional.
 - `+`, `-`, `*`, `/` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
@@ -57,11 +56,12 @@ The CLI has three modes:
 - Run a dice program from a file: `python3 dice.py --file path/to/program.dice`
 
 The `--file` mode parses a dice program, not Markdown or plain notes. Multi-line programs are separated by newlines or `;`.
-Use `import "relative/path.dice"` inside files when you want to share helpers across programs. Use `import "/absolute/path/to/file.dice"` for explicit filesystem imports and `import "std:dnd/weapons.dice"` for packaged helpers.
+Use `import "relative/path"` inside files when you want to share helpers across programs. Use `import "/absolute/path/to/file"` for explicit filesystem imports and `import "std:dnd/weapons"` for packaged helpers.
 
 Useful flags:
 
 - `-R N` or `--round N` rounds displayed numeric output. The CLI defaults to `-R 2`.
+- Probabilities in default text output are shown as percentages.
 - Rounded values that land exactly on an integer display without trailing decimal zeros.
 - `--json` prints structured JSON objects for tool-facing integrations.
 - `-v` prints the input together with the result
@@ -70,6 +70,7 @@ The interactive shell also supports a few lightweight host commands before parsi
 
 - `$ set_round N` changes the REPL display rounding for later commands
 - `Ctrl-P` / `Ctrl-N` navigate command history on terminals with `readline` support
+- `Tab` completes visible identifiers, function names, and import paths on terminals with `readline` support
 - command history is persisted between sessions when the local state directory is writable
 
 ## Output Modes
@@ -91,8 +92,9 @@ Default text mode prettifies common result shapes:
 Examples:
 
 ```text
-false: 0.50
-true: 0.50
+  0: 50%
+  1: 50%
+(E): 0.50
 ```
 
 ```text
@@ -103,9 +105,10 @@ true: 0.50
 ```
 
 ```text
-  /AC    10    11    12
-false  0.45  0.50  0.55
- true  0.55  0.50  0.45
+/AC    10    11    12
+  0   45%   50%   55%
+  1   55%   50%   45%
+(E)  0.55  0.50  0.45
 ```
 
 ```text
@@ -196,10 +199,10 @@ Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backe
 ## Comments And Imports
 
 - `// ...` starts a line comment and can also appear after code on the same line.
-- `import "helpers.dice"` imports another dice file once.
+- `import "helpers"` imports another dice file once when the target is `helpers.dice`.
 - Relative imports are resolved from the file that contains the import.
-- Absolute paths such as `import "/tmp/helpers.dice"` are supported.
-- `std:...` imports such as `import "std:dnd/weapons.dice"` resolve inside dice's packaged standard library.
+- Absolute paths such as `import "/tmp/helpers"` are supported.
+- `std:...` imports such as `import "std:dnd/weapons"` resolve inside dice's packaged standard library.
 
 ## Examples
 
@@ -208,7 +211,7 @@ hit(ac) = d20 >= ac; hit(11)
 hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
 hit(ac) = d20 >= ac; hit([AC:10:15])
 crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
-import "std:dnd/weapons.dice"; crit_longsword(16, 7, 4)
+import "std:dnd/weapons"; crit_longsword(16, 7, 4)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0

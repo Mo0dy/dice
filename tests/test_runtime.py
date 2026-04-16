@@ -196,6 +196,13 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
         self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
 
+    def test_repeat_sum_accepts_comparison_results_directly(self):
+        result = interpret_statement("repeat_sum(2, d20 >= [10:11])")
+        self.assertEqual(result.axes[0].values, (10, 11))
+        self.assertAlmostEqual(result.cells[(10,)][0], 0.2025)
+        self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
+        self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
+
     def test_repeat_sum_accepts_swept_counts(self):
         result = interpret_statement("repeat_sum([1:3], d2)")
         self.assertEqual(result.axes[0].values, (1, 2, 3))
@@ -234,9 +241,11 @@ class RuntimeTest(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "exactly one named axis"):
             interpret_statement("total([party:1, 2] + [AC:10, 11])")
 
-    def test_sumover_rejects_non_numeric_results(self):
-        with self.assertRaisesRegex(Exception, "numeric outcomes"):
-            interpret_statement('sumover("party", d20 >= [party:10, 11])')
+    def test_sumover_accepts_comparison_results(self):
+        result = only_distribution(interpret_statement('sumover("party", d20 >= [party:10, 11])'))
+        self.assertAlmostEqual(result[0], 0.225)
+        self.assertAlmostEqual(result[1], 0.5)
+        self.assertAlmostEqual(result[2], 0.275)
 
     def test_repeat_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic count"):
@@ -256,7 +265,7 @@ class RuntimeTest(unittest.TestCase):
         with self.assertRaises(Exception) as error:
             interpret_statement("match d20 as roll | roll = 10 | otherwise = 0")
         self.assertIn("<input>:1:21", str(error.exception))
-        self.assertIn("match guards must evaluate to booleans", str(error.exception))
+        self.assertIn("match guards must evaluate to Bernoulli outcomes 0 or 1", str(error.exception))
 
     def test_add_function_matches_operator(self):
         self.assertEqual(str(interpret_statement("1 + 2")), str(interpret_statement("add(1, 2)")))

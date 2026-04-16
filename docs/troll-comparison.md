@@ -18,7 +18,7 @@ Example commands:
 
 ## Main Language Differences
 
-- Our DSL has booleans and branching operators like `->`, `|`, and `|/`.
+- Our DSL has Bernoulli `0` / `1` comparison results and branching operators like `->`, `|`, and `|/`.
 - Troll does not have boolean values. It uses empty vs non-empty collections as truthiness.
 - Our DSL has imports and a standard-library surface such as `import "std:dnd/weapons.dice"`.
 - Troll has functions, but no comparable module/import mechanism in the language, so shared helpers are duplicated across files.

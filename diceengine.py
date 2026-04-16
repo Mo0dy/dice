@@ -22,8 +22,8 @@ except ImportError:
         return factorial(n) / factorial(k) / factorial(n - k)
 
 
-TRUE = "true"
-FALSE = "false"
+TRUE = 1
+FALSE = 0
 _viewer_module = None
 
 
@@ -79,15 +79,24 @@ class Distrib(object):
     def average(self):
         total = 0
         for outcome, probability in self.items():
-            total += _summary_numeric_outcome(outcome, "mean") * probability
+            if not isinstance(outcome, (int, float)):
+                runtime_error(
+                    "mean expects numeric outcomes, got {}".format(type(outcome)),
+                    hint="Apply mean only to numeric distributions.",
+                )
+            total += outcome * probability
         return total
 
     def variance(self):
         mean = self.average()
         total = 0
         for outcome, probability in self.items():
-            numeric_outcome = _summary_numeric_outcome(outcome, "variance")
-            total += ((numeric_outcome - mean) ** 2) * probability
+            if not isinstance(outcome, (int, float)):
+                runtime_error(
+                    "variance expects numeric outcomes, got {}".format(type(outcome)),
+                    hint="Apply variance only to numeric distributions.",
+                )
+            total += ((outcome - mean) ** 2) * probability
         return total
 
     def stddev(self):
@@ -248,19 +257,6 @@ def _require_numeric(value, opname):
         )
 
 
-def _summary_numeric_outcome(value, opname):
-    if isinstance(value, (int, float)):
-        return value
-    if value == FALSE:
-        return 0
-    if value == TRUE:
-        return 1
-    runtime_error(
-        "{} expects numeric or choice outcomes, got {}".format(opname, type(value)),
-        hint="Apply {} to numeric distributions or boolean comparisons.".format(opname),
-    )
-
-
 def _require_int(value, opname):
     if not isinstance(value, int):
         runtime_error(
@@ -293,8 +289,8 @@ def _bool_mass(condition):
     invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
     if invalid:
         runtime_error(
-            "branching expects boolean outcomes, got {}".format(invalid),
-            hint="Use a comparison like 'd20 >= 15' before '->'.",
+            "branching expects Bernoulli outcomes 0 or 1, got {}".format(invalid),
+            hint="Use a comparison like 'd20 >= 15' or convert the guard to 0 or 1 before '->'.",
         )
     return condition[TRUE], condition[FALSE]
 

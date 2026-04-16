@@ -48,15 +48,15 @@ This replaces `ResultList` as a semantic result type.
 Probability distributions may contain:
 
 - numeric outcomes
-- symbolic outcomes such as `true` and `false`
+- Bernoulli indicator outcomes such as `0` and `1`
 
-Comparisons should return boolean distributions over symbolic atoms, not `0` and `1`.
+Comparisons should return Bernoulli indicator distributions over `0` and `1`.
 
 Example:
 
 ```text
 d20 >= 11
-=> {true: 0.5, false: 0.5}
+=> {1: 0.5, 0: 0.5}
 ```
 
 ## Sweeps
@@ -102,7 +102,7 @@ That is acceptable because ranges are already used primarily as sweep inputs.
 
 ### Comparisons
 
-Comparisons return boolean distributions.
+Comparisons return Bernoulli `0` / `1` distributions.
 
 Examples:
 
@@ -113,7 +113,7 @@ d20 >= [AC:5:10]
 
 ### Branching and resolution
 
-`->`, `|`, and `|/` should branch on boolean distributions instead of consuming `ResultList`.
+`->`, `|`, and `|/` should branch on Bernoulli `0` / `1` distributions instead of consuming `ResultList`.
 
 Examples:
 
@@ -204,8 +204,8 @@ These should consume the unified distribution container instead of special-case 
 ## Suggested Rewrite Order
 
 1. Specify the new runtime data model in code comments or docs.
-2. Replace comparison results with boolean distributions.
-3. Rework `->`, `|`, and `|/` to branch on boolean distributions.
+2. Replace comparison results with Bernoulli `0` / `1` distributions.
+3. Rework `->`, `|`, and `|/` to branch on Bernoulli `0` / `1` distributions.
 4. Introduce sweep values and sweep-aware evaluation.
 5. Add the sweep-lifting helper/decorator.
 6. Remove `ResultList`.
@@ -227,4 +227,4 @@ The next concrete implementation task is:
 1. define the unified distribution container API
 2. decide the internal representation of sweep assignments
 3. prototype a sweep-lifting helper for one or two operators
-4. replace comparison output with boolean distributions
+4. replace comparison output with Bernoulli `0` / `1` distributions

@@ -62,6 +62,21 @@ class DndSampleLibraryTest(unittest.TestCase):
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].values, tuple(range(10, 23)))
 
+    def test_ability_score_target_counting_works_without_manual_indicator_branch(self):
+        direct = interpret_statement("((repeat_sum(3, d20 >= [TARGET:10:12])) >= 1) $ mean")
+        explicit = interpret_statement("((repeat_sum(3, d20 >= [TARGET:10:12] -> 1 | 0)) >= 1) $ mean")
+        self.assertEqual(len(direct.axes), len(explicit.axes))
+        for direct_axis, explicit_axis in zip(direct.axes, explicit.axes):
+            self.assertEqual(direct_axis.name, explicit_axis.name)
+            self.assertEqual(direct_axis.values, explicit_axis.values)
+
+        for direct_coordinates, direct_distrib in direct.cells.items():
+            target_value = direct_coordinates[0]
+            explicit_distrib = explicit.cells[(target_value,)]
+            self.assertEqual(set(direct_distrib.keys()), set(explicit_distrib.keys()))
+            for outcome in direct_distrib:
+                self.assertAlmostEqual(direct_distrib[outcome], explicit_distrib[outcome])
+
 
 if __name__ == "__main__":
     unittest.main()
