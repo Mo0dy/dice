@@ -56,7 +56,7 @@ AST node families in `syntaxtree.py`:
 
 The legacy runtime used to have a `Preprocessor` that handled:
 
-- line comments beginning with `//`
+- line comments beginning with `#`
 - macro-style definitions beginning with `!define`
 - multiline script preprocessing before parsing
 

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
-"""Sweep-aware probability primitives for dice semantics and Python use."""
+"""Sweep-aware finite-measure and probability primitives for dice semantics."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from functools import wraps
 import importlib
 from itertools import product
-from math import inf, sqrt
+from math import inf, isfinite, sqrt
 import random
+from typing import Any, Generic, TypeVar
 
 from diagnostics import RuntimeError as DiceRuntimeError
 
-# note that comb only exists in python 3.8
-# but it's faster then just calculating factorials
 try:
     from math import comb
 except ImportError:
@@ -24,13 +25,20 @@ except ImportError:
 
 TRUE = 1
 FALSE = 0
+PROBABILITY_TOLERANCE = 1e-9
 _viewer_module = None
+
+
+def exception(message):
+    raise DiceRuntimeError(message)
+
+
+def runtime_error(message, hint=None):
+    raise DiceRuntimeError(message, hint=hint)
 
 
 @dataclass(frozen=True)
 class RenderConfig:
-    """Viewer behavior knobs shared across runtime entry points."""
-
     interactive_blocking: bool = True
     wait_for_figures_on_exit: bool = False
     probability_mode: str | None = None
@@ -74,17 +82,7 @@ class RenderConfig:
         return 100.0 if self.effective_probability_mode(default) == "percent" else 1.0
 
     def probability_axis_label(self, default="percent"):
-        if self.effective_probability_mode(default) == "percent":
-            return "Probability (%)"
-        return "Probability"
-
-
-def exception(message):
-    raise DiceRuntimeError(message)
-
-
-def runtime_error(message, hint=None):
-    raise DiceRuntimeError(message, hint=hint)
+        return "Probability (%)" if self.effective_probability_mode(default) == "percent" else "Probability"
 
 
 def _normalize_render_mode(mode):
@@ -114,40 +112,71 @@ def _get_viewer():
 
 def wait_for_rendered_figures(render_config=None):
     viewer = _get_viewer()
-    render_config = render_config if render_config is not None else RenderConfig()
-    viewer.wait_for_rendered_figures(render_config=render_config)
+    viewer.wait_for_rendered_figures(
+        render_config=render_config if render_config is not None else RenderConfig()
+    )
 
 
-class Distrib(object):
-    """Probability distribution of outcomes to probability mass."""
+def _canonicalize_weighted_entries(entries):
+    merged = {}
+    order = []
+    for outcome, weight in entries:
+        if not isinstance(weight, (int, float)) or not isfinite(weight):
+            runtime_error("weights must be finite numbers")
+        if weight < 0:
+            runtime_error("weights must be non-negative")
+        if weight == 0:
+            continue
+        try:
+            existing = merged.get(outcome, 0.0)
+        except TypeError as error:
+            runtime_error("measure outcomes must be hashable: {}".format(error))
+        if outcome not in merged:
+            order.append(outcome)
+        merged[outcome] = existing + float(weight)
+    return tuple((outcome, merged[outcome]) for outcome in order if merged[outcome] != 0)
 
-    def __init__(self, distrib=None):
-        self.distrib = distrib if distrib else {}
+
+@dataclass(frozen=True, init=False)
+class FiniteMeasure:
+    entries: tuple[tuple[object, float], ...]
+    total_weight: float
+
+    def __init__(self, entries=None):
+        normalized_entries = _canonicalize_weighted_entries(entries.items() if isinstance(entries, dict) else (entries or ()))
+        object.__setattr__(self, "entries", normalized_entries)
+        object.__setattr__(self, "total_weight", sum(weight for _, weight in normalized_entries))
 
     def __repr__(self):
-        return str(self.distrib)
+        return str(dict(self.entries))
 
     def __getitem__(self, key):
-        return self.distrib[key] if key in self.distrib else 0
+        for outcome, weight in self.entries:
+            if outcome == key:
+                return weight
+        return 0
 
-    def __setitem__(self, key, value):
-        self.distrib[key] = value
+    def __iter__(self):
+        return iter(self.entries)
 
     def items(self):
-        return self.distrib.items()
+        return self.entries
 
     def keys(self):
-        return self.distrib.keys()
+        return tuple(outcome for outcome, _ in self.entries)
 
-    def probabilities(self):
-        return self.distrib.values()
+    def weights(self):
+        return tuple(weight for _, weight in self.entries)
+
+    def is_normalized(self):
+        return abs(self.total_weight - 1.0) <= PROBABILITY_TOLERANCE and self.total_weight > 0
 
     def total_probability(self):
-        return sum(self.probabilities())
+        return self.total_weight
 
     def average(self):
-        total = 0
-        for outcome, probability in self.items():
+        total = 0.0
+        for outcome, probability in self.entries:
             if not isinstance(outcome, (int, float)):
                 runtime_error(
                     "mean expects numeric outcomes, got {}".format(type(outcome)),
@@ -157,19 +186,39 @@ class Distrib(object):
         return total
 
     def variance(self):
-        mean = self.average()
-        total = 0
-        for outcome, probability in self.items():
+        mean_value = self.average()
+        total = 0.0
+        for outcome, probability in self.entries:
             if not isinstance(outcome, (int, float)):
                 runtime_error(
                     "variance expects numeric outcomes, got {}".format(type(outcome)),
                     hint="Apply variance only to numeric distributions.",
                 )
-            total += ((outcome - mean) ** 2) * probability
+            total += ((outcome - mean_value) ** 2) * probability
         return total
 
     def stddev(self):
         return sqrt(self.variance())
+
+    def map_support(self, mapper):
+        mapped = []
+        for outcome, weight in self.entries:
+            mapped.append((mapper(outcome), weight))
+        if isinstance(self, Distribution):
+            return Distribution(mapped)
+        return FiniteMeasure(mapped)
+
+
+@dataclass(frozen=True, init=False)
+class Distribution(FiniteMeasure):
+    def __init__(self, entries=None):
+        super().__init__(entries)
+        if self.total_weight <= 0:
+            runtime_error("distributions must have positive total probability")
+        if abs(self.total_weight - 1.0) > PROBABILITY_TOLERANCE:
+            runtime_error(
+                "distribution must be normalized, got total probability {}".format(self.total_weight)
+            )
 
 
 @dataclass(frozen=True)
@@ -179,9 +228,7 @@ class SweepAxis:
     values: tuple
 
 
-class Sweep(object):
-    """Finite sweep of candidate values, optionally named."""
-
+class SweepValues:
     counter = 0
 
     def __init__(self, values, name=None):
@@ -190,132 +237,121 @@ class Sweep(object):
             runtime_error("sweeps require at least one value")
         self.values = deduped
         self.name = name
-        self.key = "sweep_{}".format(Sweep.counter)
-        Sweep.counter += 1
+        self.key = "sweep_{}".format(SweepValues.counter)
+        SweepValues.counter += 1
 
     def axis(self):
         axis_name = self.name if self.name else self.key
         return SweepAxis(self.key, axis_name, self.values)
+
+    def renamed(self, name):
+        renamed = SweepValues(self.values, name=name)
+        renamed.key = self.key
+        return renamed
 
     def __repr__(self):
         label = "{}:".format(self.name) if self.name else ""
         return "[{}{}]".format(label, ", ".join(str(value) for value in self.values))
 
 
-class Distributions(object):
-    """Set of distributions indexed by zero or more sweep axes."""
+T = TypeVar("T")
+
+
+@dataclass(frozen=True, init=False)
+class Sweep(Generic[T]):
+    axes: tuple[SweepAxis, ...]
+    _cells: tuple[tuple[tuple[object, ...], T], ...]
 
     def __init__(self, axes=None, cells=None):
-        self.axes = tuple(axes or ())
-        self.cells = cells if cells else {(): Distrib()}
+        axes = tuple(axes or ())
+        raw_cells = cells if cells is not None else {(): None}
+        if isinstance(raw_cells, dict):
+            items = tuple(raw_cells.items())
+        else:
+            items = tuple(raw_cells)
+        if not items:
+            items = (((), None),)
+        object.__setattr__(self, "axes", axes)
+        object.__setattr__(self, "_cells", items)
 
     @staticmethod
     def scalar(value):
-        return Distributions((), {(): _coerce_to_distrib(value)})
+        return Sweep((), {(): value})
 
     @staticmethod
-    def from_sweep(sweep):
-        axis = sweep.axis()
-        cells = {(value,): _coerce_to_distrib(value) for value in axis.values}
-        return Distributions((axis,), cells)
+    def from_values(sweep_values: SweepValues):
+        axis = sweep_values.axis()
+        return Sweep((axis,), {(value,): value for value in axis.values})
+
+    @property
+    def cells(self):
+        return dict(self._cells)
+
+    def items(self):
+        return self._cells
+
+    def values(self):
+        return tuple(value for _, value in self._cells)
 
     def is_unswept(self):
         return len(self.axes) == 0
 
+    def only_value(self):
+        return dict(self._cells)[()]
+
     def only_distribution(self):
-        return self.cells[()]
+        return self.only_value()
 
     def lookup(self, combined_axes, coordinates):
         if self.is_unswept():
-            return self.only_distribution()
-
+            return self.only_value()
         index_by_key = {axis.key: idx for idx, axis in enumerate(combined_axes)}
         local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in self.axes)
-        return self.cells[local_coordinates]
+        return dict(self._cells)[local_coordinates]
+
+    def with_cells(self, cells):
+        return Sweep(self.axes, cells)
 
     def round_probabilities(self, digits):
         if not digits:
             return self
-        for distrib in self.cells.values():
-            for outcome, probability in list(distrib.items()):
-                distrib[outcome] = round(probability, digits)
-        return self
-
-    def _display_key(self, coordinates):
-        if len(self.axes) == 1:
-            axis = self.axes[0]
-            value = coordinates[0]
-            if axis.name.startswith("sweep_"):
-                return value
-            return "{}={}".format(axis.name, value)
-        parts = []
-        for axis, value in zip(self.axes, coordinates):
-            label = axis.name if not axis.name.startswith("sweep_") else axis.key
-            parts.append("{}={}".format(label, value))
-        return tuple(parts)
+        updated = {}
+        for coordinates, value in self._cells:
+            if isinstance(value, FiniteMeasure):
+                rounded_entries = [(outcome, round(weight, digits)) for outcome, weight in value.items()]
+                if isinstance(value, Distribution):
+                    if rounded_entries:
+                        total = sum(weight for _, weight in rounded_entries)
+                        diff = round(1.0 - total, digits)
+                        last_outcome, last_weight = rounded_entries[-1]
+                        rounded_entries[-1] = (last_outcome, round(last_weight + diff, digits))
+                    updated_value = Distribution(rounded_entries)
+                else:
+                    updated_value = FiniteMeasure(rounded_entries)
+            else:
+                updated_value = round(value, digits) if isinstance(value, float) else value
+            updated[coordinates] = updated_value
+        return Sweep(self.axes, updated)
 
     def __repr__(self):
         if self.is_unswept():
-            return repr(self.only_distribution())
+            return repr(self.only_value())
         rendered = {}
-        for coordinates, distrib in self.cells.items():
-            rendered[self._display_key(coordinates)] = distrib.distrib
+        for coordinates, value in self._cells:
+            if len(self.axes) == 1:
+                axis = self.axes[0]
+                key = coordinates[0] if axis.name.startswith("sweep_") else "{}={}".format(axis.name, coordinates[0])
+            else:
+                key = tuple(
+                    "{}={}".format(axis.name if not axis.name.startswith("sweep_") else axis.key, coordinate)
+                    for axis, coordinate in zip(self.axes, coordinates)
+                )
+            rendered[key] = value
         return str(rendered)
 
 
-def _coerce_to_distrib(value):
-    if isinstance(value, Distrib):
-        return value
-    if isinstance(value, Distributions):
-        if not value.is_unswept():
-            runtime_error("expected an unswept value here")
-        return value.only_distribution()
-    if isinstance(value, (int, float, str)):
-        return Distrib({value: 1})
-    runtime_error("can't convert {} to a distribution".format(type(value)))
-
-
-def _coerce_to_distributions(value):
-    if isinstance(value, Distributions):
-        return value
-    if isinstance(value, Sweep):
-        return Distributions.from_sweep(value)
-    return Distributions.scalar(value)
-
-
-def _ordered_numeric_outcomes(distrib, opname):
-    outcomes = list(distrib.keys())
-    for outcome in outcomes:
-        _require_numeric(outcome, opname)
-    return tuple(sorted(outcomes))
-
-
-def _union_axes(distribution_sets):
-    axes = []
-    seen = set()
-    for distribution_set in distribution_sets:
-        for axis in distribution_set.axes:
-            if axis.key not in seen:
-                axes.append(axis)
-                seen.add(axis.key)
-    return tuple(axes)
-
-
-def lift_sweeps(function):
-    """Lift a plain distribution operator over all sweep assignments."""
-
-    @wraps(function)
-    def wrapped(*args):
-        distribution_sets = [_coerce_to_distributions(arg) for arg in args]
-        combined_axes = _union_axes(distribution_sets)
-        coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
-        cells = {}
-        for coordinates in coordinates_space:
-            plain_args = [distribution_set.lookup(combined_axes, coordinates) for distribution_set in distribution_sets]
-            cells[coordinates] = _coerce_to_distrib(function(*plain_args))
-        return Distributions(combined_axes, cells)
-
-    return wrapped
+Distrib = Distribution
+Distributions = Sweep
 
 
 def _require_numeric(value, opname):
@@ -339,18 +375,125 @@ def _require_keep_count(n, keep, opname):
     _require_int(keep, opname)
     if keep < 0 or keep > n:
         runtime_error(
-            "{} expects keep count between 0 and number of dice".format(opname),
-            hint="Use a keep count between 0 and {}.".format(n),
+            "{} expects 0 <= keep <= count".format(opname),
+            hint="Examples: 4d6h3 keeps 3 of 4 dice, and 3d20l1 keeps 1 of 3 dice.",
         )
 
 
-def _pairwise_numeric(left, right, operator, opname):
-    result = Distrib()
-    for left_value, left_probability in left.items():
-        _require_numeric(left_value, opname)
-        for right_value, right_probability in right.items():
-            _require_numeric(right_value, opname)
-            result[operator(left_value, right_value)] += left_probability * right_probability
+def _ordered_numeric_outcomes(distrib, opname):
+    outcomes = list(distrib.keys())
+    for outcome in outcomes:
+        _require_numeric(outcome, opname)
+    return tuple(sorted(outcomes))
+
+
+def _deterministic_distribution(value):
+    return Distribution(((value, 1.0),))
+
+
+def _coerce_scalar(value):
+    if isinstance(value, (int, float, str, FiniteMeasure, SweepValues)):
+        return value
+    runtime_error("unsupported runtime value {}".format(type(value)))
+
+
+def _coerce_to_measure_cell(value):
+    if isinstance(value, FiniteMeasure):
+        return value
+    if isinstance(value, (int, float, str)):
+        return FiniteMeasure(((value, 1.0),))
+    runtime_error("expected a finite measure-compatible value, got {}".format(type(value)))
+
+
+def _coerce_to_distribution_cell(value):
+    if isinstance(value, Distribution):
+        return value
+    if isinstance(value, FiniteMeasure):
+        runtime_error(
+            "expected a normalized distribution here",
+            hint="Normalize a finite measure with d{...} before using it probabilistically.",
+        )
+    if isinstance(value, (int, float, str)):
+        return _deterministic_distribution(value)
+    runtime_error("expected a distribution-compatible value, got {}".format(type(value)))
+
+
+def _coerce_value_to_sweep(value):
+    if isinstance(value, Sweep):
+        return value
+    if isinstance(value, SweepValues):
+        return Sweep.from_values(value)
+    return Sweep.scalar(value)
+
+
+def _coerce_to_measure_sweep(value):
+    sweep = _coerce_value_to_sweep(value)
+    return Sweep(sweep.axes, {coordinates: _coerce_to_measure_cell(cell) for coordinates, cell in sweep.items()})
+
+
+def _coerce_to_distributions(value):
+    sweep = _coerce_value_to_sweep(value)
+    return Sweep(sweep.axes, {coordinates: _coerce_to_distribution_cell(cell) for coordinates, cell in sweep.items()})
+
+
+def _union_axes(sweeps):
+    axes = []
+    seen = set()
+    for sweep in sweeps:
+        for axis in sweep.axes:
+            if axis.key not in seen:
+                axes.append(axis)
+                seen.add(axis.key)
+    return tuple(axes)
+
+
+def _lookup_projected(axes, cells, combined_axes, coordinates, default):
+    if not axes:
+        return cells.get((), default)
+    index_by_key = {axis.key: idx for idx, axis in enumerate(combined_axes)}
+    local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in axes)
+    return cells.get(local_coordinates, default)
+
+
+def _coordinates_space(axes):
+    return [()] if not axes else product(*(axis.values for axis in axes))
+
+
+def _lift_cellwise(function, *args):
+    sweeps = [_coerce_value_to_sweep(arg) for arg in args]
+    combined_axes = _union_axes(sweeps)
+    cells = {}
+    for coordinates in _coordinates_space(combined_axes):
+        projected = [sweep.lookup(combined_axes, coordinates) for sweep in sweeps]
+        cells[coordinates] = function(*projected)
+    return Sweep(combined_axes, cells)
+
+
+def lift_sweeps(function):
+    @wraps(function)
+    def wrapped(*args):
+        return _lift_cellwise(
+            lambda *cells: function(*[_coerce_to_distribution_cell(cell) for cell in cells]),
+            *args
+        )
+
+    return wrapped
+
+
+def _deterministic_numeric_value(value, opname, *, allow_float=True):
+    if isinstance(value, (int, float)):
+        result = value
+    elif isinstance(value, Distribution):
+        items = list(value.items())
+        if len(items) != 1 or abs(items[0][1] - 1.0) > PROBABILITY_TOLERANCE:
+            runtime_error("{} expects a deterministic scalar here".format(opname))
+        result = items[0][0]
+    else:
+        runtime_error("{} expects a deterministic scalar here".format(opname))
+
+    if not allow_float and not isinstance(result, int):
+        runtime_error("{} expects an integer here".format(opname))
+    _require_numeric(result, opname)
     return result
 
 
@@ -365,58 +508,164 @@ def _bool_mass(condition):
 
 
 def _sample_from_distribution(distrib, rng=None):
-    total = sum(distrib.probabilities())
-    if total < 0:
-        runtime_error("distribution has negative total probability")
-    if total == 0:
-        return Distrib()
-    if total > 1 + 1e-9:
-        runtime_error("sampling expects probability mass <= 1, got {}".format(total))
+    total = distrib.total_weight
+    if total <= 0:
+        runtime_error("sampling expects a non-empty normalized distribution")
+    if abs(total - 1.0) > PROBABILITY_TOLERANCE:
+        runtime_error("sampling expects a normalized distribution")
 
     rng = rng if rng is not None else random
     threshold = rng.random()
-    if threshold > total:
-        return Distrib()
-
-    cumulative = 0
+    cumulative = 0.0
     last_outcome = None
     for outcome, probability in distrib.items():
         last_outcome = outcome
         cumulative += probability
-        if threshold <= cumulative:
-            return Distrib({outcome: 1})
-    return Distrib({last_outcome: 1}) if last_outcome is not None else Distrib()
+        if threshold <= cumulative + PROBABILITY_TOLERANCE:
+            return _deterministic_distribution(outcome)
+    return _deterministic_distribution(last_outcome)
 
 
-def _lookup_projected(axes, cells, combined_axes, coordinates, default):
-    if not axes:
-        return cells.get((), default)
-    index_by_key = {axis.key: idx for idx, axis in enumerate(combined_axes)}
-    local_coordinates = tuple(coordinates[index_by_key[axis.key]] for axis in axes)
-    return cells.get(local_coordinates, default)
+def _normalize_measure_cell(measure):
+    measure = _coerce_to_measure_cell(measure)
+    if measure.total_weight <= 0:
+        runtime_error("cannot normalize an empty finite measure")
+    entries = []
+    for outcome, weight in measure.items():
+        outer_probability = weight / measure.total_weight
+        if isinstance(outcome, Distribution):
+            for inner_outcome, inner_probability in outcome.items():
+                entries.append((inner_outcome, outer_probability * inner_probability))
+        else:
+            entries.append((outcome, outer_probability))
+    return Distribution(entries)
+
+
+def _uniform_die_distribution(sides):
+    _require_int(sides, "roll")
+    if sides <= 0:
+        runtime_error("roll expects positive die sides")
+    return Distribution(((outcome, 1.0 / sides) for outcome in range(1, sides + 1)))
+
+
+def _roll_plain(n, s):
+    _require_int(n, "roll")
+    _require_int(s, "roll")
+    if n < 0 or s <= 0:
+        runtime_error(
+            "roll expects positive sides and a non-negative dice count",
+            hint="Examples: 2d6, 1d20, or 0d6.",
+        )
+    if n == 0:
+        return _deterministic_distribution(0)
+
+    results = []
+    for p in range(1, s * n + 1):
+        c = (p - n) // s
+        probability = sum(
+            [(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1)]
+        ) / s ** n
+        if probability != 0:
+            results.append((p, probability))
+    return Distribution(results)
+
+
+def _distribution_support_transform(value, scalar, operator, opname):
+    measure = _coerce_to_measure_cell(value)
+    _require_numeric(scalar, opname)
+    return measure.map_support(lambda outcome: operator(_require_support_numeric(outcome, opname), scalar))
+
+
+def _require_support_numeric(outcome, opname):
+    _require_numeric(outcome, opname)
+    return outcome
+
+
+def _pairwise_numeric(left, right, operator, opname):
+    result = []
+    for left_value, left_probability in left.items():
+        _require_numeric(left_value, opname)
+        for right_value, right_probability in right.items():
+            _require_numeric(right_value, opname)
+            result.append((operator(left_value, right_value), left_probability * right_probability))
+    return Distribution(result)
+
+
+def _numeric_binary_cell(left, right, operator, opname, *, allow_measure_transform=True):
+    left_is_raw_measure = isinstance(left, FiniteMeasure) and not isinstance(left, Distribution)
+    right_is_raw_measure = isinstance(right, FiniteMeasure) and not isinstance(right, Distribution)
+    if allow_measure_transform and left_is_raw_measure and not right_is_raw_measure:
+        scalar = _deterministic_numeric_value(right, opname)
+        return _distribution_support_transform(left, scalar, operator, opname)
+    if allow_measure_transform and right_is_raw_measure and not left_is_raw_measure:
+        scalar = _deterministic_numeric_value(left, opname)
+        return _distribution_support_transform(right, scalar, lambda b, a: operator(a, b), opname)
+    if left_is_raw_measure or right_is_raw_measure:
+        runtime_error(
+            "{} does not combine two finite measures directly".format(opname),
+            hint="Normalize the measure with d{...} first or transform it with a scalar.",
+        )
+    return _pairwise_numeric(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), operator, opname)
+
+
+def _compare_plain(left, right, operator):
+    if operator not in ["<=", ">=", "<", ">", "==", "in"]:
+        runtime_error("unknown operator {}".format(operator))
+    result = []
+    for left_value, left_probability in left.items():
+        for right_value, right_probability in right.items():
+            comparison_true = False
+            if operator == "<=":
+                comparison_true = left_value <= right_value
+            elif operator == ">=":
+                comparison_true = left_value >= right_value
+            elif operator == "<":
+                comparison_true = left_value < right_value
+            elif operator == ">":
+                comparison_true = left_value > right_value
+            elif operator == "==":
+                comparison_true = left_value == right_value
+            outcome = TRUE if comparison_true else FALSE
+            result.append((outcome, left_probability * right_probability))
+    return Distribution(result)
+
+
+def _member_cell(left, right):
+    left_distribution = _coerce_to_distribution_cell(left)
+    domain = _coerce_to_measure_cell(right)
+    support = set()
+    for outcome, _ in domain.items():
+        if isinstance(outcome, Distribution):
+            runtime_error(
+                "in does not accept probabilistic members on the right-hand side yet",
+                hint="Use a finite measure of scalar or nested finite-measure values.",
+            )
+        support.add(outcome)
+    result = []
+    for outcome, probability in left_distribution.items():
+        result.append((TRUE if outcome in support else FALSE, probability))
+    return Distribution(result)
 
 
 def _fixed_axis_distribution(axes, coordinates):
-    return Distributions(axes, {coordinates: Distrib({0: 1})})
+    return Sweep(axes, {coordinates: _deterministic_distribution(0)})
 
 
 def _accumulate_distribution_contributions(contributions):
     if not contributions:
-        return Distributions.scalar(Distrib())
-
-    combined_axes = _union_axes([Distributions(axes, cells) for axes, cells in contributions])
-    coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
+        return Sweep.scalar(_deterministic_distribution(0))
+    combined_axes = _union_axes([Sweep(axes, cells) for axes, cells in contributions])
     cells = {}
-    for coordinates in coordinates_space:
-        distrib = Distrib()
+    for coordinates in _coordinates_space(combined_axes):
+        entries = []
         for axes, contribution_cells in contributions:
             projected = _lookup_projected(axes, contribution_cells, combined_axes, coordinates, None)
-            if not projected:
+            if projected is None:
                 continue
             for outcome, probability in projected.items():
-                distrib[outcome] = distrib[outcome] + probability
-        cells[coordinates] = distrib
-    return Distributions(combined_axes, cells if cells else {(): Distrib()})
+                entries.append((outcome, probability))
+        cells[coordinates] = Distribution(entries)
+    return Sweep(combined_axes, cells)
 
 
 def _resolve_target_axis(value, axis_name):
@@ -425,7 +674,6 @@ def _resolve_target_axis(value, axis_name):
             "sumover expects a string axis name",
             hint='Pass the axis name as a string, for example sumover("party", value).',
         )
-
     matches = [axis for axis in value.axes if axis.name == axis_name and axis.name != axis.key]
     if not matches:
         runtime_error(
@@ -443,7 +691,6 @@ def _resolve_total_axis(value):
             "total expects exactly one named axis",
             hint="Call total on a single named sweep like [party:1, 2, 3].",
         )
-
     axis = value.axes[0]
     if axis.name == axis.key:
         runtime_error(
@@ -454,187 +701,172 @@ def _resolve_total_axis(value):
 
 
 def _coordinates_without_axis(axes, coordinates, target_key):
-    return tuple(
-        coordinate
-        for axis, coordinate in zip(axes, coordinates)
-        if axis.key != target_key
-    )
+    return tuple(coordinate for axis, coordinate in zip(axes, coordinates) if axis.key != target_key)
 
 
 def _sum_axis(add_function, value, target_axis):
-    distributions = _coerce_to_distributions(value)
-    remaining_axes = tuple(axis for axis in distributions.axes if axis.key != target_axis.key)
+    sweep = _coerce_value_to_sweep(value)
+    remaining_axes = tuple(axis for axis in sweep.axes if axis.key != target_axis.key)
     grouped = {}
-
-    for coordinates, distrib in distributions.cells.items():
-        remaining_coordinates = _coordinates_without_axis(distributions.axes, coordinates, target_axis.key)
-        grouped.setdefault(remaining_coordinates, []).append(distrib)
-
+    for coordinates, cell in sweep.items():
+        remaining_coordinates = _coordinates_without_axis(sweep.axes, coordinates, target_axis.key)
+        grouped.setdefault(remaining_coordinates, []).append(cell)
     cells = {}
-    for remaining_coordinates, distribs in grouped.items():
+    for remaining_coordinates, cell_values in grouped.items():
         reduced = 0
-        for distrib in distribs:
-            reduced = add_function(reduced, distrib)
-        reduced_value = _coerce_to_distributions(reduced)
-        if not reduced_value.is_unswept():
+        for cell in cell_values:
+            reduced = add_function(reduced, cell)
+        reduced_sweep = _coerce_value_to_sweep(reduced)
+        if not reduced_sweep.is_unswept():
             runtime_error("sumover reduction produced an unexpected sweep")
-        cells[remaining_coordinates] = reduced_value.only_distribution()
-
+        cells[remaining_coordinates] = reduced_sweep.only_value()
     if not cells:
-        return Distributions.scalar(0)
-    return Distributions(remaining_axes, cells)
+        return Sweep.scalar(0)
+    return Sweep(remaining_axes, cells)
 
 
-def _roll_plain(n, s):
-    _require_int(n, "roll")
-    _require_int(s, "roll")
-    if n < 0 or s <= 0:
-        runtime_error(
-            "roll expects positive sides and a non-negative dice count",
-            hint="Examples: 2d6, 1d20, or 0d6.",
-        )
-    if n == 0:
-        return Distrib({0: 1})
-
-    results = Distrib()
-    for p in range(1, s * n + 1):
-        c = (p - n) // s
-        probability = sum(
-            [(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1)]
-        ) / s ** n
-        if probability != 0:
-            results[p] = probability
-    return results
-
-
-@lift_sweeps
 def choose(left, right):
-    result = Distrib()
-    for selected_value, selection_probability in right.items():
-        if selected_value in left.keys():
-            result[selected_value] += left[selected_value] * selection_probability
-    return result
+    return member(left, right)
 
 
-@lift_sweeps
 def choose_single(left, right):
-    result = Distrib()
-    for selected_value, selection_probability in right.items():
-        result[left[selected_value]] += selection_probability
-    return result
+    return member(left, right)
 
 
-@lift_sweeps
 def res(condition, distrib):
-    true_mass, _ = _bool_mass(condition)
-    result = Distrib()
-    for outcome, probability in distrib.items():
-        result[outcome] += true_mass * probability
-    return result
+    return reselse(condition, distrib, 0)
 
 
-@lift_sweeps
 def mean(value):
-    return Distrib({value.average(): 1})
+    return _lift_cellwise(lambda cell: _deterministic_distribution(_coerce_to_distribution_cell(cell).average()), value)
 
 
-@lift_sweeps
-def mass(value):
-    return Distrib({value.total_probability(): 1})
-
-
-@lift_sweeps
 def var(value):
-    return Distrib({value.variance(): 1})
+    return _lift_cellwise(lambda cell: _deterministic_distribution(_coerce_to_distribution_cell(cell).variance()), value)
 
 
-@lift_sweeps
 def std(value):
-    return Distrib({value.stddev(): 1})
+    return _lift_cellwise(lambda cell: _deterministic_distribution(_coerce_to_distribution_cell(cell).stddev()), value)
 
 
-@lift_sweeps
 def sample(value):
-    return _sample_from_distribution(value)
+    return _lift_cellwise(lambda cell: _sample_from_distribution(_coerce_to_distribution_cell(cell)), value)
 
 
-@lift_sweeps
 def cum(value):
-    result = Distrib()
-    cumulative = 0
-    for outcome in _ordered_numeric_outcomes(value, "cum"):
-        cumulative += value[outcome]
-        result[outcome] = cumulative
-    return result
+    def apply(cell):
+        distrib = _coerce_to_distribution_cell(cell)
+        cumulative = 0.0
+        entries = []
+        for outcome in _ordered_numeric_outcomes(distrib, "cum"):
+            cumulative += distrib[outcome]
+            entries.append((outcome, cumulative))
+        return FiniteMeasure(entries)
+
+    return _lift_cellwise(apply, value)
 
 
-@lift_sweeps
 def surv(value):
-    result = Distrib()
-    remaining = value.total_probability()
-    for outcome in _ordered_numeric_outcomes(value, "surv"):
-        remaining -= value[outcome]
-        result[outcome] = remaining
-    return result
+    def apply(cell):
+        distrib = _coerce_to_distribution_cell(cell)
+        remaining = distrib.total_weight
+        entries = []
+        for outcome in _ordered_numeric_outcomes(distrib, "surv"):
+            remaining -= distrib[outcome]
+            entries.append((outcome, remaining))
+        return FiniteMeasure(entries)
+
+    return _lift_cellwise(apply, value)
 
 
-@lift_sweeps
 def reselse(condition, distrib_if, distrib_else):
-    true_mass, false_mass = _bool_mass(condition)
-    result = Distrib()
-    for outcome, probability in distrib_if.items():
-        result[outcome] += true_mass * probability
-    for outcome, probability in distrib_else.items():
-        result[outcome] += false_mass * probability
-    return result
+    def apply(condition_cell, if_cell, else_cell):
+        condition_distribution = _coerce_to_distribution_cell(condition_cell)
+        true_mass, false_mass = _bool_mass(condition_distribution)
+        if_distribution = _coerce_to_distribution_cell(if_cell)
+        else_distribution = _coerce_to_distribution_cell(else_cell)
+        entries = []
+        for outcome, probability in if_distribution.items():
+            entries.append((outcome, true_mass * probability))
+        for outcome, probability in else_distribution.items():
+            entries.append((outcome, false_mass * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, condition, distrib_if, distrib_else)
 
 
 def reselsediv(condition, distrib):
     return reselse(condition, distrib, div(distrib, 2))
 
 
-@lift_sweeps
+def reselsefloordiv(condition, distrib):
+    return reselse(condition, distrib, floordiv(distrib, 2))
+
+
 def roll(n, s):
-    result = Distrib()
-    for dice_count, dice_count_probability in n.items():
-        _require_int(dice_count, "roll")
-        for sides, sides_probability in s.items():
-            _require_int(sides, "roll")
-            rolled = _roll_plain(dice_count, sides)
-            weight = dice_count_probability * sides_probability
-            for outcome, probability in rolled.items():
-                result[outcome] += weight * probability
-    return result
+    def apply(n_cell, s_cell):
+        n_distribution = _coerce_to_distribution_cell(n_cell)
+        s_distribution = _coerce_to_distribution_cell(s_cell)
+        entries = []
+        for dice_count, dice_count_probability in n_distribution.items():
+            _require_int(dice_count, "roll")
+            for sides, sides_probability in s_distribution.items():
+                _require_int(sides, "roll")
+                rolled = _roll_plain(dice_count, sides)
+                outer = dice_count_probability * sides_probability
+                for outcome, probability in rolled.items():
+                    entries.append((outcome, outer * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, n, s)
 
 
 def rollsingle(dice):
-    return roll(1, dice)
+    def apply(cell):
+        if isinstance(cell, FiniteMeasure) and not isinstance(cell, Distribution):
+            return _normalize_measure_cell(cell)
+        sides_distribution = _coerce_to_distribution_cell(cell)
+        entries = []
+        for sides, probability in sides_distribution.items():
+            _require_int(sides, "roll")
+            die_distribution = _uniform_die_distribution(sides)
+            for outcome, inner_probability in die_distribution.items():
+                entries.append((outcome, probability * inner_probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, dice)
 
 
-@lift_sweeps
 def rolladvantage(dice):
-    result = Distrib()
-    for dice_sides, dice_probability in dice.items():
-        _require_int(dice_sides, "advantage")
-        if dice_sides <= 0:
-            runtime_error("can't roll advantage with non-positive dice sides")
-        for outcome in range(1, dice_sides + 1):
-            advantage_probability = 2 / dice_sides ** 2 * (outcome - 1) + (1 / dice_sides) ** 2
-            result[outcome] += dice_probability * advantage_probability
-    return result
+    def apply(cell):
+        dice_distribution = _coerce_to_distribution_cell(cell)
+        entries = []
+        for dice_sides, dice_probability in dice_distribution.items():
+            _require_int(dice_sides, "advantage")
+            if dice_sides <= 0:
+                runtime_error("can't roll advantage with non-positive dice sides")
+            for outcome in range(1, dice_sides + 1):
+                probability = 2 / dice_sides ** 2 * (outcome - 1) + (1 / dice_sides) ** 2
+                entries.append((outcome, dice_probability * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, dice)
 
 
-@lift_sweeps
 def rolldisadvantage(dice):
-    result = Distrib()
-    for dice_sides, dice_probability in dice.items():
-        _require_int(dice_sides, "disadvantage")
-        if dice_sides <= 0:
-            runtime_error("can't roll disadvantage with non-positive dice sides")
-        for outcome in range(1, dice_sides + 1):
-            disadvantage_probability = 2 / dice_sides ** 2 * (dice_sides - outcome) + (1 / dice_sides) ** 2
-            result[outcome] += dice_probability * disadvantage_probability
-    return result
+    def apply(cell):
+        dice_distribution = _coerce_to_distribution_cell(cell)
+        entries = []
+        for dice_sides, dice_probability in dice_distribution.items():
+            _require_int(dice_sides, "disadvantage")
+            if dice_sides <= 0:
+                runtime_error("can't roll disadvantage with non-positive dice sides")
+            for outcome in range(1, dice_sides + 1):
+                probability = 2 / dice_sides ** 2 * (dice_sides - outcome) + (1 / dice_sides) ** 2
+                entries.append((outcome, dice_probability * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, dice)
 
 
 def _rollhigh_plain(n, s, nh):
@@ -646,7 +878,7 @@ def _rollhigh_plain(n, s, nh):
 
     def count_children(sides, n_left, results, distrib):
         if n_left == 0:
-            distrib[sum(results)] += 1
+            distrib.append((sum(results), 1))
             return
         for value in range(1, sides + 1):
             results_min = min(results)
@@ -655,12 +887,11 @@ def _rollhigh_plain(n, s, nh):
                 new_results[results.index(results_min)] = value
             count_children(sides, n_left - 1, new_results, distrib)
 
-    combinations = Distrib()
+    combinations = []
     count_children(s, n, [0] * nh, combinations)
+    counts = FiniteMeasure(combinations)
     total = s ** n
-    for key, value in list(combinations.items()):
-        combinations[key] = value / total
-    return combinations
+    return Distribution(((outcome, weight / total) for outcome, weight in counts.items()))
 
 
 def _rolllow_plain(n, s, nl):
@@ -672,7 +903,7 @@ def _rolllow_plain(n, s, nl):
 
     def count_children(sides, n_left, results, distrib):
         if n_left == 0:
-            distrib[sum(results)] += 1
+            distrib.append((sum(results), 1))
             return
         for value in range(1, sides + 1):
             results_max = max(results)
@@ -681,171 +912,130 @@ def _rolllow_plain(n, s, nl):
                 new_results[results.index(results_max)] = value
             count_children(sides, n_left - 1, new_results, distrib)
 
-    combinations = Distrib()
+    combinations = []
     count_children(s, n, [inf] * nl, combinations)
+    counts = FiniteMeasure(combinations)
     total = s ** n
-    for key, value in list(combinations.items()):
-        combinations[key] = value / total
-    return combinations
+    return Distribution(((outcome, weight / total) for outcome, weight in counts.items()))
 
 
-@lift_sweeps
 def rollhigh(n, s, nh):
-    result = Distrib()
-    for dice_count, dice_count_probability in n.items():
-        for sides, sides_probability in s.items():
-            for keep_count, keep_probability in nh.items():
-                rolled = _rollhigh_plain(dice_count, sides, keep_count)
-                weight = dice_count_probability * sides_probability * keep_probability
-                for outcome, probability in rolled.items():
-                    result[outcome] += weight * probability
-    return result
+    def apply(n_cell, s_cell, keep_cell):
+        n_distribution = _coerce_to_distribution_cell(n_cell)
+        s_distribution = _coerce_to_distribution_cell(s_cell)
+        keep_distribution = _coerce_to_distribution_cell(keep_cell)
+        entries = []
+        for dice_count, dice_count_probability in n_distribution.items():
+            for sides, sides_probability in s_distribution.items():
+                for keep_count, keep_probability in keep_distribution.items():
+                    rolled = _rollhigh_plain(dice_count, sides, keep_count)
+                    outer = dice_count_probability * sides_probability * keep_probability
+                    for outcome, probability in rolled.items():
+                        entries.append((outcome, outer * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, n, s, nh)
 
 
-@lift_sweeps
 def rolllow(n, s, nl):
-    result = Distrib()
-    for dice_count, dice_count_probability in n.items():
-        for sides, sides_probability in s.items():
-            for keep_count, keep_probability in nl.items():
-                rolled = _rolllow_plain(dice_count, sides, keep_count)
-                weight = dice_count_probability * sides_probability * keep_probability
-                for outcome, probability in rolled.items():
-                    result[outcome] += weight * probability
-    return result
+    def apply(n_cell, s_cell, keep_cell):
+        n_distribution = _coerce_to_distribution_cell(n_cell)
+        s_distribution = _coerce_to_distribution_cell(s_cell)
+        keep_distribution = _coerce_to_distribution_cell(keep_cell)
+        entries = []
+        for dice_count, dice_count_probability in n_distribution.items():
+            for sides, sides_probability in s_distribution.items():
+                for keep_count, keep_probability in keep_distribution.items():
+                    rolled = _rolllow_plain(dice_count, sides, keep_count)
+                    outer = dice_count_probability * sides_probability * keep_probability
+                    for outcome, probability in rolled.items():
+                        entries.append((outcome, outer * probability))
+        return Distribution(entries)
+
+    return _lift_cellwise(apply, n, s, nl)
 
 
-@lift_sweeps
 def add(left, right):
-    return _pairwise_numeric(left, right, lambda a, b: a + b, "add")
+    return _lift_cellwise(lambda a, b: _numeric_binary_cell(a, b, lambda x, y: x + y, "add"), left, right)
 
 
-@lift_sweeps
 def sub(left, right):
-    return _pairwise_numeric(left, right, lambda a, b: a - b, "sub")
+    return _lift_cellwise(lambda a, b: _numeric_binary_cell(a, b, lambda x, y: x - y, "sub"), left, right)
 
 
-@lift_sweeps
 def mul(left, right):
-    return _pairwise_numeric(left, right, lambda a, b: a * b, "mul")
+    return _lift_cellwise(lambda a, b: _numeric_binary_cell(a, b, lambda x, y: x * y, "mul"), left, right)
 
 
-@lift_sweeps
 def div(left, right):
-    result = Distrib()
-    for left_value, left_probability in left.items():
-        _require_numeric(left_value, "div")
-        for right_value, right_probability in right.items():
-            _require_numeric(right_value, "div")
-            if right_value == 0:
-                runtime_error("can't divide by zero")
-            result[left_value // right_value] += left_probability * right_probability
-    return result
+    def op(x, y):
+        if y == 0:
+            runtime_error("can't divide by zero")
+        return x / y
+
+    return _lift_cellwise(lambda a, b: _numeric_binary_cell(a, b, op, "div"), left, right)
 
 
-def _compare_plain(left, right, operator):
-    if operator not in ["<=", ">=", "<", ">", "=="]:
-        runtime_error("unknown operator {}".format(operator))
+def floordiv(left, right):
+    def op(x, y):
+        if y == 0:
+            runtime_error("can't divide by zero")
+        return x // y
 
-    result = Distrib()
-    for left_value, left_probability in left.items():
-        for right_value, right_probability in right.items():
-            comparison_true = False
-            if operator == "<=":
-                comparison_true = left_value <= right_value
-            elif operator == ">=":
-                comparison_true = left_value >= right_value
-            elif operator == "<":
-                comparison_true = left_value < right_value
-            elif operator == ">":
-                comparison_true = left_value > right_value
-            elif operator == "==":
-                comparison_true = left_value == right_value
-            outcome = TRUE if comparison_true else FALSE
-            result[outcome] += left_probability * right_probability
-    return result
+    return _lift_cellwise(lambda a, b: _numeric_binary_cell(a, b, op, "floordiv"), left, right)
+
+
+def neg(value):
+    return mul(-1, value)
 
 
 def greaterorequal(left, right):
-    @lift_sweeps
-    def apply(distrib_left, distrib_right):
-        return _compare_plain(distrib_left, distrib_right, ">=")
-
-    return apply(left, right)
+    return _lift_cellwise(lambda a, b: _compare_plain(_coerce_to_distribution_cell(a), _coerce_to_distribution_cell(b), ">="), left, right)
 
 
 def greater(left, right):
-    @lift_sweeps
-    def apply(distrib_left, distrib_right):
-        return _compare_plain(distrib_left, distrib_right, ">")
-
-    return apply(left, right)
+    return _lift_cellwise(lambda a, b: _compare_plain(_coerce_to_distribution_cell(a), _coerce_to_distribution_cell(b), ">"), left, right)
 
 
 def equal(left, right):
-    @lift_sweeps
-    def apply(distrib_left, distrib_right):
-        return _compare_plain(distrib_left, distrib_right, "==")
-
-    return apply(left, right)
+    return _lift_cellwise(lambda a, b: _compare_plain(_coerce_to_distribution_cell(a), _coerce_to_distribution_cell(b), "=="), left, right)
 
 
 def lessorequal(left, right):
-    @lift_sweeps
-    def apply(distrib_left, distrib_right):
-        return _compare_plain(distrib_left, distrib_right, "<=")
-
-    return apply(left, right)
+    return _lift_cellwise(lambda a, b: _compare_plain(_coerce_to_distribution_cell(a), _coerce_to_distribution_cell(b), "<="), left, right)
 
 
 def less(left, right):
-    @lift_sweeps
-    def apply(distrib_left, distrib_right):
-        return _compare_plain(distrib_left, distrib_right, "<")
+    return _lift_cellwise(lambda a, b: _compare_plain(_coerce_to_distribution_cell(a), _coerce_to_distribution_cell(b), "<"), left, right)
 
-    return apply(left, right)
+
+def member(left, right):
+    return _lift_cellwise(_member_cell, left, right)
 
 
 def repeat_sum_with(add_function, count, value):
-    count_value = _coerce_to_distributions(count)
+    count_sweep = _coerce_value_to_sweep(count)
     contributions = []
-
-    for count_coordinates, count_distrib in count_value.cells.items():
-        count_items = list(count_distrib.items())
-        if len(count_items) != 1:
-            runtime_error(
-                "repeat_sum expects a deterministic count per sweep point",
-                hint="Use a fixed integer count or a sweep of fixed counts, not a random distribution like d6.",
-            )
-
-        count_outcome, count_probability = count_items[0]
-        if count_probability != 1:
-            runtime_error(
-                "repeat_sum expects a deterministic count per sweep point",
-                hint="Use a fixed integer count or a sweep of fixed counts, not a random distribution like d6.",
-            )
-        if not isinstance(count_outcome, int) or count_outcome < 0:
+    for count_coordinates, count_cell in count_sweep.items():
+        count_outcome = _deterministic_numeric_value(count_cell, "repeat_sum", allow_float=False)
+        if count_outcome < 0:
             runtime_error(
                 "repeat_sum expects a non-negative integer count",
                 hint="Use 0 or a positive integer count.",
             )
-
         repeated = 0
         for _ in range(count_outcome):
             repeated = add_function(repeated, value)
-
-        repeated_value = _coerce_to_distributions(repeated)
-        count_selection = _fixed_axis_distribution(count_value.axes, count_coordinates)
-        combined_axes = _union_axes([count_selection, repeated_value])
-        coordinates_space = [()] if not combined_axes else product(*(axis.values for axis in combined_axes))
+        repeated_sweep = _coerce_value_to_sweep(repeated)
+        count_selection = _fixed_axis_distribution(count_sweep.axes, count_coordinates)
+        combined_axes = _union_axes([count_selection, repeated_sweep])
         cells = {}
-        for coordinates in coordinates_space:
-            if _lookup_projected(count_value.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
+        for coordinates in _coordinates_space(combined_axes):
+            if _lookup_projected(count_sweep.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
                 continue
-            cells[coordinates] = repeated_value.lookup(combined_axes, coordinates)
+            cells[coordinates] = repeated_sweep.lookup(combined_axes, coordinates)
         contributions.append((combined_axes, cells))
-
-    return _accumulate_distribution_contributions(contributions)
+    return Sweep(_union_axes([Sweep(axes, cells) for axes, cells in contributions]), {coord: value for axes, cells in contributions for coord, value in cells.items()}) if contributions else Sweep.scalar(0)
 
 
 def repeat_sum(count, value):
@@ -853,9 +1043,9 @@ def repeat_sum(count, value):
 
 
 def sumover_with(add_function, axis_name, value):
-    distributions = _coerce_to_distributions(value)
-    target_axis = _resolve_target_axis(distributions, axis_name)
-    return _sum_axis(add_function, distributions, target_axis)
+    sweep = _coerce_value_to_sweep(value)
+    target_axis = _resolve_target_axis(sweep, axis_name)
+    return _sum_axis(add_function, sweep, target_axis)
 
 
 def sumover(axis_name, value):
@@ -863,9 +1053,9 @@ def sumover(axis_name, value):
 
 
 def total_with(add_function, value):
-    distributions = _coerce_to_distributions(value)
-    target_axis = _resolve_total_axis(distributions)
-    return _sum_axis(add_function, distributions, target_axis)
+    sweep = _coerce_value_to_sweep(value)
+    target_axis = _resolve_total_axis(sweep)
+    return _sum_axis(add_function, sweep, target_axis)
 
 
 def total(value):
@@ -881,98 +1071,57 @@ def _require_render_text(value, message, hint):
 def render(*args, render_config=None):
     viewer = _get_viewer()
     render_config = render_config if render_config is not None else RenderConfig()
-
     if not args:
         runtime_error("render expects at least one expression")
-
     if len(args) == 1:
-        try:
-            render_outcome = viewer.render_result(args[0], render_config=render_config)
-        except Exception as error:
-            message = str(error)
-            if message.startswith("Viewer exception: "):
-                message = message[len("Viewer exception: "):]
-            runtime_error(message)
-        return render_outcome.output_path
-
+        return viewer.render_result(args[0], render_config=render_config).output_path
     if len(args) == 2:
         runtime_error(
             "render titles require an axis label before the title",
             hint='Call render(value, "Axis Label", "Title").',
         )
-
     if len(args) == 3:
-        axis_label = _require_render_text(
-            args[1],
-            "render axis labels must be strings",
-            'Call render(value, "Axis Label", "Title").',
-        )
+        axis_label = _require_render_text(args[1], "render axis labels must be strings", 'Call render(value, "Axis Label", "Title").')
         if not isinstance(args[2], str):
             runtime_error(
                 "render comparisons require a label for every expression",
                 hint='Call render(value1, "Label 1", value2, "Label 2").',
             )
-        title = args[2]
-        try:
-            render_outcome = viewer.render_result(
-                args[0],
-                x_label=axis_label,
-                title=title,
-                render_config=render_config,
-            )
-        except Exception as error:
-            message = str(error)
-            if message.startswith("Viewer exception: "):
-                message = message[len("Viewer exception: "):]
-            runtime_error(message)
-        return render_outcome.output_path
+        return viewer.render_result(args[0], x_label=axis_label, title=args[2], render_config=render_config).output_path
 
     comparison_axis_label = None
     comparison_title = None
     comparison_args = args
-
     if len(args) >= 6 and isinstance(args[-2], str) and isinstance(args[-1], str):
         potential_args = args[:-2]
         if len(potential_args) >= 4 and len(potential_args) % 2 == 0:
             comparison_args = potential_args
             comparison_axis_label = args[-2]
             comparison_title = args[-1]
-
     if comparison_axis_label is None and len(args) % 2 != 0:
         runtime_error(
             "render titles require an axis label before the title",
             hint='Call render(value, "Axis Label", "Title") or render(value1, "Label 1", value2, "Label 2", "Axis Label", "Title").',
         )
-
     if len(comparison_args) % 2 != 0:
         runtime_error(
             "render comparisons require a label for every expression",
             hint='Call render(value1, "Label 1", value2, "Label 2").',
         )
-
     entries = []
     for index in range(0, len(comparison_args), 2):
         label = comparison_args[index + 1]
         if not isinstance(label, str):
             runtime_error("render comparison labels must be strings")
         entries.append((label, comparison_args[index]))
-
     if len(entries) < 2:
         runtime_error(
             "render comparisons need at least two expressions",
             hint='Call render(value1, "Label 1", value2, "Label 2").',
         )
-
-    try:
-        render_outcome = viewer.render_comparison(
-            entries,
-            x_label=comparison_axis_label,
-            title=comparison_title,
-            render_config=render_config,
-        )
-    except Exception as error:
-        message = str(error)
-        if message.startswith("Viewer exception: "):
-            message = message[len("Viewer exception: "):]
-        runtime_error(message)
-    return render_outcome.output_path
+    return viewer.render_comparison(
+        entries,
+        x_label=comparison_axis_label,
+        title=comparison_title,
+        render_config=render_config,
+    ).output_path

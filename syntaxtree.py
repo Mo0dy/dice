@@ -167,6 +167,61 @@ class Named(AST):
         return result
 
 
+class RangeLiteral(AST):
+    """Finite range literal with configurable end inclusivity."""
+
+    def __init__(self, start, end, inclusive_end, token):
+        self.start = start
+        self.end = end
+        self.inclusive_end = inclusive_end
+        self.token = token
+
+    def __repr__(self):
+        op = ".." if self.inclusive_end else "..<"
+        return "RangeLiteral: {}{}{}".format(self.start, op, self.end)
+
+
+class MeasureEntry(AST):
+    """One entry inside a finite-measure literal."""
+
+    def __init__(self, value, weight=None, token=None):
+        self.value = value
+        self.weight = weight
+        self.token = token if token is not None else getattr(value, "token", None)
+
+    def __repr__(self):
+        if self.weight is None:
+            return "MeasureEntry: {}".format(self.value)
+        return "MeasureEntry: {} @ {}".format(self.value, self.weight)
+
+
+class MeasureLiteral(AST):
+    """Finite weighted measure literal."""
+
+    def __init__(self, entries, token):
+        self.entries = entries
+        self.token = token
+
+    def __repr__(self):
+        result = "MeasureLiteral"
+        for entry in self.entries:
+            result += '\t|'.join(('\n' + "entry: " + str(entry).lstrip()).splitlines(True))
+        return result
+
+
+class SweepLiteral(AST):
+    """Bracket-based sweep literal."""
+
+    def __init__(self, values, token, name=None):
+        self.values = values
+        self.token = token
+        self.name = name
+
+    def __repr__(self):
+        label = self.name.value if self.name is not None else "_"
+        return "SweepLiteral: {} => {}".format(label, self.values)
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

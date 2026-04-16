@@ -6,24 +6,31 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 
 ## Values
 
-- `Distrib`: one probability distribution such as a d20 roll
-- `Distributions`: one or more probability distributions indexed by zero or more sweep axes
-- `Sweep`: a finite set of input values, usually created with bracket syntax
+- `FiniteMeasure`: a finite weighted support value such as `{10, 15}` or `{"fire" @ 2, "ice"}`
+- `Distribution`: a normalized probability distribution such as `d20` or `d{10, 15}`
+- `SweepValues`: a finite set of input values used to build bracket sweeps such as `[AC:10..20]`
+- `Sweep[T]`: zero or more sweep axes whose cells hold values such as `Distribution` or `FiniteMeasure`
 - numeric Bernoulli outcomes such as `0` and `1`
 
 ## Semantics
 
 - `d20` rolls one die and returns a probability distribution.
 - `2d6` rolls multiple dice and sums them.
+- `{a, b, c}` creates a finite weighted measure with unit weights by default.
+- `{value @ weight, ...}` creates a weighted measure with explicit relative weights.
+- `d{...}` normalizes a finite measure into a distribution.
 - `>=`, `<=`, `<`, `>`, `==` return Bernoulli distributions over `1` and `0`.
+- `in` checks support membership against a finite measure or domain.
 - `->` applies the `1` branch of a Bernoulli distribution to another distribution.
 - `|` adds an else-branch to `->`.
 - `|/` is shorthand for “else, use half damage”.
-- `[a:b]` creates an unnamed sweep over an inclusive integer range.
+- `|//` is shorthand for “else, use half damage rounded down”.
+- `[a..b]` creates an unnamed sweep over an inclusive integer range.
+- `[a..<b]` creates an unnamed sweep whose upper bound is excluded.
 - `[a, b, c]` creates an unnamed sweep over explicit values.
-- `[name:a:b]` creates a named sweep over an inclusive integer range.
+- `[name:a..b]` creates a named sweep over an inclusive integer range.
+- `[name:a..<b]` creates a named sweep whose upper bound is excluded.
 - `[name:a, b, c]` creates a named sweep over explicit values.
-- `expr[index]` filters a distribution by one value or sweep of values.
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `match expr as name | guard = expr | ... | otherwise = expr` reuses one shared value across guarded branches.
@@ -35,12 +42,12 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `expr $ f` passes `expr` as the first argument to `f`.
 - `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
 - `import "path/to/file"` loads another dice file once. Relative paths resolve from the importing file, absolute paths resolve from the filesystem root, and `std:...` resolves from dice's packaged standard library. When the target is a `.dice` file, the extension is optional.
-- `+`, `-`, `*`, `/` combine numeric distributions.
+- `+`, `-`, `*`, `/`, and `//` combine numeric distributions.
 - `d+20` and `d-20` mean advantage and disadvantage.
 - `3d20h1` and `3d20l1` mean roll many dice and keep the highest or lowest subset.
 - `!expr` samples one outcome and returns it as a degenerate distribution.
 - `~expr` returns expectation as a degenerate distribution.
-- `mean(expr)`, `sample(expr)`, and `mass(expr)` are explicit summary helpers.
+- `mean(expr)` and `sample(expr)` are explicit summary helpers.
 - `var(expr)` and `std(expr)` return variance and standard deviation as degenerate distributions.
 - `cum(expr)` returns the cumulative form of a numeric distribution using `P(X <= x)` at each outcome.
 - `surv(expr)` returns the survival form of a numeric distribution using `P(X > x)` at each outcome.
@@ -181,7 +188,7 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 - `render(expr1, "a", expr2, "b", "axis label", "title")` compares multiple results, overrides the x-axis label, and sets the figure title.
 - `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` switch render behavior inside dice programs.
 - `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
-- Axis labels come from named sweeps like `[AC:10:20]`.
+- Axis labels come from named sweeps like `[AC:10..20]`.
 - Unnamed sweeps still render, but use fallback axis labels.
 - render probability displays default to percentages.
 - Supported quick-render shapes are:
@@ -193,7 +200,7 @@ You can also keep a persistent dice session from Python:
 
 ```python
 from dice import dice_interpreter
-from diceengine import greaterorequal, rollsingle
+from diceengine import Distribution, FiniteMeasure, Sweep, greaterorequal, rollsingle
 
 session = dice_interpreter()
 result = session("d20 >= [AC:10:12] -> 5 | 0")
@@ -203,11 +210,18 @@ session("render(cached)")
 direct = greaterorequal(rollsingle(20), 11)
 ```
 
-Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backend. Register Python functions with `session.register_function(...)`. Registered functions receive eagerly evaluated runtime values and may return `int`, `float`, `str`, `Distrib`, `Distributions`, or `Sweep`. Use `@lift_sweeps` when you want a Python function to operate pointwise across sweep axes.
+Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backend. Register Python functions with `session.register_function(...)`.
+
+- Untyped Python functions receive projected cell values, not whole sweeps.
+- Parameters typed as `Distribution` or `FiniteMeasure` are auto-lifted cellwise.
+- Parameters typed as `Sweep[...]` receive the full sweep container.
+- Registered functions may return scalars, `FiniteMeasure`, `Distribution`, `Sweep[FiniteMeasure]`, or `Sweep[Distribution]`.
+
+User-facing extension samples live under [samples/python_extensions](/home/felix/_Documents/Projects/dice/samples/python_extensions).
 
 ## Comments And Imports
 
-- `// ...` starts a line comment and can also appear after code on the same line.
+- `# ...` starts a line comment and can also appear after code on the same line.
 - `import "helpers"` imports another dice file once when the target is `helpers.dice`.
 - Relative imports are resolved from the file that contains the import.
 - Absolute paths such as `import "/tmp/helpers"` are supported.
@@ -217,8 +231,8 @@ Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backe
 
 ```dice
 hit(ac) = d20 >= ac; hit(11)
-hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10:15])
-hit(ac) = d20 >= ac; hit([AC:10:15])
+hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10..15])
+hit(ac) = d20 >= ac; hit([AC:10..15])
 crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 import "std:dnd/weapons"; crit_longsword(16, 7, 4)
 always() = 5; always()
@@ -235,23 +249,27 @@ d20 >= 11 $ reselse(5, 0)
 d20
 2d6
 d20 >= 11
-[5:7]
-[AC:5:7]
-d20 == [5:7]
+[5..7]
+[AC:5..7]
+d20 == [5..7]
 d20 >= [5,11]
 d20 >= 11 -> 5
 d20 >= 11 -> 2d6
 d20 >= 11 -> 10 | 5
 d20 < 14 -> 2d10 |/
-d20[19:20]
-d20[20] >= 14
-d20[20] >= 14 -> 10
+d20 < 14 -> 2d10 |//
+{10, 15}
+d{10, 15}
+d20 >= 19
+d20 == 20
+d20 in {1, 20}
 1 + 1
 3 / 2
+3 // 2
 d2 + d2
-[1:2] + 1
+[1..2] + 1
 d+20
-mass(d20[19:20])
+d{d6, d8}
 ~2d6
 d20 >= 11 -> 5 | 0 $ mean
 d20 $ sample

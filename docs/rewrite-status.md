@@ -19,7 +19,7 @@ These notes describe the repository after the current rewrite cleanup on 2026-04
 ### Remaining historical material
 
 - `notes.org` and `scripts/` still reflect the older macro-heavy workflow.
-- Sample scripts that depend on `!define`, `//`, or viewer comment directives are historical references unless they are explicitly brought back into the runtime.
+- Sample scripts that depend on `!define`, `#`, or viewer comment directives are historical references unless they are explicitly brought back into the runtime.
 
 ## What Still Looks Stable
 

@@ -2,9 +2,12 @@
 
 """Interpreter-facing execution backends for dice semantics."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
+from typing import Any, get_args, get_origin, get_type_hints
 
 import diceengine
 
@@ -15,6 +18,8 @@ class HostFunction:
     function: object
     arity: int | None = None
     variadic: bool = False
+    sweep_mode: bool = False
+    parameter_annotations: tuple[object, ...] = ()
 
 
 class Executor(ABC):
@@ -22,9 +27,7 @@ class Executor(ABC):
 
     def __init__(self, render_config=None):
         self.functions = {}
-        self.render_config = (
-            render_config if render_config is not None else diceengine.RenderConfig()
-        )
+        self.render_config = render_config if render_config is not None else diceengine.RenderConfig()
         self._register_builtin_functions()
 
     def _callable_arity(self, function):
@@ -38,14 +41,43 @@ class Executor(ABC):
             arity += 1
         return arity
 
-    def _register_host_function(self, function, name=None, variadic=False):
+    def _type_hints(self, function):
+        try:
+            return get_type_hints(function)
+        except Exception:
+            return {}
+
+    def _annotation_requests_sweep(self, function):
+        hints = self._type_hints(function)
+        for annotation in hints.values():
+            if annotation is diceengine.Sweep or get_origin(annotation) is diceengine.Sweep:
+                return True
+        return False
+
+    def _parameter_annotations(self, function):
+        hints = self._type_hints(function)
+        signature = inspect.signature(function)
+        annotations = []
+        for parameter in signature.parameters.values():
+            if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                annotations.append(hints.get(parameter.name))
+        return tuple(annotations)
+
+    def _register_host_function(self, function, name=None, variadic=False, sweep_mode=None):
         callable_name = name if name is not None else function.__name__
         if not callable_name:
             raise Exception("Python functions must have a name")
         if callable_name in self.functions:
             raise Exception("Duplicate function definition for {}".format(callable_name))
         arity = None if variadic else self._callable_arity(function)
-        entry = HostFunction(callable_name, function=function, arity=arity, variadic=variadic)
+        entry = HostFunction(
+            callable_name,
+            function=function,
+            arity=arity,
+            variadic=variadic,
+            sweep_mode=self._annotation_requests_sweep(function) if sweep_mode is None else sweep_mode,
+            parameter_annotations=self._parameter_annotations(function),
+        )
         self.functions[callable_name] = entry
         return function
 
@@ -55,6 +87,8 @@ class Executor(ABC):
             "sub",
             "mul",
             "div",
+            "floordiv",
+            "neg",
             "roll",
             "rollsingle",
             "rolladvantage",
@@ -66,14 +100,13 @@ class Executor(ABC):
             "equal",
             "lessorequal",
             "less",
+            "member",
             "res",
             "reselse",
             "reselsediv",
-            "choose",
-            "choose_single",
+            "reselsefloordiv",
             "mean",
             "sample",
-            "mass",
             "var",
             "std",
             "cum",
@@ -84,8 +117,8 @@ class Executor(ABC):
             "set_render_mode",
             "set_probability_mode",
         ]:
-            self._register_host_function(getattr(self, name), name=name)
-        self._register_host_function(self.render, name="render", variadic=True)
+            self._register_host_function(getattr(self, name), name=name, sweep_mode=True)
+        self._register_host_function(self.render, name="render", variadic=True, sweep_mode=True)
 
     def register_function(self, function, name=None):
         return self._register_host_function(function, name=name)
@@ -93,10 +126,10 @@ class Executor(ABC):
     def repeat_sum(self, count, value):
         return diceengine.repeat_sum_with(self.add, count, value)
 
-    def sumover(self, axis_name, value):
+    def sumover(self, axis_name: str, value: diceengine.Sweep[Any]) -> diceengine.Sweep[Any]:
         return diceengine.sumover_with(self.add, axis_name, value)
 
-    def total(self, value):
+    def total(self, value: diceengine.Sweep[Any]) -> diceengine.Sweep[Any]:
         return diceengine.total_with(self.add, value)
 
     def render(self, *args):
@@ -111,11 +144,7 @@ class Executor(ABC):
         return self.render_config.effective_probability_mode()
 
     @abstractmethod
-    def choose(self, left, right):
-        raise NotImplementedError
-
-    @abstractmethod
-    def choose_single(self, left, right):
+    def member(self, left, right):
         raise NotImplementedError
 
     @abstractmethod
@@ -124,10 +153,6 @@ class Executor(ABC):
 
     @abstractmethod
     def mean(self, value):
-        raise NotImplementedError
-
-    @abstractmethod
-    def mass(self, value):
         raise NotImplementedError
 
     @abstractmethod
@@ -156,6 +181,10 @@ class Executor(ABC):
 
     @abstractmethod
     def reselsediv(self, condition, distrib):
+        raise NotImplementedError
+
+    @abstractmethod
+    def reselsefloordiv(self, condition, distrib):
         raise NotImplementedError
 
     @abstractmethod
@@ -199,6 +228,14 @@ class Executor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def floordiv(self, left, right):
+        raise NotImplementedError
+
+    @abstractmethod
+    def neg(self, value):
+        raise NotImplementedError
+
+    @abstractmethod
     def greaterorequal(self, left, right):
         raise NotImplementedError
 
@@ -222,20 +259,14 @@ class Executor(ABC):
 class ExactExecutor(Executor):
     """Exact backend delegating to pure functions in diceengine."""
 
-    def choose(self, left, right):
-        return diceengine.choose(left, right)
-
-    def choose_single(self, left, right):
-        return diceengine.choose_single(left, right)
+    def member(self, left, right):
+        return diceengine.member(left, right)
 
     def res(self, condition, distrib):
         return diceengine.res(condition, distrib)
 
     def mean(self, value):
         return diceengine.mean(value)
-
-    def mass(self, value):
-        return diceengine.mass(value)
 
     def var(self, value):
         return diceengine.var(value)
@@ -257,6 +288,9 @@ class ExactExecutor(Executor):
 
     def reselsediv(self, condition, distrib):
         return diceengine.reselsediv(condition, distrib)
+
+    def reselsefloordiv(self, condition, distrib):
+        return diceengine.reselsefloordiv(condition, distrib)
 
     def roll(self, n, s):
         return diceengine.roll(n, s)
@@ -287,6 +321,12 @@ class ExactExecutor(Executor):
 
     def div(self, left, right):
         return diceengine.div(left, right)
+
+    def floordiv(self, left, right):
+        return diceengine.floordiv(left, right)
+
+    def neg(self, value):
+        return diceengine.neg(value)
 
     def greaterorequal(self, left, right):
         return diceengine.greaterorequal(left, right)

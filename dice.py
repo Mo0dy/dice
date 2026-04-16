@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from diceengine import Distributions, RenderConfig, wait_for_rendered_figures
+from diceengine import Distributions, Distribution, FiniteMeasure, RenderConfig, wait_for_rendered_figures
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -223,6 +223,8 @@ def _format_scalar_heatmap(result, roundlevel=0):
 
 def _format_result_text(result, roundlevel=0, probability_mode="percent"):
     if isinstance(result, Distributions):
+        if result.is_unswept() and isinstance(result.only_distribution(), FiniteMeasure) and not isinstance(result.only_distribution(), Distribution):
+            return str(result.only_distribution())
         if result.is_unswept():
             return _format_unswept_distribution(
                 result.only_distribution(),
@@ -257,8 +259,21 @@ def _serialize_distribution(distrib, roundlevel=0, probability_mode="raw"):
     return entries
 
 
+def _serialize_measure(measure, roundlevel=0):
+    entries = []
+    for outcome in _ordered_labels(measure.keys()):
+        entries.append(
+            {
+                "outcome": _round_numeric(outcome, roundlevel) if _is_numeric(outcome) else str(outcome),
+                "weight": _round_numeric(measure[outcome], roundlevel),
+            }
+        )
+    return entries
+
+
 def _serialize_result(result, roundlevel=0, probability_mode="raw"):
     if isinstance(result, Distributions):
+        distribution_only = all(isinstance(distrib, Distribution) for distrib in result.cells.values())
         axes = [
             {
                 "key": axis.key,
@@ -278,21 +293,43 @@ def _serialize_result(result, roundlevel=0, probability_mode="raw"):
                         "value": _round_numeric(value, roundlevel) if _is_numeric(value) else value,
                     }
                 )
-            cells.append(
-                {
-                    "coordinates": coordinate_entries,
-                    "distribution": _serialize_distribution(
-                        distrib,
-                        roundlevel,
-                        probability_mode=probability_mode,
-                    ),
-                }
-            )
+            if distribution_only:
+                cells.append(
+                    {
+                        "coordinates": coordinate_entries,
+                        "distribution": _serialize_distribution(
+                            distrib,
+                            roundlevel,
+                            probability_mode=probability_mode,
+                        ),
+                    }
+                )
+            else:
+                cells.append(
+                    {
+                        "coordinates": coordinate_entries,
+                        "value": (
+                            {
+                                "kind": "measure",
+                                "measure": _serialize_measure(distrib, roundlevel),
+                            }
+                            if isinstance(distrib, FiniteMeasure)
+                            else {
+                                "kind": "scalar" if _is_numeric(distrib) or isinstance(distrib, str) else type(distrib).__name__,
+                                "value": _round_numeric(distrib, roundlevel) if _is_numeric(distrib) else str(distrib),
+                            }
+                        ),
+                    }
+                )
         return {
-            "type": "distributions",
+            "type": "distributions" if distribution_only else "sweep",
             "axes": axes,
             "cells": cells,
         }
+    if isinstance(result, Distribution):
+        return {"type": "distribution", "distribution": _serialize_distribution(result, roundlevel, probability_mode=probability_mode)}
+    if isinstance(result, FiniteMeasure):
+        return {"type": "measure", "measure": _serialize_measure(result, roundlevel)}
     if isinstance(result, str):
         return {"type": "string", "value": result}
     if _is_numeric(result):
@@ -409,7 +446,7 @@ def _handle_repl_command(text, state, interpreter):
 
 def _round_result(result, roundlevel=0):
     if roundlevel and isinstance(result, Distributions):
-        result.round_probabilities(roundlevel)
+        return result.round_probabilities(roundlevel)
     return result
 
 

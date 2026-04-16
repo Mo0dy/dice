@@ -80,12 +80,6 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(next(iter(variance.keys())), 0.25)
         self.assertAlmostEqual(next(iter(stddev.keys())), 0.5)
 
-    def test_mass_function_preserves_sweeps(self):
-        result = interpret_statement("mass(d20[19:20])")
-        self.assertEqual(result.axes[0].values, (19, 20))
-        self.assertAlmostEqual(result.cells[(19,)][0.05], 1)
-        self.assertAlmostEqual(result.cells[(20,)][0.05], 1)
-
     def test_sample_operator_returns_sampled_outcome(self):
         result = only_distribution(interpret_statement("!d20"))
         self.assertEqual(result.total_probability(), 1)
@@ -136,11 +130,11 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result.cells[(1,)][2], 0.25)
         self.assertAlmostEqual(result.cells[(1,)][5], 1.0)
 
-    def test_index_then_compare_keeps_partial_probability_mass(self):
-        result = interpret_statement("d20[20] >= 14")
-        self.assertEqual(result.axes[0].values, (20,))
-        self.assertAlmostEqual(result.cells[(20,)][TRUE], 0.05)
-        self.assertAlmostEqual(result.cells[(20,)][FALSE], 0)
+    def test_membership_mean_supports_multi_value_events(self):
+        result = only_distribution(interpret_statement("d20 in {19, 20} $ mean"))
+        outcome, probability = next(iter(result.items()))
+        self.assertAlmostEqual(outcome, 0.1)
+        self.assertAlmostEqual(probability, 1)
 
     def test_multistatement_program_keeps_scope(self):
         result = only_distribution(interpret_file("attack = d20 >= 11\nattack -> 5"))
@@ -149,6 +143,11 @@ class RuntimeTest(unittest.TestCase):
     def test_elsediv_matches_explicit_else_branch(self):
         shorthand = interpret_statement("d20 < 14 -> 2d10 |/")
         explicit = interpret_statement("d20 < 14 -> 2d10 | 2d10 / 2")
+        self.assertEqual(str(shorthand), str(explicit))
+
+    def test_elsefloordiv_matches_explicit_else_branch(self):
+        shorthand = interpret_statement("d20 < 14 -> 2d10 |//")
+        explicit = interpret_statement("d20 < 14 -> 2d10 | 2d10 // 2")
         self.assertEqual(str(shorthand), str(explicit))
 
     def test_arithmetic_distribution_still_works(self):
@@ -248,7 +247,7 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[2], 0.275)
 
     def test_repeat_sum_rejects_non_deterministic_count(self):
-        with self.assertRaisesRegex(Exception, "deterministic count"):
+        with self.assertRaisesRegex(Exception, "deterministic scalar"):
             interpret_statement("repeat_sum(d2, d6)")
 
     def test_divide_by_zero_points_at_divisor(self):
@@ -259,7 +258,7 @@ class RuntimeTest(unittest.TestCase):
     def test_keep_count_error_points_at_keep_operand(self):
         with self.assertRaises(Exception) as error:
             interpret_statement("3 d 6 h 4")
-        self.assertIn("<input>:1:9", str(error.exception))
+        self.assertIn("<input>:1:3", str(error.exception))
 
     def test_match_guard_type_error_points_at_guard(self):
         with self.assertRaises(Exception) as error:

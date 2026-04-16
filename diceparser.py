@@ -5,29 +5,104 @@
 
 
 from diagnostics import ParserError
-from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Named
-from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PIPE, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, DOT, MATCH, AS, OTHERWISE, IMPORT
+from syntaxtree import (
+    BinOp,
+    TenOp,
+    Val,
+    UnOp,
+    VarOp,
+    Op,
+    FunctionDef,
+    Call,
+    Match,
+    MatchClause,
+    Import,
+    Named,
+    RangeLiteral,
+    MeasureEntry,
+    MeasureLiteral,
+    SweepLiteral,
+)
+from lexer import (
+    Token,
+    Lexer,
+    INTEGER,
+    FLOAT,
+    ROLL,
+    GREATER_OR_EQUAL,
+    LESS_OR_EQUAL,
+    LESS,
+    GREATER,
+    EQUAL,
+    IN,
+    RES,
+    PIPE,
+    PLUS,
+    MINUS,
+    MUL,
+    DIV,
+    FLOORDIV,
+    ELSE,
+    LBRACK,
+    RBRACK,
+    LBRACE,
+    RBRACE,
+    COMMA,
+    COLON,
+    AT,
+    RANGE,
+    RANGE_EXCLUSIVE,
+    EOF,
+    DIS,
+    ADV,
+    LPAREN,
+    RPAREN,
+    ELSEDIV,
+    ELSEFLOORDIV,
+    HIGH,
+    LOW,
+    AVG,
+    PROP,
+    ASSIGN,
+    SEMI,
+    ID,
+    PRINT,
+    STRING,
+    MATCH,
+    AS,
+    OTHERWISE,
+    IMPORT,
+)
 
 TOKEN_LABELS = {
     INTEGER: "integer",
+    FLOAT: "float",
     ROLL: "'d'",
     GREATER_OR_EQUAL: "'>='",
     LESS_OR_EQUAL: "'<='",
     LESS: "'<'",
     GREATER: "'>'",
     EQUAL: "'=='",
+    IN: "'in'",
     RES: "'->'",
     PIPE: "'$'",
     PLUS: "'+'",
     MINUS: "'-'",
     MUL: "'*'",
     DIV: "'/'",
+    FLOORDIV: "'//'",
     ELSE: "'|'",
     ELSEDIV: "'|/'",
+    ELSEFLOORDIV: "'|//'",
     LBRACK: "'['",
     RBRACK: "']'",
+    LBRACE: "'{'",
+    RBRACE: "'}'",
     COMMA: "','",
     COLON: "':'",
+    AT: "'@'",
+    RANGE: "'..'",
+    RANGE_EXCLUSIVE: "'..<'",
     LPAREN: "'('",
     RPAREN: "')'",
     HIGH: "'h'",
@@ -39,7 +114,6 @@ TOKEN_LABELS = {
     ID: "identifier",
     PRINT: "'print'",
     STRING: "string",
-    DOT: "'.'",
     MATCH: "'match'",
     AS: "'as'",
     OTHERWISE: "'otherwise'",
@@ -134,23 +208,32 @@ class DiceParser(Parser):
 
     Grammar:
         expr      :  resolve (PIPE pipeline_target)*
-        resolve   :  comp (RES comp ((ELSE comp) | ELSEDIV)?)?
-        comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL) side)?
+        resolve   :  comp (RES comp ((ELSE comp) | ELSEDIV | ELSEFLOORDIV)?)?
+        comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL | IN) side)?
         side      :  term ((PLUS | MINUS) term)*
-        term      :  index ((MUL | DIV) index)*
-        index     :  roll (brack | dot)?
+        term      :  roll ((MUL | DIV | FLOORDIV) roll)*
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | STRING | ID | LPAREN expr RPAREN | brack | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr
-        brack     :  LBRACK expr (COLON expr | (COMMA expr)*) RBRACK
+        factor    :  INTEGER | FLOAT | STRING | ID | LPAREN expr RPAREN | sweep | measure | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr | MINUS factor
+        sweep     :  LBRACK (ID COLON)? sweep_values RBRACK
+        sweep_values : range_expr | expr (COMMA expr)*
+        measure   :  LBRACE measure_entry (COMMA measure_entry)* RBRACE
+        measure_entry : range_expr_or_expr (AT expr)?
         match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
         match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
-        dot       :  DOT (INTEGER | ID)
         pipeline_target : ID | ID LPAREN expr (COMMA expr)* RPAREN
     """
 
     # This just implements the grammar
 
-    def brack(self):
+    def maybe_range(self, start):
+        if self.current_token.type not in (RANGE, RANGE_EXCLUSIVE):
+            return start
+        token = self.current_token
+        inclusive_end = token.type == RANGE
+        self.eat(token.type)
+        return RangeLiteral(start, self.expr(), inclusive_end, token)
+
+    def sweep_literal(self):
         token = self.current_token
         self.eat(LBRACK)
         sweep_name = None
@@ -158,24 +241,41 @@ class DiceParser(Parser):
             sweep_name = Val(self.current_token)
             self.eat(ID)
             self.eat(COLON)
-        value1 = self.expr()
+        value1 = self.maybe_range(self.expr())
         if self.current_token.type == COLON:
-            token = self.current_token
+            legacy_token = self.current_token
             self.eat(COLON)
-            value2 = self.expr()
+            value1 = RangeLiteral(value1, self.expr(), True, legacy_token)
+        if isinstance(value1, RangeLiteral):
             self.eat(RBRACK)
-            node = BinOp(value1, token, value2)
-            return Named(sweep_name, node) if sweep_name else node
+            return SweepLiteral(value1, token, name=sweep_name)
 
-        # Comma seperated values could also be implemented with a bounch of unary operators appending to a list
-        # Somehow this (variadic operator) seems more straigtforward to me
         nodes = [value1]
         while self.current_token.type != RBRACK:
             self.eat(COMMA)
             nodes.append(self.expr())
         self.eat(RBRACK)
-        node = VarOp(token, nodes)
-        return Named(sweep_name, node) if sweep_name else node
+        return SweepLiteral(nodes, token, name=sweep_name)
+
+    def measure_literal(self):
+        token = self.current_token
+        self.eat(LBRACE)
+        entries = []
+        while True:
+            value = self.maybe_range(self.expr())
+            weight = None
+            if self.current_token.type == AT:
+                at_token = self.current_token
+                self.eat(AT)
+                weight = self.expr()
+            else:
+                at_token = getattr(value, "token", token)
+            entries.append(MeasureEntry(value, weight=weight, token=at_token))
+            if self.current_token.type != COMMA:
+                break
+            self.eat(COMMA)
+        self.eat(RBRACE)
+        return MeasureLiteral(entries, token)
 
     def match_expr(self):
         token = self.current_token
@@ -214,7 +314,9 @@ class DiceParser(Parser):
 
     def factor(self):
         if self.current_token.type == LBRACK:
-            return self.brack()
+            return self.sweep_literal()
+        elif self.current_token.type == LBRACE:
+            return self.measure_literal()
         elif self.current_token.type == MATCH:
             return self.match_expr()
         elif self.current_token.type == LPAREN:
@@ -242,6 +344,10 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(PROP)
             return UnOp(self.expr(), token)
+        elif self.current_token.type == MINUS:
+            token = self.current_token
+            self.eat(MINUS)
+            return UnOp(self.factor(), token)
         elif self.current_token.type == ID:
             token = self.current_token
             self.eat(ID)
@@ -251,6 +357,10 @@ class DiceParser(Parser):
         elif self.current_token.type == STRING:
             token = self.current_token
             self.eat(STRING)
+            return Val(token)
+        elif self.current_token.type == FLOAT:
+            token = self.current_token
+            self.eat(FLOAT)
             return Val(token)
         elif self.current_token.type == INTEGER:
             token = self.current_token
@@ -303,9 +413,9 @@ class DiceParser(Parser):
                 return None
             self.eat(ASSIGN)
             return FunctionDef(Val(name_token), params, self.expr())
-        except Exception:
+        except ParserError:
             self.restore(state)
-            raise
+            return None
 
     def roll(self):
         node = self.factor()
@@ -320,32 +430,13 @@ class DiceParser(Parser):
             node = BinOp(node, token, node2)
         return node
 
-    def index(self):
-        node = self.roll()
-        if self.current_token.type == LBRACK:
-            token = self.current_token
-            # NOTE: I changed this line to use self.factor() instead of self.roll() should be correct I guess
-            return BinOp(node, token, self.factor())
-        if self.current_token.type == DOT:
-            token = self.current_token
-            self.eat(DOT)
-            if self.current_token.type == INTEGER or self.current_token.type == ID:
-                return BinOp(node, token, self.factor())
-            else:
-                self.exception(
-                    "expected an integer or identifier after '.'",
-                    token=self.current_token,
-                    hint="Use a literal index like '.1' or a variable name like '.target'.",
-                )
-        return node
-
     def term(self):
-        node = self.index()
-        while self.current_token.type in [MUL, DIV]:
+        node = self.roll()
+        while self.current_token.type in [MUL, DIV, FLOORDIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.index())
+            node = BinOp(node, token, self.roll())
         return node
 
     def side(self):
@@ -359,7 +450,7 @@ class DiceParser(Parser):
 
     def comp(self):
         node = self.side()
-        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL]:
+        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL, IN]:
             # store token for AST
             token = self.current_token
             self.eat(token.type)
@@ -381,6 +472,10 @@ class DiceParser(Parser):
             elif self.current_token.type == ELSEDIV:
                 token2 = self.current_token
                 self.eat(ELSEDIV)
+                node = BinOp(node, token2, new_node1)
+            elif self.current_token.type == ELSEFLOORDIV:
+                token2 = self.current_token
+                self.eat(ELSEFLOORDIV)
                 node = BinOp(node, token2, new_node1)
             else:
                 # no tenery operator just normal resolve

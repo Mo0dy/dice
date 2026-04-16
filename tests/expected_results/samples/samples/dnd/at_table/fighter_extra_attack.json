@@ -1,0 +1,95 @@
+{
+  "axes": [],
+  "cells": [
+    {
+      "coordinates": [],
+      "distribution": [
+        {
+          "outcome": 0,
+          "probability": 0.15999999999999998
+        },
+        {
+          "outcome": 5,
+          "probability": 0.05999999999999999
+        },
+        {
+          "outcome": 6,
+          "probability": 0.05999999999999999
+        },
+        {
+          "outcome": 7,
+          "probability": 0.05999999999999999
+        },
+        {
+          "outcome": 8,
+          "probability": 0.05999999999999999
+        },
+        {
+          "outcome": 9,
+          "probability": 0.05999999999999999
+        },
+        {
+          "outcome": 10,
+          "probability": 0.06562499999999999
+        },
+        {
+          "outcome": 11,
+          "probability": 0.07125
+        },
+        {
+          "outcome": 12,
+          "probability": 0.076875
+        },
+        {
+          "outcome": 13,
+          "probability": 0.0225
+        },
+        {
+          "outcome": 14,
+          "probability": 0.028124999999999997
+        },
+        {
+          "outcome": 15,
+          "probability": 0.033749999999999995
+        },
+        {
+          "outcome": 16,
+          "probability": 0.03937499999999999
+        },
+        {
+          "outcome": 17,
+          "probability": 0.04499999999999999
+        },
+        {
+          "outcome": 18,
+          "probability": 0.03937499999999999
+        },
+        {
+          "outcome": 19,
+          "probability": 0.033749999999999995
+        },
+        {
+          "outcome": 20,
+          "probability": 0.028124999999999997
+        },
+        {
+          "outcome": 21,
+          "probability": 0.0225
+        },
+        {
+          "outcome": 22,
+          "probability": 0.016875
+        },
+        {
+          "outcome": 23,
+          "probability": 0.01125
+        },
+        {
+          "outcome": 24,
+          "probability": 0.005625
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

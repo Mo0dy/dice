@@ -14,6 +14,8 @@ from diceengine import (
     Distrib,
     Distributions,
     Sweep,
+    SweepValues,
+    FiniteMeasure,
     _require_keep_count,
     _sample_from_distribution,
     lift_sweeps,
@@ -29,12 +31,10 @@ class SampledDistrib(Distrib):
 
     def __init__(self, sampled=None, exact=None):
         super().__init__(sampled)
-        self.exact = exact if exact is not None else Distrib(dict(self.distrib))
+        self.exact = exact if exact is not None else Distrib(dict(self.items()))
 
 
 def _degenerate(outcome):
-    if outcome is None:
-        return Distrib()
     return Distrib({outcome: 1})
 
 
@@ -60,7 +60,7 @@ def _exact_call(function, *args):
 
 
 def _sampled_result(outcome, exact):
-    return SampledDistrib(_degenerate(outcome).distrib, exact=exact)
+    return SampledDistrib(dict(_degenerate(outcome).items()), exact=exact)
 
 
 class DirectExecutor(ExactExecutor):
@@ -100,25 +100,23 @@ class DirectExecutor(ExactExecutor):
         return apply(left, middle, right)
 
     def choose(self, left, right):
-        @lift_sweeps
-        def apply(left_distrib, right_distrib):
-            exact = _exact_call(diceengine.choose, _exact_of(left_distrib), _exact_of(right_distrib))
-            sampled_left = next(iter(_sample_from_distribution(left_distrib, self.rng).keys()), None)
-            sampled_right = next(iter(_sample_from_distribution(right_distrib, self.rng).keys()), None)
-            if sampled_left is None or sampled_right is None:
-                return _sampled_result(None, exact)
-            return _sampled_result(sampled_left if sampled_left == sampled_right else None, exact)
-
-        return apply(left, right)
+        return self.member(left, right)
 
     def choose_single(self, left, right):
-        @lift_sweeps
-        def apply(left_distrib, right_distrib):
-            exact = _exact_call(diceengine.choose_single, _exact_of(left_distrib), _exact_of(right_distrib))
-            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
-            return _sampled_result(sampled_value, exact)
+        return self.member(left, right)
 
-        return apply(left, right)
+    def member(self, left, right):
+        left_sweep = diceengine._coerce_to_distributions(left)
+        right_sweep = diceengine._coerce_to_measure_sweep(right)
+        combined_axes = diceengine._union_axes([left_sweep, right_sweep])
+        cells = {}
+        for coordinates in diceengine._coordinates_space(combined_axes):
+            left_cell = left_sweep.lookup(combined_axes, coordinates)
+            right_cell = right_sweep.lookup(combined_axes, coordinates)
+            exact = _exact_call(diceengine.member, _exact_of(left_cell), right_cell)
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            cells[coordinates] = _sampled_result(sampled_value, exact)
+        return Sweep(combined_axes, cells)
 
     def res(self, condition, distrib):
         return self._lift_binary(
@@ -194,6 +192,9 @@ class DirectExecutor(ExactExecutor):
     def reselsediv(self, condition, distrib):
         return self.reselse(condition, distrib, self.div(distrib, 2))
 
+    def reselsefloordiv(self, condition, distrib):
+        return self.reselse(condition, distrib, self.floordiv(distrib, 2))
+
     def roll(self, n, s):
         def operation(sampled_n, sampled_s):
             if sampled_n is None or sampled_s is None:
@@ -212,7 +213,13 @@ class DirectExecutor(ExactExecutor):
         )
 
     def rollsingle(self, dice):
-        return self.roll(1, dice)
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_call(diceengine.rollsingle, _exact_of(distrib))
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(dice)
 
     def rolladvantage(self, dice):
         def operation(sampled_sides):
@@ -312,9 +319,28 @@ class DirectExecutor(ExactExecutor):
                 return None
             if sampled_right == 0:
                 diceengine.runtime_error("can't divide by zero")
-            return sampled_left // sampled_right
+            return sampled_left / sampled_right
 
         return self._lift_binary(left, right, operation, exact_operation=lambda l, r: _exact_call(diceengine.div, l, r))
+
+    def floordiv(self, left, right):
+        def operation(sampled_left, sampled_right):
+            if sampled_left is None or sampled_right is None:
+                return None
+            if sampled_right == 0:
+                diceengine.runtime_error("can't divide by zero")
+            return sampled_left // sampled_right
+
+        return self._lift_binary(left, right, operation, exact_operation=lambda l, r: _exact_call(diceengine.floordiv, l, r))
+
+    def neg(self, value):
+        @lift_sweeps
+        def apply(distrib):
+            exact = _exact_call(diceengine.neg, _exact_of(distrib))
+            sampled_value = next(iter(_sample_from_distribution(exact, self.rng).keys()), None)
+            return _sampled_result(sampled_value, exact)
+
+        return apply(value)
 
     def greaterorequal(self, left, right):
         return self._lift_binary(
@@ -363,7 +389,7 @@ def _parse_text(text):
 
 
 def _reset_sweeps():
-    Sweep.counter = 0
+    SweepValues.counter = 0
 
 
 def exact_evaluate(text):
@@ -393,13 +419,10 @@ def _normalize_counts(counts):
     cells = {}
     sample_count = counts["samples"]
     for coordinates, cell_counts in counts["cells"].items():
-        distrib = Distrib()
-        for outcome, value in cell_counts.items():
-            distrib[outcome] = value / sample_count
-        cells[coordinates] = distrib
+        cells[coordinates] = Distrib({outcome: value / sample_count for outcome, value in cell_counts.items()})
     if counts["axes"] is None:
         return Distributions.scalar(0)
-    return Distributions(counts["axes"], cells if cells else {(): Distrib()})
+    return Distributions(counts["axes"], cells if cells else {(): 0})
 
 
 def distribution_metrics(expected, empirical):
@@ -407,8 +430,8 @@ def distribution_metrics(expected, empirical):
     l1 = 0
     all_coordinates = set(expected.cells.keys()) | set(empirical.cells.keys())
     for coordinates in all_coordinates:
-        expected_distrib = expected.cells.get(coordinates, Distrib())
-        empirical_distrib = empirical.cells.get(coordinates, Distrib())
+        expected_distrib = expected.cells.get(coordinates, FiniteMeasure())
+        empirical_distrib = empirical.cells.get(coordinates, FiniteMeasure())
         outcomes = set(expected_distrib.keys()) | set(empirical_distrib.keys())
         for outcome in outcomes:
             diff = abs(expected_distrib[outcome] - empirical_distrib[outcome])

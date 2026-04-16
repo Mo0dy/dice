@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dice import dice_interpreter
-from diceengine import Distrib, Distributions, TRUE, FALSE, lift_sweeps
+from diceengine import Distribution, Distributions, TRUE, FALSE
 from executor import ExactExecutor
 
 
@@ -52,15 +52,11 @@ class PythonIntegrationTest(unittest.TestCase):
     def test_registers_lifted_python_function(self):
         session = dice_interpreter()
 
-        @lift_sweeps
-        def increment(value):
-            result = Distrib()
-            for outcome, probability in value.items():
-                result[outcome + 1] = result[outcome + 1] + probability
-            return result
+        def increment(value: Distribution) -> Distribution:
+            return Distribution((outcome + 1, probability) for outcome, probability in value.items())
 
         session.register_function(increment)
-        result = session("increment([1:2])")
+        result = session("increment([1..2])")
         self.assertEqual(result.axes[0].values, (1, 2))
         self.assertEqual(result.cells[(1,)][2], 1)
         self.assertEqual(result.cells[(2,)][3], 1)

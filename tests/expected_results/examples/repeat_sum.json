@@ -1,0 +1,27 @@
+{
+  "axes": [],
+  "cells": [
+    {
+      "coordinates": [],
+      "distribution": [
+        {
+          "outcome": 3,
+          "probability": 0.125
+        },
+        {
+          "outcome": 4,
+          "probability": 0.375
+        },
+        {
+          "outcome": 5,
+          "probability": 0.375
+        },
+        {
+          "outcome": 6,
+          "probability": 0.125
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

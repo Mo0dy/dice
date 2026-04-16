@@ -27,11 +27,11 @@ def only_distribution(result):
 
 class ImportAndCommentTest(unittest.TestCase):
     def test_line_comment_can_stand_alone(self):
-        result = only_distribution(interpret_file("// note\n1 + 1"))
+        result = only_distribution(interpret_file("# note\n1 + 1"))
         self.assertEqual(result[2], 1)
 
     def test_trailing_comment_does_not_affect_statement(self):
-        result = only_distribution(interpret_file("x = 2 // set x\nx + 1"))
+        result = only_distribution(interpret_file("x = 2 # set x\nx + 1"))
         self.assertEqual(result[3], 1)
 
     def test_import_loads_relative_file(self):
@@ -107,7 +107,7 @@ class ImportAndCommentTest(unittest.TestCase):
     def test_imported_files_can_contain_comments(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
-            (root / "shared.dice").write_text("// helper file\nx = 2\n", encoding="utf-8")
+            (root / "shared.dice").write_text("# helper file\nx = 2\n", encoding="utf-8")
             result = only_distribution(
                 interpret_file('import "shared.dice"\nx + 1', current_dir=root)
             )

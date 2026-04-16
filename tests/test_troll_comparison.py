@@ -1,5 +1,5 @@
-import os
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -68,17 +68,39 @@ def _only_scalar(distrib):
     return items[0][0]
 
 
-def _weapons_args(mode, **overrides):
-    values = {"MODE": mode, "AC": 0, "BONUS": 0, "MOD": 0, "EXTRA": 0, "ATTACKS": 0}
+def _scaled_distribution(distrib, scale):
+    scaled = {}
+    for outcome, probability in distrib.items():
+        scaled_outcome = outcome * scale
+        rounded = round(scaled_outcome)
+        if not math.isclose(scaled_outcome, rounded, rel_tol=0.0, abs_tol=1e-12):
+            raise AssertionError(
+                "Scaled outcome {!r} with scale {!r} did not stay integral".format(outcome, scale)
+            )
+        scaled[int(rounded)] = probability
+    return scaled
+
+
+def _weapons_args(mode, *, scale=1, **overrides):
+    values = {"MODE": mode, "AC": 0, "BONUS": 0, "MOD": 0, "EXTRA": 0, "ATTACKS": 0, "SCALE": scale}
     values.update(overrides)
-    ordered = ["MODE", "AC", "BONUS", "MOD", "EXTRA", "ATTACKS"]
+    ordered = ["MODE", "AC", "BONUS", "MOD", "EXTRA", "ATTACKS", "SCALE"]
     return ["0", "tests/troll/dnd/weapons.t"] + [f"{key}={values[key]}" for key in ordered]
 
 
-def _spells_args(mode, **overrides):
-    values = {"MODE": mode, "AC": 0, "BONUS": 0, "STAT": 0, "COUNT": 0, "DC": 0, "SAVEBONUS": 0}
+def _spells_args(mode, *, scale=1, **overrides):
+    values = {
+        "MODE": mode,
+        "AC": 0,
+        "BONUS": 0,
+        "STAT": 0,
+        "COUNT": 0,
+        "DC": 0,
+        "SAVEBONUS": 0,
+        "SCALE": scale,
+    }
     values.update(overrides)
-    ordered = ["MODE", "AC", "BONUS", "STAT", "COUNT", "DC", "SAVEBONUS"]
+    ordered = ["MODE", "AC", "BONUS", "STAT", "COUNT", "DC", "SAVEBONUS", "SCALE"]
     return ["0", "tests/troll/dnd/spells.t"] + [f"{key}={values[key]}" for key in ordered]
 
 
@@ -104,77 +126,62 @@ FULL_DISTRIBUTION_CASES = {
 SCALAR_SWEEP_CASES = {
     "samples/dnd/analysis/bless_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(5, AC=value, BONUS=7, MOD=4),
     },
     "samples/dnd/analysis/crit_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(6, AC=value, BONUS=7, MOD=4),
     },
     "samples/dnd/analysis/eldritch_blast_three_beams_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _spells_args(2, AC=value, BONUS=7, STAT=4, COUNT=3),
     },
     "samples/dnd/analysis/eldritch_blast_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _spells_args(1, AC=value, BONUS=7, STAT=4),
     },
     "samples/dnd/analysis/fighter_longsword_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(1, AC=value, BONUS=7, MOD=4),
     },
     "samples/dnd/analysis/fighter_two_attacks_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(9, AC=value, BONUS=7, MOD=4, ATTACKS=2),
     },
     "samples/dnd/analysis/fireball_vs_save_bonus.dice": {
         "axis_values": list(range(0, 10)),
-        "vary_key": "SAVEBONUS",
         "builder": lambda value: _spells_args(5, DC=15, SAVEBONUS=value),
     },
     "samples/dnd/analysis/guiding_bolt_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _spells_args(3, AC=value, BONUS=7),
     },
     "samples/dnd/analysis/gwm_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(2, AC=value, BONUS=8, MOD=4),
     },
     "samples/dnd/analysis/inflict_wounds_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _spells_args(4, AC=value, BONUS=7),
     },
     "samples/dnd/analysis/magic_missile_vs_darts.dice": {
         "axis_values": list(range(1, 7)),
-        "vary_key": "COUNT",
         "builder": lambda value: _spells_args(7, COUNT=value),
     },
     "samples/dnd/analysis/paladin_smite_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(8, AC=value, BONUS=8, MOD=4, EXTRA=3),
     },
     "samples/dnd/analysis/reckless_gwm_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(3, AC=value, BONUS=8, MOD=4),
     },
     "samples/dnd/analysis/sacred_flame_vs_save_bonus.dice": {
         "axis_values": list(range(0, 10)),
-        "vary_key": "SAVEBONUS",
         "builder": lambda value: _spells_args(6, DC=15, SAVEBONUS=value),
     },
     "samples/dnd/analysis/sharpshooter_vs_ac.dice": {
         "axis_values": list(range(10, 23)),
-        "vary_key": "AC",
         "builder": lambda value: _weapons_args(7, AC=value, BONUS=8, MOD=4),
     },
 }
@@ -187,14 +194,14 @@ SCALAR_CASES = {
             _spells_args(5, DC=15, SAVEBONUS=2),
             _spells_args(5, DC=15, SAVEBONUS=5),
             _spells_args(5, DC=15, SAVEBONUS=7),
-        ]
+        ],
     }
 }
 
 
 ALL_CASES = set(FULL_DISTRIBUTION_CASES) | set(SCALAR_SWEEP_CASES) | set(SCALAR_CASES)
 UNCOMPARED_CASES = {
-    # Exploratory multi-render analysis sample with no direct Troll parity harness yet.
+    # This is a multi-render exploratory program, not one semantic result.
     "samples/dnd/analysis/ability_scores_4d6h3.dice",
 }
 
@@ -210,7 +217,16 @@ class TrollDistributionComparisonTest(unittest.TestCase):
         for relative_path, spec in sorted(FULL_DISTRIBUTION_CASES.items()):
             with self.subTest(sample=relative_path):
                 sample_path = ROOT / relative_path
-                dice_distribution = interpret_file(sample_path.read_text(encoding="utf-8"), current_dir=sample_path.parent).only_distribution().distrib
+                dice_distribution = interpret_file(
+                    sample_path.read_text(encoding="utf-8"),
+                    current_dir=sample_path.parent,
+                ).only_distribution()
+                scale = spec.get("scale", 1)
+                if scale != 1:
+                    dice_distribution = _scaled_distribution(dice_distribution, scale)
+                else:
+                    dice_distribution = dict(dice_distribution.items())
+
                 if "stdin" in spec:
                     troll_output = subprocess.check_output([str(TROLL), "0"], cwd=ROOT, text=True, input=spec["stdin"])
                 else:
@@ -236,15 +252,16 @@ class TrollDistributionComparisonTest(unittest.TestCase):
                 self.assertEqual(len(result.axes), 1)
                 self.assertEqual(list(result.axes[0].values), spec["axis_values"])
 
+                scale = spec.get("scale", 1)
                 for axis_value in spec["axis_values"]:
                     dice_scalar = _only_scalar(result.cells[(axis_value,)])
                     troll_output = subprocess.check_output([str(TROLL)] + spec["builder"](axis_value), cwd=ROOT, text=True)
                     troll_average = _parse_troll_average(troll_output)
                     self.assertTrue(
-                        math.isclose(dice_scalar, troll_average, rel_tol=0.0, abs_tol=1e-12),
+                        math.isclose(dice_scalar * scale, troll_average, rel_tol=0.0, abs_tol=1e-12),
                         msg=(
                             f"{relative_path} axis value {axis_value} differed: "
-                            f"dice={dice_scalar!r} troll={troll_average!r}"
+                            f"dice={dice_scalar!r} troll={troll_average!r} scale={scale}"
                         ),
                     )
 
@@ -260,7 +277,7 @@ class TrollDistributionComparisonTest(unittest.TestCase):
                     for args in spec["components"]
                 )
                 self.assertTrue(
-                    math.isclose(dice_scalar, troll_scalar, rel_tol=0.0, abs_tol=1e-12),
+                    math.isclose(dice_scalar * spec.get("scale", 1), troll_scalar, rel_tol=0.0, abs_tol=1e-12),
                     msg=f"{relative_path} differed: dice={dice_scalar!r} troll={troll_scalar!r}",
                 )
 

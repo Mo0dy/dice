@@ -73,9 +73,10 @@ class DndSampleLibraryTest(unittest.TestCase):
         for direct_coordinates, direct_distrib in direct.cells.items():
             target_value = direct_coordinates[0]
             explicit_distrib = explicit.cells[(target_value,)]
-            self.assertEqual(set(direct_distrib.keys()), set(explicit_distrib.keys()))
-            for outcome in direct_distrib:
-                self.assertAlmostEqual(direct_distrib[outcome], explicit_distrib[outcome])
+            self.assertEqual(len(direct_distrib.keys()), len(explicit_distrib.keys()))
+            for direct_outcome, explicit_outcome in zip(sorted(direct_distrib.keys()), sorted(explicit_distrib.keys())):
+                self.assertAlmostEqual(direct_outcome, explicit_outcome)
+                self.assertAlmostEqual(direct_distrib[direct_outcome], explicit_distrib[explicit_outcome])
 
 
 if __name__ == "__main__":

@@ -29,29 +29,34 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(set(distrib.keys()).issubset({0, 5}))
 
+    def test_direct_backend_supports_floor_half_damage_shorthand(self):
+        result = direct_sample("d20 < 14 -> 2d10 |//", seed=123)
+        distrib = result.only_distribution()
+        self.assertEqual(distrib.total_probability(), 1)
+        self.assertTrue(all(float(outcome).is_integer() for outcome in distrib.keys()))
+
     def test_direct_backend_preserves_sweep_shape(self):
-        result = direct_sample("d20 >= [5:7]", seed=123)
+        result = direct_sample("d20 >= [5..7]", seed=123)
         self.assertEqual(result.axes[0].values, (5, 6, 7))
         for distrib in result.cells.values():
             self.assertIn(distrib.total_probability(), (0, 1))
             self.assertTrue(set(distrib.keys()).issubset({TRUE, FALSE}))
 
-    def test_direct_backend_matches_dot_semantics(self):
-        result = direct_sample("d20.20", seed=123)
+    def test_direct_backend_supports_exact_match_queries(self):
+        result = direct_sample("d20 == 20", seed=123)
         distrib = result.only_distribution()
-        self.assertEqual(len(list(distrib.items())), 1)
-        outcome, probability = next(iter(distrib.items()))
-        self.assertAlmostEqual(outcome, 0.05)
-        self.assertAlmostEqual(probability, 1)
+        self.assertEqual(distrib.total_probability(), 1)
+        self.assertTrue(set(distrib.keys()).issubset({TRUE, FALSE}))
 
     def test_direct_backend_keeps_deterministic_summary_semantics(self):
         avg_result = direct_sample("2d6 $ mean", seed=123).only_distribution()
-        prop_result = direct_sample("mass(d20[20])", seed=123)
+        prop_result = direct_sample("d20 == 20 $ mean", seed=123).only_distribution()
         outcome, probability = next(iter(avg_result.items()))
         self.assertAlmostEqual(outcome, 7.0)
         self.assertEqual(probability, 1)
-        self.assertEqual(prop_result.axes[0].values, (20,))
-        self.assertEqual(prop_result.cells[(20,)][0.05], 1)
+        prop_outcome, prop_probability = next(iter(prop_result.items()))
+        self.assertAlmostEqual(prop_outcome, 0.05)
+        self.assertEqual(prop_probability, 1)
 
     def test_direct_backend_summarizes_choice_distributions(self):
         avg_result = direct_sample("d20 >= 11 $ mean", seed=123).only_distribution()

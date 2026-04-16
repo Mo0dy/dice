@@ -9,6 +9,7 @@
 \ 7 sharpshooter
 \ 8 paladinsmite
 \ 9 fighterattackaction
+\ SCALE optionally rescales final outcomes for cross-language comparison.
 
 function hit(ac, bonus) =
   (d20 + bonus) >= ac
@@ -68,4 +69,4 @@ function runweapon(mode, ac, bonus, abil, extra, attacks) =
   else if mode = 8 then call paladinsmite(ac, bonus, abil, extra)
   else call fighterattackaction(attacks, ac, bonus, abil)
 
-call runweapon(MODE, AC, BONUS, MOD, EXTRA, ATTACKS)
+SCALE * call runweapon(MODE, AC, BONUS, MOD, EXTRA, ATTACKS)

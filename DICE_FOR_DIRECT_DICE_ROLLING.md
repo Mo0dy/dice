@@ -1,3 +1,6 @@
+
+https://hjemmesider.diku.dk/~torbenm/Troll/manual.pdf
+
 # Dice For Direct Dice Rolling
 
 This note collects examples that are easy to express as distributions, but become tricky when we want one concrete roll at the table together with a useful roll log.

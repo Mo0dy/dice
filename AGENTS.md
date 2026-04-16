@@ -32,7 +32,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 
 - Programs are parsed as EOF-delimited statement sequences rather than `BEGIN ... END` wrappers.
 - The legacy preprocessor and Discord bot have been removed from the active surface.
-- Minimal first-class comments and file imports now belong to the active language surface: `// ...` and `import "path.dice"`.
+- Minimal first-class comments and file imports now belong to the active language surface: `# ...` and `import "path.dice"`.
 - `README.md` examples are part of the executable contract through the test suite.
 - The current ongoing task is the semantic rewrite described in `DICE_REWRITE_PLAN.md`.
 
@@ -57,6 +57,9 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - For semantic changes, check `diceengine.py` first; most exact operator and callable behavior lives there.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.
 - Prefer `README.md` for current tested examples and `scripts/` / `notes.org` for older intent or design history.
+- Use `==` for singleton exact checks such as `d20 == 20`.
+- Use ordinary comparisons for contiguous threshold-style events such as `d20 >= 15`.
+- Use `in` only for genuine non-contiguous or structured membership queries such as `d20 in {1, 20}`.
 
 ## Tests
 

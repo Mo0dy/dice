@@ -1,4 +1,4 @@
-// Weapon and martial examples built on the shared combat helpers.
+# Weapon and martial examples built on the shared combat helpers.
 import "core.dice"
 
 longsword_attack(ac, bonus, mod) = damage_on_hit(ac, bonus, 1 d 8 + mod)

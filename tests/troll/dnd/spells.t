@@ -7,6 +7,7 @@
 \ 5 fireball
 \ 6 sacredflame
 \ 7 magicmissile
+\ SCALE optionally rescales final outcomes for cross-language comparison.
 
 function hit(ac, bonus) =
   (d20 + bonus) >= ac
@@ -41,13 +42,13 @@ function sacredflame(dc, savebonus) =
 function magicmissile(darts) =
   sum (darts d4) + darts
 
-function runspell(mode, ac, bonus, stat, amount, dc, savebonus) =
-  if mode = 1 then call eldritchblast(ac, bonus, stat)
-  else if mode = 2 then call eldritchblastaction(amount, ac, bonus, stat)
-  else if mode = 3 then call guidingbolt(ac, bonus)
-  else if mode = 4 then call inflictwounds(ac, bonus)
-  else if mode = 5 then call fireball(dc, savebonus)
-  else if mode = 6 then call sacredflame(dc, savebonus)
-  else call magicmissile(amount)
+function runspell(mode, ac, bonus, stat, amount, dc, savebonus, scale) =
+  if mode = 1 then scale * call eldritchblast(ac, bonus, stat)
+  else if mode = 2 then scale * call eldritchblastaction(amount, ac, bonus, stat)
+  else if mode = 3 then scale * call guidingbolt(ac, bonus)
+  else if mode = 4 then scale * call inflictwounds(ac, bonus)
+  else if mode = 5 then scale * call fireball(dc, savebonus)
+  else if mode = 6 then scale * call sacredflame(dc, savebonus)
+  else scale * call magicmissile(amount)
 
-call runspell(MODE, AC, BONUS, STAT, COUNT, DC, SAVEBONUS)
+call runspell(MODE, AC, BONUS, STAT, COUNT, DC, SAVEBONUS, SCALE)

@@ -13,7 +13,7 @@ The samples now intentionally exercise:
 
 - relative `import "..."` for reusable combat helpers inside the sample tree
 - packaged stdlib imports such as `import "std:dnd/weapons.dice"` for reusable shared helpers
-- `// ...` comments inside `.dice` files
+- `# ...` comments inside `.dice` files
 - reusable shared-roll crit helpers built on `match ... as ...`
 - `repeat_sum(n, expr)` for repeated independent attacks or beams
 - direct Bernoulli counting patterns such as `repeat_sum(6, score >= target)` without `-> 1 | 0`

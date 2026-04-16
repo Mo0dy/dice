@@ -58,7 +58,7 @@ class LexerWhitespaceTest(unittest.TestCase):
         self.assertEqual(tokens('"fire bolt"'), [(STRING, "fire bolt")])
 
     def test_comments_are_skipped_and_newlines_still_split_statements(self):
-        self.assertEqual(tokens('x = 1 // keep this\n y = 2'), [(ID, "x"), ("ASSIGN", "="), (INTEGER, 1), (SEMI, "\n"), (ID, "y"), ("ASSIGN", "="), (INTEGER, 2)])
+        self.assertEqual(tokens('x = 1 # keep this\n y = 2'), [(ID, "x"), ("ASSIGN", "="), (INTEGER, 1), (SEMI, "\n"), (ID, "y"), ("ASSIGN", "="), (INTEGER, 2)])
 
     def test_match_keywords_tokenize(self):
         self.assertEqual(

@@ -10,17 +10,20 @@ import re
 from diagnostics import DEFAULT_SOURCE_NAME, LexerError, SourceDocument, SourceSpan
 
 # Tokens
-INTEGER = "INTEGER"                      # any number
+INTEGER = "INTEGER"                      # integer number
+FLOAT = "FLOAT"                          # float number
 ROLL = "ROLL"                            # "d"
 GREATER_OR_EQUAL = "GREATER_OR_EQUAL"    # ">="
 LESS_OR_EQUAL = "LESS_OR_EQUAL"          # "<="
 LESS = "LESS"                            # "<"
 GREATER = "GREATER"                      # ">"
 EQUAL = "EQUAL"                          # "=="
+IN = "IN"                                # "in"
 PLUS = "PLUS"                            # "+"
 MINUS = "MINUS"                          # "-"
 MUL = "MUL"                              # "*"
 DIV = "DIV"                              # "/"
+FLOORDIV = "FLOORDIV"                    # "//"
 RES = "RES"                              # "->"
 PIPE = "PIPE"                            # "$"
 AVG = "AVG"                              # "~"
@@ -28,14 +31,19 @@ PROP = "PROP"                            # "!"
 ELSE = "ELSE"                            # "|"
 LBRACK = "LBRACK"                        # "["
 RBRACK = "RBRACK"                        # "]"
+LBRACE = "LBRACE"                        # "{"
+RBRACE = "RBRACE"                        # "}"
 COMMA = "COMMA"                          # ","
 COLON = "COLON"                          # ":"
-DOT = "DOT"                              # ".
+AT = "AT"                                # "@"
+RANGE = "RANGE"                          # ".."
+RANGE_EXCLUSIVE = "RANGE_EXCLUSIVE"      # "..<"
 ADV = "ADV"                              # "d+"
 DIS = "DIS"                              # "d-"
 LPAREN = "LPAREN"                        # "("
 RPAREN = "RPAREN"                        # ")"
 ELSEDIV = "ELSEDIV"                      # "|/"
+ELSEFLOORDIV = "ELSEFLOORDIV"            # "|//"
 HIGH = "HIGH"                            # "h"
 LOW = "LOW"                              # "l"
 EOF = "EOF"                              # end of file
@@ -138,8 +146,8 @@ class Lexer(object):
         while self.string_input and self.string_input[0] in [" ", "\t"]:
             self._consume(1)
 
-        if self.string_input.startswith("//"):
-            comment_end = 2
+        if self.string_input.startswith("#"):
+            comment_end = 1
             while comment_end < len(self.string_input) and self.string_input[comment_end] != "\n":
                 comment_end += 1
             self._consume(comment_end)
@@ -167,18 +175,25 @@ class Lexer(object):
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
             [r"import\b", lambda x: Token(IMPORT, x)],
+            [r"in\b", lambda x: Token(IN, x)],
             # d+ needed to not confuse indexing (d20.20)
             [r"\n",    lambda x: Token(SEMI, x)],
             [r"\;",    lambda x: Token(SEMI, x)],
-            [r"h(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(HIGH, x)],
-            [r"l(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(LOW, x)],
+            [r"h(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(HIGH, x)],
+            [r"l(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(LOW, x)],
+            [r"\|//", lambda x: Token(ELSEFLOORDIV, x)],
             [r"\|\/", lambda x: Token(ELSEDIV, x)],
             [r"\(",   lambda x: Token(LPAREN, x)],
             [r"\)",   lambda x: Token(RPAREN, x)],
+            [r"\{",   lambda x: Token(LBRACE, x)],
+            [r"\}",   lambda x: Token(RBRACE, x)],
             [r"d\-",  lambda x: Token(DIS, x)],
             [r"d\+",  lambda x: Token(ADV, x)],
+            [r"\.\.<", lambda x: Token(RANGE_EXCLUSIVE, x)],
+            [r"\.\.", lambda x: Token(RANGE, x)],
+            [r"//",   lambda x: Token(FLOORDIV, x)],
             [r"\:",   lambda x: Token(COLON, x)],
-            [r"\.",   lambda x: Token(DOT, x)],
+            [r"@",    lambda x: Token(AT, x)],
             [r"\,",   lambda x: Token(COMMA, x)],
             [r"\[",   lambda x: Token(LBRACK, x)],
             [r"\]",   lambda x: Token(RBRACK, x)],
@@ -187,7 +202,7 @@ class Lexer(object):
             [r"~",    lambda x: Token(AVG, x)],
             [r"\!",   lambda x: Token(PROP, x)],
             [r"\|",   lambda x: Token(ELSE, x)],
-            [r"d(?=\b|\s|\d|\(|\[|\"|\!|\~)", lambda x: Token(ROLL, x)],
+            [r"d(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(ROLL, x)],
             [r"\>=",  lambda x: Token(GREATER_OR_EQUAL, x)],
             [r"\<=",  lambda x: Token(LESS_OR_EQUAL, x)],
             [r"\<",   lambda x: Token(LESS, x)],
@@ -199,6 +214,7 @@ class Lexer(object):
             [r"/",    lambda x: Token(DIV, x)],
             [r"\=",   lambda x: Token(ASSIGN, x)],
             # try to match anything else to a variable or number
+            [r"\d+\.\d+",  lambda x: Token(FLOAT, float(x))],
             [r"\d+",  lambda x: Token(INTEGER, int(x))],
             [r"\w+",  lambda x: Token(ID, x)],
         ]

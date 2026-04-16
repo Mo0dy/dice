@@ -26,8 +26,8 @@ def only_distribution(result):
 
 
 class MathCorrectnessTest(unittest.TestCase):
-    def test_dot_selection_returns_selected_probability(self):
-        result = only_distribution(interpret_statement("d20.20"))
+    def test_exact_match_mean_returns_selected_probability(self):
+        result = only_distribution(interpret_statement("d20 == 20 $ mean"))
         self.assertEqual(len(list(result.items())), 1)
         outcome, probability = next(iter(result.items()))
         self.assertAlmostEqual(outcome, 0.05)

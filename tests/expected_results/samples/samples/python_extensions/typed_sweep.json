@@ -1,0 +1,13 @@
+{
+  "distribution": [
+    {
+      "outcome": 0,
+      "probability": 0.44999999999999996
+    },
+    {
+      "outcome": 1,
+      "probability": 0.5499999999999999
+    }
+  ],
+  "type": "distribution"
+}

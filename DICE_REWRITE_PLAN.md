@@ -4,227 +4,312 @@
 
 This is the current active rewrite direction for the project.
 
-The goal is to simplify the runtime around one main semantic object and remove the old split between `Distrib` and `ResultList`.
+The next rewrite phase is set-centered. The language should move toward:
 
-## Problem Summary
+- normalized probability distributions only
+- first-class finite domains written with set-like syntax
+- explicit event membership instead of partial-mass filtering
+- a clean separation between domains and sweeps
 
-The current design mixes several overlapping concepts:
+## Goals
 
-- `Distrib` for probability distributions
-- `ResultList` for target-to-value tables
-- range syntax that behaves like a sweep in practice
-- rendering concerns mixed into semantic result types
+1. Eliminate unnormalized distributions from the runtime surface.
+2. Make finite domains a core language value.
+3. Treat `d20` as sugar for `d{1..20}`.
+4. Allow domain members to be arbitrary runtime values, including nested domains and other non-numeric values.
+5. Keep sweep analysis as a distinct feature rather than overloading domain syntax.
+6. Prefer one internally coherent model over compatibility with the current postfix indexing semantics.
 
-This makes the language harder to reason about. In particular, `ResultList` currently acts both like:
+## Troll Reference
 
-- a probability table from comparisons
-- a resolved expected-value table after `->`
+The Troll manual is a useful reference point for collection-oriented dice semantics:
 
-That makes operator behavior inconsistent and ad hoc.
+- Troll uses curly-brace collection literals such as `{1, 2, 1}`.
+- Troll uses `1..6` for inclusive integer ranges.
+- Troll uses `choose` to sample uniformly from a collection.
+- Troll treats collections as unordered multisets.
 
-## New Core Model
+Those ideas are useful, but we should intentionally diverge where our goals are different:
 
-The rewrite should move to a single main semantic container.
+- Troll flattens nested collections. We should not do this by default, because we want domains over arbitrary values, including nested domains.
+- Troll uses empty vs non-empty collections as truthiness. We already have Bernoulli `0` / `1` distributions and should keep explicit probability values.
+- Troll allows partial / empty collections as part of the semantic core. We want normalized probability distributions only.
 
-### Main runtime object
+## Core Runtime Values
 
-Use one unified object, currently best thought of as `Distributions`.
+The rewrite should converge on three main runtime categories:
 
-It represents:
+- probabilistic results
+  one unified sweep-indexed container of normalized distributions
+- `Domain`
+  a finite weighted domain of values, written with set-like syntax
+- `Sweep`
+  a finite analysis axis used for broadcast evaluation and rendering
 
-- one probability distribution if there are no sweeps
-- many probability distributions indexed by sweep assignments if sweeps are present
+Important clarification:
+
+- probabilistic results should be treated internally as one uniform container
+- the unswept case is just the zero-axis case of that container
+- so, operationally, distributions are always "sweeps over distributions", with zero axes as the simplest case
 
 Conceptually:
 
-- no sweep: one distribution
-- one sweep: map from one sweep value to one distribution
-- many sweeps: map from the cross product of sweep assignments to one distribution each
+- the probabilistic container is for ordinary deterministic and random expression results
+- `Domain` is for membership and sampling
+- `Sweep` is for parameter studies and rendering axes
 
-This replaces `ResultList` as a semantic result type.
+These categories should not share syntax or semantics by accident.
 
-### Outcomes
+## Normalization Invariant
 
-Probability distributions may contain:
+This should become a hard runtime invariant:
 
-- numeric outcomes
-- Bernoulli indicator outcomes such as `0` and `1`
+- every distribution stored in a successful probabilistic runtime value has total probability mass exactly `1`
+- deterministic literals in probabilistic expressions are treated as degenerate distributions of mass `1`
+- operators that would currently yield sub-probability distributions should be redesigned or rejected
 
-Comparisons should return Bernoulli indicator distributions over `0` and `1`.
+Consequences:
 
-Example:
+- postfix `expr[...]` should not survive in its current partial-mass form
+- bare `cond -> expr` should not survive in its current partial-mass form
+- `sample(expr)` should only ever sample normalized distributions
+- helpers such as `mean`, `var`, `std`, `cum`, and `surv` should never need to reason about sub-probability inputs
+
+## Domains
+
+### User-facing syntax
+
+Planned syntax:
 
 ```text
-d20 >= 11
-=> {1: 0.5, 0: 0.5}
+{10, 15}
+{"fire", "water", "ice"}
+{1..20}
+d{1..20}
 ```
+
+Range syntax should use one shared notation across the language.
+
+The current rewrite direction is to replace the old colon-based sweep ranges with one shared range syntax:
+
+```text
+1..20     // inclusive by default
+1..<20    // explicit end-exclusive range
+```
+
+Decision:
+
+- ranges are inclusive by default
+- `..<` is the explicit end-exclusive form
+
+Open-ended forms such as `..20` or `5..` should only be added if they make sense for a finite domain or finite sweep. The language should not imply infinite domains or infinite sweeps by default.
+
+### Internal model
+
+User-facing syntax may look like sets, but the internal model should likely be a weighted finite domain:
+
+- repeated members add weight
+- future explicit fractional weights should be allowed
+- equality should be based on value + accumulated weight, not source spelling
+
+This is stricter and more useful than a plain mathematical set while still reading naturally.
+
+The internal type name should be `Domain`, even if user-facing documentation continues to say "set" informally.
+
+### Nesting
+
+Domains should preserve nesting:
+
+- domains may contain domains
+- domains may contain non-numeric values such as strings
+- domains may eventually contain dice-valued objects if we decide those are first-class values
+
+Unlike Troll, nested domains should not be flattened automatically.
+
+## Dice Over Domains
+
+### Single-die sampling
+
+`d domain` should mean:
+
+- normalize the domain weights
+- choose one element from the domain
+- return a normalized distribution over the chosen outcomes
+
+Examples:
+
+```text
+d{1..20}
+d{"fire", "water", "ice"}
+```
+
+### Numeric sugar
+
+Numeric dice sugar should remain:
+
+```text
+d20 == d{1..20}
+```
+
+More generally, when the right-hand side is numeric and positive:
+
+```text
+dN
+```
+
+should remain sugar for:
+
+```text
+d{1..N}
+```
+
+### Multiple dice
+
+Current multi-die syntax such as `2d6` means repeated independent rolls summed together.
+
+That should remain the numeric shorthand:
+
+```text
+2d6 == repeat_sum(2, d{1..6})
+```
+
+Open question:
+
+- what surface should represent repeated draws from non-numeric domains?
+
+For now, repeated-sum shorthand should stay numeric-only.
+
+## Membership
+
+The language needs a direct shared-sample membership form.
+
+Planned form:
+
+```text
+expr in domain
+```
+
+Semantics:
+
+- evaluate `expr` once
+- test whether the sampled outcome belongs to `domain`
+- return a Bernoulli distribution over `1` and `0`
+
+Examples:
+
+```text
+d20 in {10, 15}
+roll in {"fire", "cold"}
+```
+
+This should replace most of the conceptual need for postfix `expr[...]`.
 
 ## Sweeps
 
-### Sweep values
-
-Ranges should become sweep values.
-
-There is no need to distinguish deeply between:
-
-- unnamed sweeps
-- named sweeps
-
-They are the same kind of value, with optional metadata.
-
-Examples:
+Sweep syntax should remain bracket-based for introducing an analysis axis, but the range expression inside the sweep should use the same shared range syntax as domains.
 
 ```text
-d20 >= [5:10]
-d20 >= [AC:5:10]
+[10..20]
+[10..20]
+[10..<20]
+[AC:10..20]
+[name:a, b, c]
 ```
 
-Unnamed sweeps can receive generated names internally based on occurrence order.
+Sweeps are still the correct tool for:
 
-### Sweep semantics
+- parameter studies
+- plotting across targets
+- reduction with `sumover` and `total`
 
-An expression containing sweeps evaluates over the full cross product of all sweeps present in the expression.
+This gives one consistent range language:
 
-Each point in that cross product produces one probability distribution.
+- `10..20` is an inclusive range expression
+- `10..<20` is an explicit end-exclusive range expression
+- `{10..20}` is a domain containing that integer range
+- `[AC:10..20]` is a named sweep over that same range
 
-This means the evaluator should return:
+Domains and sweeps should still stay distinct:
 
-- one distribution when there are no sweeps
-- a sweep-indexed set of distributions otherwise
+- `{...}` is a finite domain
+- `[...]` is a sweep
 
-### Consequence
+## Operators That Need Redesign
 
-This effectively replaces the old meaning of range syntax as a first-class list-like runtime value.
+### Remove or replace postfix indexing
 
-That is acceptable because ranges are already used primarily as sweep inputs.
+Current postfix `expr[...]` produces partial-mass distributions.
 
-## Operators Under The New Model
+That conflicts with the normalization invariant and should be removed or replaced.
 
-### Comparisons
+### Redefine bare `->`
 
-Comparisons return Bernoulli `0` / `1` distributions.
+Current bare `cond -> expr` produces partial-mass results.
 
-Examples:
+To preserve normalization, bare `->` should instead mean:
 
 ```text
-d20 >= 11
-d20 >= [AC:5:10]
+cond -> expr
 ```
 
-### Branching and resolution
-
-`->`, `|`, and `|/` should branch on Bernoulli `0` / `1` distributions instead of consuming `ResultList`.
-
-Examples:
+desugars to:
 
 ```text
-d20 >= 11 -> 5 | 0
-d20 < 14 -> 2d10 |/
+cond -> expr | 0
 ```
 
-The result is still a probability distribution.
+This keeps the common "on success, otherwise zero" reading while preserving normalized results.
 
-Expected-value style rendering should be done later through summarization functions such as `~` or `mean(...)`.
+The operator should still work over the unified probabilistic container, with deterministic `0` treated as a degenerate distribution.
 
-### Summaries
+### Revisit `mass(...)`
 
-`~expr` should compute expectation pointwise over the current distribution set.
+If normalized distributions are mandatory, `mass(expr)` is no longer a useful general summary of ordinary runtime values.
 
-`!expr` should sample one outcome pointwise over the current distribution set.
+It should likely be:
 
-`mass(expr)` should compute total probability mass pointwise over the current distribution set.
+- retired
+- or replaced with an explicit event/domain probability helper
+- or limited to a different kind of object introduced later
 
-These should preserve sweep structure.
+## Sample Integration
 
-Rendering can then decide how to display scalar summaries over sweep axes.
+The D&D sample programs are a good integration target for the domain rewrite.
 
-## Rendering
+Representative translations:
 
-Rendering should be separated from semantic evaluation.
+```text
+d20                -> d{1..20}
+d8                 -> d{1..8}
+4 d 6 h 3          -> 4 d {1..6} h 3
+roll == 20         -> roll in {20}
+[AC:10:20]         -> [AC:10..20]
+```
 
-The evaluator should produce `Distributions`.
-
-Rendering helpers can then provide:
-
-- raw distribution output
-- scalar summary output
-- table rendering
-- single-axis plots
-- multi-axis slicing or projection
-
-This is a better home for the old “target table” behavior than a dedicated runtime type like `ResultList`.
-
-## Implementation Strategy
-
-### 1. Remove `ResultList` from the semantic model
-
-- stop creating it from comparisons
-- stop requiring it for `->`
-- migrate comparison and branching logic to plain distributions
-
-### 2. Introduce the unified container
-
-Implement the main runtime object that can represent:
-
-- one unswept distribution
-- a sweep-indexed set of distributions
-
-This container should be the standard return type for evaluation.
-
-### 3. Treat ranges as sweeps
-
-Parser and interpreter changes should make range syntax produce sweep values instead of plain list values.
-
-Named sweep syntax should also be added.
-
-### 4. Lift operators over sweeps automatically
-
-Most semantic functions should ignore sweeps directly and operate on one unswept distribution at a time.
-
-Then a helper, likely a decorator, should lift them across sweep dimensions automatically.
-
-This should work similarly to broadcasting or vectorization.
-
-Recommended shape:
-
-- write base semantic functions for one plain distribution
-- use a decorator such as `@lift_sweeps`
-- the decorator aligns sweep axes, builds the cross product, applies the base function pointwise, and reassembles the result
-
-### 5. Rebuild rendering on top
-
-After semantic evaluation is unified, add rendering helpers for:
-
-- textual summaries
-- tables
-- plots
-
-These should consume the unified distribution container instead of special-case runtime types.
+The samples may temporarily move ahead of the implementation so we can evaluate the readability of the new surface before every parser/runtime change is finished.
 
 ## Suggested Rewrite Order
 
-1. Specify the new runtime data model in code comments or docs.
-2. Replace comparison results with Bernoulli `0` / `1` distributions.
-3. Rework `->`, `|`, and `|/` to branch on Bernoulli `0` / `1` distributions.
-4. Introduce sweep values and sweep-aware evaluation.
-5. Add the sweep-lifting helper/decorator.
-6. Remove `ResultList`.
-7. Rework rendering around the new container.
-8. Update README examples and tests alongside each step.
-
-## Constraints For The Rewrite
-
-- keep the language executable at each step when possible
-- prefer one coherent semantic model over compatibility hacks
-- treat old macro/preprocessor behavior as out of scope unless explicitly reintroduced
-- keep `README.md` as the brief user-facing contract
-- extend tests as the new model lands
+1. Add a runtime `Domain` type and decide its internal weighted representation.
+2. Add one shared range syntax with inclusive-by-default `a..b` and explicit end-exclusive `a..<b`.
+3. Add syntax for domain literals `{...}` built on top of that shared range syntax.
+4. Update sweep range syntax to use the same range expressions inside `[...]`.
+5. Add `in` membership and make it return Bernoulli distributions.
+6. Add `d{...}` sampling.
+7. Preserve `d20` as sugar for `d{1..20}`.
+8. Make the unified probabilistic container model explicit in code and docs.
+9. Enforce normalized distributions in runtime helpers.
+10. Remove postfix partial-mass indexing.
+11. Redefine bare `cond -> expr` as `cond -> expr | 0`.
+12. Revisit `mass(...)` and related examples.
+13. Update README, samples, and tests together around the new surface.
 
 ## Immediate Next Task
 
-The next concrete implementation task is:
+The next concrete implementation task should be:
 
-1. define the unified distribution container API
-2. decide the internal representation of sweep assignments
-3. prototype a sweep-lifting helper for one or two operators
-4. replace comparison output with Bernoulli `0` / `1` distributions
+1. define the `Domain` runtime API
+2. decide how weighted members are represented and normalized
+3. decide the exact supported range forms beyond `..` and `..<`, including whether any open-ended forms are allowed
+4. add parser support for `{...}`, shared range expressions, updated sweep ranges, and `in`
+5. update the samples to reflect the intended set/domain surface

@@ -91,8 +91,8 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
 
     def test_unknown_name_can_suggest_function_call(self):
         with self.assertRaises(Exception) as error:
-            interpret("mas + 1")
-        self.assertIn("Did you mean mass?", str(error.exception))
+            interpret("mea + 1")
+        self.assertIn("Did you mean mean?", str(error.exception))
 
     def test_exact_function_name_used_as_variable_gets_call_hint(self):
         with self.assertRaises(Exception) as error:

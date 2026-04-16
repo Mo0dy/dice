@@ -1,0 +1,61 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": null,
+      "values": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 2,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 2
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 3,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 4,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

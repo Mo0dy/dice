@@ -1,0 +1,173 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": null,
+      "values": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 0
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 6.3,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 5.8500000000000005,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 2
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 5.3999999999999995,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 4.950000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 4.499999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 4.05,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 6
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 3.6,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 7
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 3.1499999999999995,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 8
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 2.6999999999999997,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": null,
+          "value": 9
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 2.25,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

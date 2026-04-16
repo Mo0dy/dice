@@ -58,7 +58,7 @@ class CliFormattingTest(unittest.TestCase):
         rendered = dice._format_result_text(interpret_statement("d20 + 6 >= [AC:10:12] -> 2d6 + 4", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "/AC    10    11    12\n  6    2%    2%    2%\n  7    5%    4%    4%\n  8    7%    7%    6%\n  9    9%    9%    8%\n 10   12%   11%   10%\n 11   14%   13%   12%\n 12   12%   11%   10%\n 13    9%    9%    8%\n 14    7%    7%    6%\n 15    5%    4%    4%\n 16    2%    2%    2%\n(E)  9.24  8.69  7.92",
+            "/AC    10    11    12\n  0   16%   21%   28%\n  6    2%    2%    2%\n  7    5%    4%    4%\n  8    7%    7%    6%\n  9    9%    9%    8%\n 10   12%   11%   10%\n 11   14%   13%   12%\n 12   12%   11%   10%\n 13    9%    9%    8%\n 14    7%    7%    6%\n 15    5%    4%    4%\n 16    2%    2%    2%\n(E)  9.24  8.69  7.92",
         )
 
     def test_named_scalar_sweep_uses_single_axis_header(self):
@@ -330,7 +330,7 @@ class CliMainIntegrationTest(unittest.TestCase):
             [
                 {"outcome": 1, "probability": 0.33},
                 {"outcome": 2, "probability": 0.33},
-                {"outcome": 3, "probability": 0.33},
+                {"outcome": 3, "probability": 0.34},
             ],
         )
 
