@@ -6,6 +6,7 @@ import json
 import os
 import sys
 
+from diagnostics import DEFAULT_SOURCE_NAME, DiagnosticError, format_diagnostic
 try:
     import timeout_decorator
 except ImportError:
@@ -344,17 +345,17 @@ def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_d
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, executor=None, interpreter=None, current_dir=None):
-    parser = DiceParser(Lexer(text))
+def interpret_statement(text, roundlevel=0, executor=None, interpreter=None, current_dir=None, source_name=DEFAULT_SOURCE_NAME):
+    parser = DiceParser(Lexer(text, source_name=source_name))
     ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
     return _interpret_ast(ast, roundlevel, executor=executor, interpreter=interpreter, current_dir=current_dir)
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0, executor=None, interpreter=None, current_dir=None):
+def interpret_file(text, roundlevel=0, executor=None, interpreter=None, current_dir=None, source_name=DEFAULT_SOURCE_NAME):
     """Interpret a semicolon or newline separated program."""
     return _interpret_ast(
-        DiceParser(Lexer(text)).parse(),
+        DiceParser(Lexer(text, source_name=source_name)).parse(),
         roundlevel,
         executor=executor,
         interpreter=interpreter,
@@ -396,6 +397,9 @@ def dice_interpreter(roundlevel=0, current_dir=None, executor=None):
 
 def print_interactive_error(error):
     """Print a user-facing REPL error without a traceback."""
+    if isinstance(error, DiagnosticError):
+        sys.stderr.write(format_diagnostic(error) + "\n")
+        return
     prefix = "syntax error" if isinstance(error, (ParserError, LexerError)) else "error"
     sys.stderr.write("{}: {}\n".format(prefix, error))
 
@@ -425,7 +429,12 @@ def runinteractive(args):
                     if command_result is not None:
                         sys.stdout.write(command_result + "\n")
                     continue
-                result = interpret_statement(text, state["roundlevel"], interpreter=interpreter)
+                result = interpret_statement(
+                    text,
+                    state["roundlevel"],
+                    interpreter=interpreter,
+                    source_name="<repl>",
+                )
             except Exception as error:
                 print_interactive_error(error)
                 continue
@@ -480,11 +489,16 @@ def main():
         if args.command:
             parser.error("--file cannot be combined with a command")
         with open(args.file) as f:
-            result = interpret_file(
-                f.read(),
-                args.roundlevel,
-                current_dir=os.path.dirname(os.path.abspath(args.file)),
-            )
+            try:
+                result = interpret_file(
+                    f.read(),
+                    args.roundlevel,
+                    current_dir=os.path.dirname(os.path.abspath(args.file)),
+                    source_name=os.path.abspath(args.file),
+                )
+            except DiagnosticError as error:
+                sys.stderr.write(format_diagnostic(error) + "\n")
+                return 1
         if result is not None:
             print_result(
                 result,
@@ -499,7 +513,11 @@ def main():
         parser.error("expected a dice command, or use --interactive / --file")
 
     command = " ".join(args.command)
-    result = interpret_statement(command, args.roundlevel)
+    try:
+        result = interpret_statement(command, args.roundlevel, source_name="<command>")
+    except DiagnosticError as error:
+        sys.stderr.write(format_diagnostic(error) + "\n")
+        return 1
     if result is not None:
         print_result(
             result,

@@ -4,12 +4,48 @@
 """The Parser generates an Abstract Syntax Tree from a tokenstream"""
 
 
+from diagnostics import ParserError
 from syntaxtree import BinOp, TenOp, Val, UnOp, VarOp, Op, FunctionDef, Call, Match, MatchClause, Import, Named
 from lexer import Token, Lexer, INTEGER, ROLL, GREATER_OR_EQUAL, LESS_OR_EQUAL, LESS, GREATER, EQUAL, RES, PIPE, PLUS, MINUS, MUL, DIV, ELSE, LBRACK, RBRACK, COMMA, COLON, EOF, DIS, ADV, LPAREN, RPAREN, ELSEDIV, HIGH, LOW, AVG, PROP, ASSIGN, SEMI, ID, PRINT, STRING, DOT, MATCH, AS, OTHERWISE, IMPORT
 
-
-class ParserError(Exception):
-    """Raised when parsing fails."""
+TOKEN_LABELS = {
+    INTEGER: "integer",
+    ROLL: "'d'",
+    GREATER_OR_EQUAL: "'>='",
+    LESS_OR_EQUAL: "'<='",
+    LESS: "'<'",
+    GREATER: "'>'",
+    EQUAL: "'=='",
+    RES: "'->'",
+    PIPE: "'$'",
+    PLUS: "'+'",
+    MINUS: "'-'",
+    MUL: "'*'",
+    DIV: "'/'",
+    ELSE: "'|'",
+    ELSEDIV: "'|/'",
+    LBRACK: "'['",
+    RBRACK: "']'",
+    COMMA: "','",
+    COLON: "':'",
+    LPAREN: "'('",
+    RPAREN: "')'",
+    HIGH: "'h'",
+    LOW: "'l'",
+    AVG: "'~'",
+    PROP: "'!'",
+    ASSIGN: "'='",
+    SEMI: "statement separator",
+    ID: "identifier",
+    PRINT: "'print'",
+    STRING: "string",
+    DOT: "'.'",
+    MATCH: "'match'",
+    AS: "'as'",
+    OTHERWISE: "'otherwise'",
+    IMPORT: "'import'",
+    EOF: "end of input",
+}
 
 
 class Parser(object):
@@ -23,14 +59,39 @@ class Parser(object):
         self.current_token = lexer.next_token()
         self.peek_token = lexer.next_token()
 
-    def exception(self, message=""):
+    def exception(self, message="", token=None, hint=None):
         """Raises a parser exception"""
-        raise ParserError("Parser exception: {}".format(message))
+        token = self.current_token if token is None else token
+        span = token.span if token is not None else None
+        raise ParserError(message, span=span, hint=hint)
+
+    def expected_token_hint(self, expected_type, actual_token):
+        if actual_token.type == EOF and expected_type == RPAREN:
+            return "You may be missing a closing ')'."
+        if actual_token.type == EOF and expected_type == RBRACK:
+            return "You may be missing a closing ']'."
+        return None
+
+    def token_label(self, token):
+        if token.type == ID and token.value is not None:
+            return "identifier {!r}".format(token.value)
+        if token.type == INTEGER and token.value is not None:
+            return "integer {!r}".format(token.value)
+        if token.type == STRING and token.value is not None:
+            return "string {!r}".format(token.value)
+        return TOKEN_LABELS.get(token.type, token.type)
 
     def eat(self, type):
         """Checks for token type and advances token"""
         if type != self.current_token.type:
-            self.exception("Tried to eat: {} but found {}".format(type, self.current_token.type))
+            self.exception(
+                "expected {} but found {}".format(
+                    TOKEN_LABELS.get(type, type),
+                    self.token_label(self.current_token),
+                ),
+                token=self.current_token,
+                hint=self.expected_token_hint(type, self.current_token),
+            )
         self.current_token = self.peek_token
         self.peek_token = self.lexer.next_token()
 
@@ -48,10 +109,20 @@ class Parser(object):
             self.current_token,
             self.peek_token,
             self.lexer.string_input,
+            self.lexer.location,
+            self.lexer.line,
+            self.lexer.column,
         )
 
     def restore(self, state):
-        self.current_token, self.peek_token, self.lexer.string_input = state
+        (
+            self.current_token,
+            self.peek_token,
+            self.lexer.string_input,
+            self.lexer.location,
+            self.lexer.line,
+            self.lexer.column,
+        ) = state
 
     def eat_match_separators(self):
         while self.current_token.type == SEMI and self.peek_token.type in [SEMI, ELSE]:
@@ -112,7 +183,11 @@ class DiceParser(Parser):
         value = self.expr()
         self.eat(AS)
         if self.current_token.type != ID:
-            self.exception("Expected identifier after as")
+            self.exception(
+                "expected an identifier after 'as'",
+                token=self.current_token,
+                hint="Write a binding name like: match d20 as roll | roll == 20 = 10",
+            )
         name = Val(self.current_token)
         self.eat(ID)
         self.eat_match_separators()
@@ -130,7 +205,11 @@ class DiceParser(Parser):
             clauses.append(MatchClause(condition, self.expr(), otherwise=otherwise))
             self.eat_match_separators()
         if not clauses:
-            self.exception("Expected at least one match clause")
+            self.exception(
+                "expected at least one match clause",
+                token=self.current_token,
+                hint="Add a clause like '| otherwise = ...' or '| condition = ...'.",
+            )
         return Match(value, name, clauses, token)
 
     def factor(self):
@@ -178,7 +257,11 @@ class DiceParser(Parser):
             self.eat(INTEGER)
             return Val(token)
         else:
-            self.exception("Expected factor")
+            self.exception(
+                "expected an expression",
+                token=self.current_token,
+                hint="Try a number, identifier, function call, parenthesized expression, or dice expression.",
+            )
 
     def call(self, name):
         self.eat(LPAREN)
@@ -249,7 +332,11 @@ class DiceParser(Parser):
             if self.current_token.type == INTEGER or self.current_token.type == ID:
                 return BinOp(node, token, self.factor())
             else:
-                self.exception("Expected INTEGER or ID")
+                self.exception(
+                    "expected an integer or identifier after '.'",
+                    token=self.current_token,
+                    hint="Use a literal index like '.1' or a variable name like '.target'.",
+                )
         return node
 
     def term(self):
@@ -302,7 +389,11 @@ class DiceParser(Parser):
 
     def pipeline_target(self, value):
         if self.current_token.type != ID:
-            self.exception("Expected function name after $")
+            self.exception(
+                "expected a function name after '$'",
+                token=self.current_token,
+                hint="Write a pipeline target like '$ mean' or '$ add(2)'.",
+            )
 
         name = Val(self.current_token)
         self.eat(ID)
@@ -332,7 +423,11 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(IMPORT)
             if self.current_token.type != STRING:
-                self.exception("Expected string path after import")
+                self.exception(
+                    "expected a string path after 'import'",
+                    token=self.current_token,
+                    hint='Use a quoted path like import "helpers.dice".',
+                )
             path = Val(self.current_token)
             self.eat(STRING)
             return Import(path, token)
@@ -360,7 +455,11 @@ class DiceParser(Parser):
             self.eat_one_or_more(SEMI)
             self.eat_zero_or_more(SEMI)
         if not nodes:
-            self.exception("Expected statement")
+            self.exception(
+                "expected a statement",
+                token=self.current_token,
+                hint="Programs can contain assignments, imports, function definitions, or expressions.",
+            )
         if len(nodes) == 1:
             return nodes[0]
         return VarOp(Token(SEMI, ";"), nodes)
@@ -368,7 +467,10 @@ class DiceParser(Parser):
     def parse(self):
         node = self.program()
         if self.current_token.type != EOF:
-            self.exception("Could not parse {}".format(self.current_token))
+            self.exception(
+                "unexpected trailing input starting at {}".format(self.token_label(self.current_token)),
+                token=self.current_token,
+            )
         return node
 
 if __name__ == "__main__":

@@ -64,8 +64,17 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
         self.assertEqual(result, 5)
 
     def test_wrong_arity_raises_from_interpreter(self):
-        with self.assertRaisesRegex(Exception, "expected 2 arguments but got 1"):
+        with self.assertRaises(Exception) as error:
             interpret("sum2(a, b) = a + b\nsum2(1)")
+        self.assertIn("expected 2 arguments but got 1", str(error.exception))
+        self.assertIn("<input>:2:1", str(error.exception))
+        self.assertIn("hint:", str(error.exception))
+
+    def test_builtin_wrong_arity_uses_clean_hint(self):
+        with self.assertRaises(Exception) as error:
+            interpret("repeat_sum()")
+        self.assertIn("function repeat_sum expected 2 arguments but got 0", str(error.exception))
+        self.assertIn("Call it like repeat_sum(count, value).", str(error.exception))
 
     def test_unknown_function_raises_from_interpreter(self):
         with self.assertRaisesRegex(Exception, "Unknown function"):
@@ -79,6 +88,29 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
         result = only_distribution(interpret("attack = d20 >= 11\nattack"))
         self.assertAlmostEqual(result[TRUE], 0.5)
         self.assertAlmostEqual(result[FALSE], 0.5)
+
+    def test_unknown_name_can_suggest_function_call(self):
+        with self.assertRaises(Exception) as error:
+            interpret("mas + 1")
+        self.assertIn("Did you mean mass?", str(error.exception))
+
+    def test_exact_function_name_used_as_variable_gets_call_hint(self):
+        with self.assertRaises(Exception) as error:
+            interpret("repeat_sum")
+        self.assertIn("unknown name repeat_sum", str(error.exception))
+        self.assertIn("repeat_sum is a function. Did you mean repeat_sum(...)?", str(error.exception))
+
+    def test_unknown_function_can_suggest_variable_name(self):
+        with self.assertRaises(Exception) as error:
+            interpret("bonus = 2\nbonu(1)")
+        self.assertIn("Unknown function bonu", str(error.exception))
+        self.assertIn("Did you mean bonus?", str(error.exception))
+
+    def test_exact_variable_name_used_as_function_gets_namespace_hint(self):
+        with self.assertRaises(Exception) as error:
+            interpret("bonus = 2\nbonus(1)")
+        self.assertIn("Unknown function bonus", str(error.exception))
+        self.assertIn("bonus is a variable, not a function.", str(error.exception))
 
 
 if __name__ == "__main__":

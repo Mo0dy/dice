@@ -112,6 +112,30 @@ class CliInteractiveTest(unittest.TestCase):
         fake_readline.set_history_length.assert_called_once_with(dice.REPL_HISTORY_LENGTH)
         fake_readline.write_history_file.assert_called_once_with(history_path)
 
+    def test_repl_errors_show_location_and_hint(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["1 +", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("syntax error: expected an expression", stderr.getvalue())
+        self.assertIn("<repl>:1:4", stderr.getvalue())
+        self.assertIn("hint:", stderr.getvalue())
+
+    def test_repl_reports_unterminated_string_cleanly(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=['"abc', "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("syntax error: unterminated string literal", stderr.getvalue())
+        self.assertIn("<repl>:1:1", stderr.getvalue())
+        self.assertIn("matching double quote", stderr.getvalue())
+
 
 class CliMainIntegrationTest(unittest.TestCase):
     def test_main_prints_json_when_requested(self):
@@ -171,6 +195,17 @@ class CliMainIntegrationTest(unittest.TestCase):
             self.assertEqual(stdout.getvalue(), "2\n")
         finally:
             os.unlink(path)
+
+    def test_main_prints_formatted_errors_for_bad_commands(self):
+        with mock.patch.object(sys, "argv", ["dice.py", "1", "+"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.main()
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("syntax error: expected an expression", stderr.getvalue())
+        self.assertIn("<command>:1:4", stderr.getvalue())
+        self.assertIn("hint:", stderr.getvalue())
 
 
 if __name__ == "__main__":

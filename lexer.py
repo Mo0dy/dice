@@ -7,6 +7,7 @@ Is used to convert string input into a token stream"""
 
 import re
 
+from diagnostics import DEFAULT_SOURCE_NAME, LexerError, SourceDocument, SourceSpan
 
 # Tokens
 INTEGER = "INTEGER"                      # any number
@@ -53,48 +54,105 @@ IMPORT = "IMPORT"                        # "import"
 
 class Token(object):
     """Basic token for the interpreter. Holds type and value"""
-    def __init__(self, type, value=None):
+    def __init__(self, type, value=None, span=None):
         self.type = type
         self.value = value
+        self.span = span
 
     def __repr__(self):
         return "Token: {type}, {value}".format(type=self.type, value=self.value)
 
-
-class LexerError(Exception):
-    """Raised when tokenization fails."""
-
-
 class Lexer(object):
     """Generate tokensteam from string input for dice language"""
 
-    def __init__(self, string_input):
+    def __init__(self, string_input, source_name=DEFAULT_SOURCE_NAME):
         """test = complete text to be interpreted"""
+        normalized_text = self.normalize_input(string_input)
         # stores the string that has yet to interpreted
-        self.string_input = self.normalize_input(string_input)
+        self.string_input = normalized_text
         # keep the original text in case needed
-        self.original_text = string_input
+        self.original_text = normalized_text
+        self.source_document = SourceDocument(source_name, normalized_text)
         self.location = 0
+        self.line = 1
+        self.column = 1
 
-    def exception(self, message=""):
+    def exception(self, message="", hint=None, span=None):
         """Raises a lexer exception"""
-        raise LexerError("Lexer exception: {}".format(message))
+        span = self.current_span() if span is None else span
+        raise LexerError(message, span=span, hint=hint)
 
     def normalize_input(self, expression):
         """Normalizes line endings while preserving ordinary spaces."""
         return expression.replace("\r\n", "\n").replace("\r", "\n")
 
+    def current_span(self):
+        return SourceSpan(
+            self.source_document,
+            self.location,
+            self.location,
+            self.line,
+            self.column,
+            self.line,
+            self.column,
+        )
+
+    def _advance(self, text):
+        for char in text:
+            self.location += 1
+            if char == "\n":
+                self.line += 1
+                self.column = 1
+            else:
+                self.column += 1
+
+    def _consume(self, count):
+        consumed = self.string_input[:count]
+        self.string_input = self.string_input[count:]
+        self._advance(consumed)
+        return consumed
+
+    def _span_from_consumed(self, start_index, start_line, start_column, consumed):
+        if not consumed:
+            return SourceSpan(
+                self.source_document,
+                start_index,
+                start_index,
+                start_line,
+                start_column,
+                start_line,
+                start_column,
+            )
+        return SourceSpan(
+            self.source_document,
+            start_index,
+            self.location,
+            start_line,
+            start_column,
+            self.line,
+            self.column,
+        )
+
     def next_token(self):
         """Returns next token in tokenstream"""
         while self.string_input and self.string_input[0] in [" ", "\t"]:
-            self.string_input = self.string_input[1:]
+            self._consume(1)
 
         if self.string_input.startswith("//"):
             comment_end = 2
             while comment_end < len(self.string_input) and self.string_input[comment_end] != "\n":
                 comment_end += 1
-            self.string_input = self.string_input[comment_end:]
+            self._consume(comment_end)
             return self.next_token()
+
+        if self.string_input.startswith('"'):
+            next_quote = self.string_input.find('"', 1)
+            next_newline = self.string_input.find("\n", 1)
+            if next_quote == -1 or (next_newline != -1 and next_quote > next_newline):
+                self.exception(
+                    "unterminated string literal",
+                    hint='Close the string with a matching double quote, for example "fire bolt".',
+                )
 
         # Matches tokens with regex
 
@@ -150,14 +208,23 @@ class Lexer(object):
             # match only matches from the beginning of the string
             match = re.match(regex, self.string_input)
             if match:
-                # advance string
-                self.string_input = self.string_input[len(match[0]):]
+                start_index = self.location
+                start_line = self.line
+                start_column = self.column
+                consumed = self._consume(len(match[0]))
+                span = self._span_from_consumed(start_index, start_line, start_column, consumed)
                 # generate token from generating function
-                return token_gen(match.group(0))
+                token = token_gen(match.group(0))
+                token.span = span
+                return token
 
         # can't find anything anymore but still input string
         if self.string_input:
-            self.exception("Can not evaluate: '{}'".format(self.string_input))
+            snippet = self.string_input.split("\n", 1)[0]
+            self.exception(
+                "could not tokenize input starting at {!r}".format(snippet),
+                hint="Check for an unsupported character or a missing quote.",
+            )
 
         # end of token stream
-        return Token(EOF, "EOF")
+        return Token(EOF, "EOF", span=self.current_span())
