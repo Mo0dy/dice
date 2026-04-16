@@ -50,6 +50,7 @@ from diceengine import (
     SweepValues,
     FiniteMeasure,
     Distribution,
+    PROBABILITY_TOLERANCE,
     RenderConfig,
     TRUE,
     FALSE,
@@ -408,6 +409,19 @@ class Interpreter:
             return value
         self.exception("Unsupported host value type {}".format(type(value)))
 
+    def _literal_scalar_value(self, value, *, node, context, hint=None):
+        if isinstance(value, (int, float, str)):
+            return value
+        if isinstance(value, Sweep):
+            if not value.is_unswept():
+                self.exception(context, node=node, hint=hint)
+            value = value.only_value()
+        if isinstance(value, Distribution):
+            items = list(value.items())
+            if len(items) == 1 and abs(items[0][1] - 1.0) <= PROBABILITY_TOLERANCE:
+                return items[0][0]
+        self.exception(context, node=node, hint=hint)
+
     def _bool_masses(self, condition, node=None):
         invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
         if invalid:
@@ -524,8 +538,16 @@ class Interpreter:
 
     def visit_SweepLiteral(self, node):
         if type(node.values).__name__ == "RangeLiteral":
-            start = self.visit(node.values.start)
-            end = self.visit(node.values.end)
+            start = self._literal_scalar_value(
+                self.visit(node.values.start),
+                node=node.values.start,
+                context="expected an integer range start",
+            )
+            end = self._literal_scalar_value(
+                self.visit(node.values.end),
+                node=node.values.end,
+                context="expected an integer range end",
+            )
             if not isinstance(start, int):
                 self.exception("expected an integer range start", node=node.values.start)
             if not isinstance(end, int):
@@ -535,13 +557,12 @@ class Interpreter:
         else:
             values = []
             for child in node.values:
-                new_value = self.visit(child)
-                if type(new_value) not in [int, float, str]:
-                    self.exception(
-                        "sweep construction expects scalar values, got {}".format(type(new_value)),
-                        node=child,
-                        hint="Use plain integers, floats, or strings inside [...].",
-                    )
+                new_value = self._literal_scalar_value(
+                    self.visit(child),
+                    node=child,
+                    context="sweep construction expects scalar values",
+                    hint="Use plain integers, floats, or strings inside [...].",
+                )
                 values.append(new_value)
             values = tuple(values)
         return SweepValues(values, name=node.name.value if node.name is not None else None)
@@ -554,8 +575,16 @@ class Interpreter:
         for entry in node.entries:
             weight = _coerce_value_to_sweep(1 if entry.weight is None else self.visit(entry.weight))
             if type(entry.value).__name__ == "RangeLiteral":
-                start = self.visit(entry.value.start)
-                end = self.visit(entry.value.end)
+                start = self._literal_scalar_value(
+                    self.visit(entry.value.start),
+                    node=entry.value.start,
+                    context="expected an integer range start",
+                )
+                end = self._literal_scalar_value(
+                    self.visit(entry.value.end),
+                    node=entry.value.end,
+                    context="expected an integer range end",
+                )
                 if not isinstance(start, int):
                     self.exception("expected an integer range start", node=entry.value.start)
                 if not isinstance(end, int):

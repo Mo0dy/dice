@@ -56,6 +56,22 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(result.axes[0].values, (5, 7, 9))
         self.assertAlmostEqual(result.cells[(9,)][TRUE], 0.6)
 
+    def test_negative_explicit_sweep_values_are_allowed(self):
+        result = interpret_statement("d1 + [bonus:-2, -1, 0]")
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "bonus")
+        self.assertEqual(result.axes[0].values, (-2, -1, 0))
+        self.assertAlmostEqual(result.cells[(-2,)][-1], 1.0)
+        self.assertAlmostEqual(result.cells[(0,)][1], 1.0)
+
+    def test_negative_sweep_ranges_are_allowed(self):
+        result = interpret_statement("d1 + [bonus:-2..0]")
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "bonus")
+        self.assertEqual(result.axes[0].values, (-2, -1, 0))
+        self.assertAlmostEqual(result.cells[(-2,)][-1], 1.0)
+        self.assertAlmostEqual(result.cells[(0,)][1], 1.0)
+
     def test_branching_returns_distribution_not_table(self):
         result = only_distribution(interpret_statement("d20 >= 11 -> 5 | 0"))
         self.assertAlmostEqual(result[5], 0.5)
