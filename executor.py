@@ -73,6 +73,8 @@ class Executor(ABC):
             "mass",
             "var",
             "std",
+            "cum",
+            "surv",
             "repeat_sum",
             "sumover",
             "total",
@@ -121,6 +123,14 @@ class Executor(ABC):
 
     @abstractmethod
     def std(self, value):
+        raise NotImplementedError
+
+    @abstractmethod
+    def cum(self, value):
+        raise NotImplementedError
+
+    @abstractmethod
+    def surv(self, value):
         raise NotImplementedError
 
     @abstractmethod
@@ -219,6 +229,12 @@ class ExactExecutor(Executor):
 
     def std(self, value):
         return diceengine.std(value)
+
+    def cum(self, value):
+        return diceengine.cum(value)
+
+    def surv(self, value):
+        return diceengine.surv(value)
 
     def sample(self, value):
         return diceengine.sample(value)

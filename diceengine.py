@@ -9,6 +9,8 @@ from itertools import product
 from math import inf, sqrt
 import random
 
+from diagnostics import RuntimeError as DiceRuntimeError
+
 # note that comb only exists in python 3.8
 # but it's faster then just calculating factorials
 try:
@@ -26,7 +28,11 @@ _viewer_module = None
 
 
 def exception(message):
-    raise Exception("Diceengine exception: {}".format(message))
+    raise DiceRuntimeError(message)
+
+
+def runtime_error(message, hint=None):
+    raise DiceRuntimeError(message, hint=hint)
 
 
 def _get_viewer():
@@ -67,7 +73,10 @@ class Distrib(object):
         total = 0
         for outcome, probability in self.items():
             if not isinstance(outcome, (int, float)):
-                raise Exception("Distrib average expects numeric outcomes, got {}".format(type(outcome)))
+                runtime_error(
+                    "mean expects numeric outcomes, got {}".format(type(outcome)),
+                    hint="Apply mean only to numeric distributions.",
+                )
             total += outcome * probability
         return total
 
@@ -76,7 +85,10 @@ class Distrib(object):
         total = 0
         for outcome, probability in self.items():
             if not isinstance(outcome, (int, float)):
-                raise Exception("Distrib variance expects numeric outcomes, got {}".format(type(outcome)))
+                runtime_error(
+                    "variance expects numeric outcomes, got {}".format(type(outcome)),
+                    hint="Apply variance only to numeric distributions.",
+                )
             total += ((outcome - mean) ** 2) * probability
         return total
 
@@ -99,7 +111,7 @@ class Sweep(object):
     def __init__(self, values, name=None):
         deduped = tuple(dict.fromkeys(values))
         if not deduped:
-            raise Exception("Sweep requires at least one value")
+            runtime_error("sweeps require at least one value")
         self.values = deduped
         self.name = name
         self.key = "sweep_{}".format(Sweep.counter)
@@ -180,11 +192,11 @@ def _coerce_to_distrib(value):
         return value
     if isinstance(value, Distributions):
         if not value.is_unswept():
-            raise Exception("Expected an unswept Distributions value")
+            runtime_error("expected an unswept value here")
         return value.only_distribution()
     if isinstance(value, (int, float, str)):
         return Distrib({value: 1})
-    raise Exception("Can't convert {} to Distrib".format(type(value)))
+    runtime_error("can't convert {} to a distribution".format(type(value)))
 
 
 def _coerce_to_distributions(value):
@@ -193,6 +205,13 @@ def _coerce_to_distributions(value):
     if isinstance(value, Sweep):
         return Distributions.from_sweep(value)
     return Distributions.scalar(value)
+
+
+def _ordered_numeric_outcomes(distrib, opname):
+    outcomes = list(distrib.keys())
+    for outcome in outcomes:
+        _require_numeric(outcome, opname)
+    return tuple(sorted(outcomes))
 
 
 def _union_axes(distribution_sets):
@@ -225,19 +244,28 @@ def lift_sweeps(function):
 
 def _require_numeric(value, opname):
     if not isinstance(value, (int, float)):
-        raise Exception("{} expects numeric outcomes, got {}".format(opname, type(value)))
+        runtime_error(
+            "{} expects numeric outcomes, got {}".format(opname, type(value)),
+            hint="Convert the expression to numbers before using {}.".format(opname),
+        )
 
 
 def _require_int(value, opname):
     if not isinstance(value, int):
-        raise Exception("{} expects integer outcomes, got {}".format(opname, type(value)))
+        runtime_error(
+            "{} expects integer outcomes, got {}".format(opname, type(value)),
+            hint="Dice counts, sides, and indexes must be integers.",
+        )
 
 
 def _require_keep_count(n, keep, opname):
     _require_int(n, opname)
     _require_int(keep, opname)
     if keep < 0 or keep > n:
-        raise Exception("{} expects keep count between 0 and number of dice".format(opname))
+        runtime_error(
+            "{} expects keep count between 0 and number of dice".format(opname),
+            hint="Use a keep count between 0 and {}.".format(n),
+        )
 
 
 def _pairwise_numeric(left, right, operator, opname):
@@ -253,18 +281,21 @@ def _pairwise_numeric(left, right, operator, opname):
 def _bool_mass(condition):
     invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
     if invalid:
-        raise Exception("Branching expects boolean outcomes, got {}".format(invalid))
+        runtime_error(
+            "branching expects boolean outcomes, got {}".format(invalid),
+            hint="Use a comparison like 'd20 >= 15' before '->'.",
+        )
     return condition[TRUE], condition[FALSE]
 
 
 def _sample_from_distribution(distrib, rng=None):
     total = sum(distrib.probabilities())
     if total < 0:
-        raise Exception("Distribution has negative total probability")
+        runtime_error("distribution has negative total probability")
     if total == 0:
         return Distrib()
     if total > 1 + 1e-9:
-        raise Exception("Sampling expects probability mass <= 1, got {}".format(total))
+        runtime_error("sampling expects probability mass <= 1, got {}".format(total))
 
     rng = rng if rng is not None else random
     threshold = rng.random()
@@ -314,23 +345,35 @@ def _accumulate_distribution_contributions(contributions):
 
 def _resolve_target_axis(value, axis_name):
     if not isinstance(axis_name, str):
-        raise Exception("sumover expects a string axis name")
+        runtime_error(
+            "sumover expects a string axis name",
+            hint='Pass the axis name as a string, for example sumover("party", value).',
+        )
 
     matches = [axis for axis in value.axes if axis.name == axis_name and axis.name != axis.key]
     if not matches:
-        raise Exception("sumover could not find named axis {}".format(axis_name))
+        runtime_error(
+            "sumover could not find named axis {}".format(axis_name),
+            hint="Create a named sweep like [party:1, 2, 3] before calling sumover.",
+        )
     if len(matches) > 1:
-        raise Exception("sumover found multiple axes named {}".format(axis_name))
+        runtime_error("sumover found multiple axes named {}".format(axis_name))
     return matches[0]
 
 
 def _resolve_total_axis(value):
     if not value.axes or len(value.axes) != 1:
-        raise Exception("total expects exactly one named axis")
+        runtime_error(
+            "total expects exactly one named axis",
+            hint="Call total on a single named sweep like [party:1, 2, 3].",
+        )
 
     axis = value.axes[0]
     if axis.name == axis.key:
-        raise Exception("total expects exactly one named axis")
+        runtime_error(
+            "total expects exactly one named axis",
+            hint="Name the sweep first, for example [party:1, 2, 3].",
+        )
     return axis
 
 
@@ -358,7 +401,7 @@ def _sum_axis(add_function, value, target_axis):
             reduced = add_function(reduced, distrib)
         reduced_value = _coerce_to_distributions(reduced)
         if not reduced_value.is_unswept():
-            raise Exception("sumover reduction produced an unexpected sweep")
+            runtime_error("sumover reduction produced an unexpected sweep")
         cells[remaining_coordinates] = reduced_value.only_distribution()
 
     if not cells:
@@ -370,7 +413,10 @@ def _roll_plain(n, s):
     _require_int(n, "roll")
     _require_int(s, "roll")
     if n < 0 or s <= 0:
-        exception("Roll expects positive sides and non-negative dice count")
+        runtime_error(
+            "roll expects positive sides and a non-negative dice count",
+            hint="Examples: 2d6, 1d20, or 0d6.",
+        )
     if n == 0:
         return Distrib({0: 1})
 
@@ -437,6 +483,26 @@ def sample(value):
 
 
 @lift_sweeps
+def cum(value):
+    result = Distrib()
+    cumulative = 0
+    for outcome in _ordered_numeric_outcomes(value, "cum"):
+        cumulative += value[outcome]
+        result[outcome] = cumulative
+    return result
+
+
+@lift_sweeps
+def surv(value):
+    result = Distrib()
+    remaining = value.total_probability()
+    for outcome in _ordered_numeric_outcomes(value, "surv"):
+        remaining -= value[outcome]
+        result[outcome] = remaining
+    return result
+
+
+@lift_sweeps
 def reselse(condition, distrib_if, distrib_else):
     true_mass, false_mass = _bool_mass(condition)
     result = Distrib()
@@ -475,7 +541,7 @@ def rolladvantage(dice):
     for dice_sides, dice_probability in dice.items():
         _require_int(dice_sides, "advantage")
         if dice_sides <= 0:
-            exception("Can't roll advantage with non-positive dice sides")
+            runtime_error("can't roll advantage with non-positive dice sides")
         for outcome in range(1, dice_sides + 1):
             advantage_probability = 2 / dice_sides ** 2 * (outcome - 1) + (1 / dice_sides) ** 2
             result[outcome] += dice_probability * advantage_probability
@@ -488,7 +554,7 @@ def rolldisadvantage(dice):
     for dice_sides, dice_probability in dice.items():
         _require_int(dice_sides, "disadvantage")
         if dice_sides <= 0:
-            exception("Can't roll disadvantage with non-positive dice sides")
+            runtime_error("can't roll disadvantage with non-positive dice sides")
         for outcome in range(1, dice_sides + 1):
             disadvantage_probability = 2 / dice_sides ** 2 * (dice_sides - outcome) + (1 / dice_sides) ** 2
             result[outcome] += dice_probability * disadvantage_probability
@@ -500,7 +566,7 @@ def _rollhigh_plain(n, s, nh):
     _require_int(s, "rollhigh")
     _require_keep_count(n, nh, "rollhigh")
     if n < 0 or s <= 0 or nh < 0:
-        exception("rollhigh expects positive sides and non-negative counts")
+        runtime_error("rollhigh expects positive sides and non-negative counts")
 
     def count_children(sides, n_left, results, distrib):
         if n_left == 0:
@@ -526,7 +592,7 @@ def _rolllow_plain(n, s, nl):
     _require_int(s, "rolllow")
     _require_keep_count(n, nl, "rolllow")
     if n < 0 or s <= 0 or nl < 0:
-        exception("rolllow expects positive sides and non-negative counts")
+        runtime_error("rolllow expects positive sides and non-negative counts")
 
     def count_children(sides, n_left, results, distrib):
         if n_left == 0:
@@ -596,14 +662,14 @@ def div(left, right):
         for right_value, right_probability in right.items():
             _require_numeric(right_value, "div")
             if right_value == 0:
-                exception("Can't divide by zero")
+                runtime_error("can't divide by zero")
             result[left_value // right_value] += left_probability * right_probability
     return result
 
 
 def _compare_plain(left, right, operator):
     if operator not in ["<=", ">=", "<", ">", "=="]:
-        exception("Unknown operator {}".format(operator))
+        runtime_error("unknown operator {}".format(operator))
 
     result = Distrib()
     for left_value, left_probability in left.items():
@@ -671,13 +737,22 @@ def repeat_sum_with(add_function, count, value):
     for count_coordinates, count_distrib in count_value.cells.items():
         count_items = list(count_distrib.items())
         if len(count_items) != 1:
-            raise Exception("repeat_sum expects a deterministic count per sweep point")
+            runtime_error(
+                "repeat_sum expects a deterministic count per sweep point",
+                hint="Use a fixed integer count or a sweep of fixed counts, not a random distribution like d6.",
+            )
 
         count_outcome, count_probability = count_items[0]
         if count_probability != 1:
-            raise Exception("repeat_sum expects a deterministic count per sweep point")
+            runtime_error(
+                "repeat_sum expects a deterministic count per sweep point",
+                hint="Use a fixed integer count or a sweep of fixed counts, not a random distribution like d6.",
+            )
         if not isinstance(count_outcome, int) or count_outcome < 0:
-            raise Exception("repeat_sum expects a non-negative integer count")
+            runtime_error(
+                "repeat_sum expects a non-negative integer count",
+                hint="Use 0 or a positive integer count.",
+            )
 
         repeated = 0
         for _ in range(count_outcome):
@@ -725,24 +800,39 @@ def render(*args):
     viewer = _get_viewer()
 
     if not args:
-        raise Exception("render expects at least one expression")
+        runtime_error("render expects at least one expression")
 
     if len(args) == 1:
-        render_outcome = viewer.render_result(args[0])
+        try:
+            render_outcome = viewer.render_result(args[0])
+        except Exception as error:
+            message = str(error)
+            if message.startswith("Viewer exception: "):
+                message = message[len("Viewer exception: "):]
+            runtime_error(message)
         return render_outcome.output_path
 
     if len(args) % 2 != 0:
-        raise Exception("render comparisons require a label for every expression")
+        runtime_error(
+            "render comparisons require a label for every expression",
+            hint='Call render(value1, "Label 1", value2, "Label 2").',
+        )
 
     entries = []
     for index in range(0, len(args), 2):
         label = args[index + 1]
         if not isinstance(label, str):
-            raise Exception("render comparison labels must be strings")
+            runtime_error("render comparison labels must be strings")
         entries.append((label, args[index]))
 
     if len(entries) < 2:
-        raise Exception("render comparisons need at least two expressions")
+        runtime_error("render comparisons need at least two expressions")
 
-    render_outcome = viewer.render_comparison(entries)
+    try:
+        render_outcome = viewer.render_comparison(entries)
+    except Exception as error:
+        message = str(error)
+        if message.startswith("Viewer exception: "):
+            message = message[len("Viewer exception: "):]
+        runtime_error(message)
     return render_outcome.output_path

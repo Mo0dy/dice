@@ -101,6 +101,29 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(next(iter(variance.keys())), 0.25)
         self.assertAlmostEqual(next(iter(stddev.keys())), 0.5)
 
+    def test_cum_function_returns_cumulative_distribution(self):
+        result = only_distribution(interpret_statement("cum(d4)"))
+        self.assertAlmostEqual(result[1], 0.25)
+        self.assertAlmostEqual(result[2], 0.5)
+        self.assertAlmostEqual(result[3], 0.75)
+        self.assertAlmostEqual(result[4], 1.0)
+
+    def test_surv_function_returns_survival_distribution(self):
+        result = only_distribution(interpret_statement("surv(d4)"))
+        self.assertAlmostEqual(result[1], 0.75)
+        self.assertAlmostEqual(result[2], 0.5)
+        self.assertAlmostEqual(result[3], 0.25)
+        self.assertAlmostEqual(result[4], 0.0)
+
+    def test_cum_and_surv_preserve_existing_sweeps(self):
+        result = interpret_statement("cum(d4 + [bonus:0, 1])")
+        self.assertEqual(len(result.axes), 1)
+        self.assertEqual(result.axes[0].name, "bonus")
+        self.assertAlmostEqual(result.cells[(0,)][1], 0.25)
+        self.assertAlmostEqual(result.cells[(0,)][4], 1.0)
+        self.assertAlmostEqual(result.cells[(1,)][2], 0.25)
+        self.assertAlmostEqual(result.cells[(1,)][5], 1.0)
+
     def test_index_then_compare_keeps_partial_probability_mass(self):
         result = interpret_statement("d20[20] >= 14")
         self.assertEqual(result.axes[0].values, (20,))
@@ -207,6 +230,22 @@ class RuntimeTest(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "deterministic count"):
             interpret_statement("repeat_sum(d2, d6)")
 
+    def test_divide_by_zero_points_at_divisor(self):
+        with self.assertRaises(Exception) as error:
+            interpret_statement("1 / 0")
+        self.assertIn("<input>:1:5", str(error.exception))
+
+    def test_keep_count_error_points_at_keep_operand(self):
+        with self.assertRaises(Exception) as error:
+            interpret_statement("3 d 6 h 4")
+        self.assertIn("<input>:1:9", str(error.exception))
+
+    def test_match_guard_type_error_points_at_guard(self):
+        with self.assertRaises(Exception) as error:
+            interpret_statement("match d20 as roll | roll = 10 | otherwise = 0")
+        self.assertIn("<input>:1:21", str(error.exception))
+        self.assertIn("match guards must evaluate to booleans", str(error.exception))
+
     def test_add_function_matches_operator(self):
         self.assertEqual(str(interpret_statement("1 + 2")), str(interpret_statement("add(1, 2)")))
 
@@ -235,7 +274,9 @@ class RuntimeTest(unittest.TestCase):
                 with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
                     exit_code = dice.runinteractive(args)
         self.assertEqual(exit_code, 0)
-        self.assertIn("syntax error: Parser exception", stderr.getvalue())
+        self.assertIn("syntax error: expected an expression", stderr.getvalue())
+        self.assertIn("<repl>:1:4", stderr.getvalue())
+        self.assertIn("hint:", stderr.getvalue())
         self.assertIn("2", stdout.getvalue())
 
 

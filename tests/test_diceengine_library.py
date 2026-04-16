@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from diceengine import Sweep, Distributions, add, greaterorequal, repeat_sum, rollsingle, total, var
+from diceengine import Sweep, Distributions, add, cum, greaterorequal, repeat_sum, rollsingle, surv, total, var
 
 
 def only_distribution(result):
@@ -48,6 +48,16 @@ class DiceengineLibraryTest(unittest.TestCase):
     def test_var_is_usable_directly_from_python(self):
         result = only_distribution(var(rollsingle(2)))
         self.assertAlmostEqual(next(iter(result.keys())), 0.25)
+
+    def test_cum_is_usable_directly_from_python(self):
+        result = only_distribution(cum(rollsingle(4)))
+        self.assertAlmostEqual(result[1], 0.25)
+        self.assertAlmostEqual(result[4], 1.0)
+
+    def test_surv_is_usable_directly_from_python(self):
+        result = only_distribution(surv(rollsingle(4)))
+        self.assertAlmostEqual(result[1], 0.75)
+        self.assertAlmostEqual(result[4], 0.0)
 
 
 if __name__ == "__main__":

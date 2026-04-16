@@ -53,6 +53,14 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertEqual(prop_result.axes[0].values, (20,))
         self.assertEqual(prop_result.cells[(20,)][0.05], 1)
 
+    def test_direct_backend_uses_exact_cumulative_helpers(self):
+        cum_result = direct_sample("cum(d4)", seed=123).only_distribution()
+        surv_result = direct_sample("surv(d4)", seed=123).only_distribution()
+        self.assertAlmostEqual(cum_result[1], 0.25)
+        self.assertAlmostEqual(cum_result[4], 1.0)
+        self.assertAlmostEqual(surv_result[1], 0.75)
+        self.assertAlmostEqual(surv_result[4], 0.0)
+
     def test_direct_backend_sample_operator_returns_one_outcome(self):
         result = direct_sample("!d20", seed=123).only_distribution()
         self.assertEqual(result.total_probability(), 1)

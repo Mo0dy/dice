@@ -6,6 +6,7 @@ from collections import defaultdict
 import random
 import time
 
+from diagnostics import RuntimeError as DiceRuntimeError
 import diceengine
 from diceengine import (
     FALSE,
@@ -41,11 +42,19 @@ def _exact_of(distrib):
     return distrib.exact if isinstance(distrib, SampledDistrib) else distrib
 
 
+def _exactify(value):
+    distributions = diceengine._coerce_to_distributions(value)
+    return Distributions(
+        distributions.axes,
+        {coordinates: _exact_of(distrib) for coordinates, distrib in distributions.cells.items()},
+    )
+
+
 def _exact_call(function, *args):
     result = function(*args)
     if isinstance(result, Distributions):
         if not result.is_unswept():
-            raise Exception("Direct backend expected unswept exact result")
+            raise DiceRuntimeError("direct backend expected an unswept exact result")
         return result.only_distribution()
     return result
 
@@ -155,6 +164,12 @@ class DirectExecutor(ExactExecutor):
 
         return apply(value)
 
+    def cum(self, value):
+        return diceengine.cum(_exactify(value))
+
+    def surv(self, value):
+        return diceengine.surv(_exactify(value))
+
     def sample(self, value):
         @lift_sweeps
         def apply(distrib):
@@ -186,7 +201,7 @@ class DirectExecutor(ExactExecutor):
             sampled_n = int(sampled_n)
             sampled_s = int(sampled_s)
             if sampled_n < 0 or sampled_s <= 0:
-                diceengine.exception("Roll expects positive sides and non-negative dice count")
+                diceengine.runtime_error("roll expects positive sides and a non-negative dice count")
             return sum(self.rng.randint(1, sampled_s) for _ in range(sampled_n))
 
         return self._lift_binary(
@@ -296,7 +311,7 @@ class DirectExecutor(ExactExecutor):
             if sampled_left is None or sampled_right is None:
                 return None
             if sampled_right == 0:
-                diceengine.exception("Can't divide by zero")
+                diceengine.runtime_error("can't divide by zero")
             return sampled_left // sampled_right
 
         return self._lift_binary(left, right, operation, exact_operation=lambda l, r: _exact_call(diceengine.div, l, r))
