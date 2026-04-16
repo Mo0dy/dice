@@ -426,7 +426,7 @@ class DiceParser(Parser):
                 self.exception(
                     "expected a string path after 'import'",
                     token=self.current_token,
-                    hint='Use a quoted path like import "helpers.dice".',
+                    hint='Use a quoted path like import "helpers".',
                 )
             path = Val(self.current_token)
             self.eat(STRING)

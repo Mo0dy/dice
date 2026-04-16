@@ -7,6 +7,7 @@
 from difflib import get_close_matches
 import inspect
 import os
+import re
 
 from diagnostics import DiagnosticError, RuntimeError as DiceRuntimeError
 from diceparser import DiceParser
@@ -29,6 +30,9 @@ from executor import ExactExecutor
 
 
 STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
+IMPORT_COMPLETION_PATTERN = re.compile(r'(?:^|[;\n])\s*import\s+"$')
+IDENTIFIER_COMPLETION_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
+COMPLETION_KEYWORDS = ("as", "import", "match", "otherwise")
 
 
 class CallableEntry(object):
@@ -176,6 +180,12 @@ class Interpreter():
     def _function_candidates(self):
         return set(self.callable_scope) | set(self.executor.functions)
 
+    def _completion_names(self):
+        names = set(COMPLETION_KEYWORDS)
+        names.update(self._value_candidates())
+        names.update(self._function_candidates())
+        return sorted(names)
+
     def _identifier_hint(self, name, *, prefer_call=False):
         function_candidates = self._function_candidates()
         value_candidates = self._value_candidates()
@@ -275,26 +285,127 @@ class Interpreter():
         """Raises an exception for the Interpreter"""
         raise DiceRuntimeError(message, span=self._node_span(node), hint=hint)
 
+    def _import_path_variants(self, path):
+        variants = [os.path.abspath(path)]
+        if not os.path.splitext(path)[1]:
+            variants.append(os.path.abspath(path + ".dice"))
+        deduped = []
+        seen = set()
+        for variant in variants:
+            if variant in seen:
+                continue
+            deduped.append(variant)
+            seen.add(variant)
+        return deduped
+
     def _resolve_import_path(self, import_path):
         if import_path.startswith("std:"):
             stdlib_path = import_path[len("std:"):].lstrip("/\\")
             if not stdlib_path:
                 self.exception(
                     "Could not import {!r}".format(import_path),
-                    hint='Use a stdlib path like "std:dnd/weapons.dice".',
+                    hint='Use a stdlib path like "std:dnd/weapons".',
                 )
-            resolved_path = os.path.abspath(os.path.join(self.stdlib_root, stdlib_path))
-            if os.path.commonpath([self.stdlib_root, resolved_path]) != self.stdlib_root:
-                self.exception(
-                    "Could not import {!r}".format(import_path),
-                    hint="Stdlib imports must stay inside the stdlib directory.",
-                )
-            return resolved_path
+            candidates = self._import_path_variants(os.path.join(self.stdlib_root, stdlib_path))
+            for candidate in candidates:
+                if os.path.commonpath([self.stdlib_root, candidate]) != self.stdlib_root:
+                    self.exception(
+                        "Could not import {!r}".format(import_path),
+                        hint="Stdlib imports must stay inside the stdlib directory.",
+                    )
+            for candidate in candidates:
+                if os.path.isfile(candidate):
+                    return candidate
+            return candidates[0]
 
-        if os.path.isabs(import_path):
-            return os.path.abspath(import_path)
+        base_path = (
+            import_path
+            if os.path.isabs(import_path)
+            else os.path.join(self.current_dir, import_path)
+        )
+        candidates = self._import_path_variants(base_path)
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                return candidate
+        return candidates[0]
 
-        return os.path.abspath(os.path.join(self.current_dir, import_path))
+    def _is_import_completion_context(self, line_buffer, begidx):
+        return IMPORT_COMPLETION_PATTERN.search(line_buffer[:begidx]) is not None
+
+    def _import_completion_entries(self, root_dir, relative_dir, partial_name, prefix):
+        search_dir = os.path.join(root_dir, relative_dir) if relative_dir else root_dir
+        if not os.path.isdir(search_dir):
+            return []
+
+        entries = []
+        for entry in sorted(os.scandir(search_dir), key=lambda item: (not item.is_dir(), item.name)):
+            if not entry.name.startswith(partial_name):
+                continue
+            completed_name = entry.name
+            is_directory = entry.is_dir()
+            if is_directory:
+                completed_name += "/"
+            elif entry.is_file() and entry.name.endswith(".dice"):
+                completed_name = entry.name[:-len(".dice")]
+            completed_path = completed_name if not relative_dir else relative_dir + "/" + completed_name
+            entries.append(
+                {
+                    "suggestion": prefix + completed_path.replace(os.sep, "/"),
+                    "is_directory": is_directory,
+                    "relative_path": completed_path.replace(os.sep, "/"),
+                }
+            )
+        return entries
+
+    def _complete_import_path(self, text):
+        prefix = ""
+        relative_prefix = text
+        root_dir = self.current_dir
+
+        if text.startswith("std:"):
+            prefix = "std:"
+            relative_prefix = text[len(prefix):]
+            root_dir = self.stdlib_root
+        elif text.startswith("/"):
+            prefix = "/"
+            relative_prefix = text[len(prefix):]
+            root_dir = os.path.sep
+
+        relative_dir, partial_name = os.path.split(relative_prefix)
+        entries = self._import_completion_entries(root_dir, relative_dir, partial_name, prefix)
+        if len(entries) == 1 and entries[0]["is_directory"]:
+            child_relative_dir = entries[0]["relative_path"].rstrip("/")
+            child_entries = self._import_completion_entries(root_dir, child_relative_dir, "", prefix)
+            entries.extend(child_entries)
+
+        completions = []
+        seen = set()
+        for entry in entries:
+            suggestion = entry["suggestion"]
+            if suggestion in seen:
+                continue
+            completions.append(suggestion)
+            seen.add(suggestion)
+        return completions
+
+    def complete(self, text, *, line_buffer="", begidx=None, endidx=None):
+        if line_buffer is None:
+            line_buffer = ""
+        if endidx is None:
+            endidx = len(line_buffer)
+        if begidx is None:
+            begidx = max(0, endidx - len(text))
+
+        if self._is_import_completion_context(line_buffer, begidx):
+            return self._complete_import_path(text)
+
+        if text and not IDENTIFIER_COMPLETION_PATTERN.fullmatch(text):
+            return []
+
+        candidates = self._completion_names()
+        if not text:
+            return candidates
+        return [candidate for candidate in candidates if candidate.startswith(text)]
 
     def _validate_runtime_value(self, value):
         if value is None:
@@ -307,9 +418,9 @@ class Interpreter():
         invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
         if invalid:
             self.exception(
-                "match guards must evaluate to booleans, got {}".format(invalid),
+                "match guards must evaluate to Bernoulli outcomes 0 or 1, got {}".format(invalid),
                 node=node,
-                hint="Use a comparison like 'roll >= 15' in each guard.",
+                hint="Use a comparison like 'roll >= 15' or convert each guard to 0 or 1.",
             )
         return condition[TRUE], condition[FALSE]
 

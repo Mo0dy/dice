@@ -46,6 +46,18 @@ class ImportAndCommentTest(unittest.TestCase):
             self.assertAlmostEqual(distribution[TRUE], 0.5)
             self.assertAlmostEqual(distribution[FALSE], 0.5)
 
+    def test_import_loads_relative_file_without_extension(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "combat.dice").write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            result = interpret_file(
+                'import "combat"\nhit(11)',
+                current_dir=root,
+            )
+            distribution = only_distribution(result)
+            self.assertAlmostEqual(distribution[TRUE], 0.5)
+            self.assertAlmostEqual(distribution[FALSE], 0.5)
+
     def test_import_loads_absolute_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -104,6 +116,16 @@ class ImportAndCommentTest(unittest.TestCase):
     def test_import_loads_stdlib_file(self):
         helper_result = interpret_file(
             'import "std:dnd/weapons.dice"\ncrit_longsword(16, 7, 4)',
+            current_dir=Path(tempfile.gettempdir()),
+        )
+        inline_result = interpret_statement(
+            "match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0"
+        )
+        self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_import_loads_stdlib_file_without_extension(self):
+        helper_result = interpret_file(
+            'import "std:dnd/weapons"\ncrit_longsword(16, 7, 4)',
             current_dir=Path(tempfile.gettempdir()),
         )
         inline_result = interpret_statement(

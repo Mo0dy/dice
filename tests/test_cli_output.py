@@ -21,18 +21,19 @@ if str(ROOT) not in sys.path:
 
 import dice
 from dice import interpret_statement
+from interpreter import Interpreter
 
 
 class CliFormattingTest(unittest.TestCase):
     def test_unswept_distribution_uses_pretty_lines(self):
         rendered = dice._format_result_text(interpret_statement("d20 >= 11", roundlevel=2), roundlevel=2)
-        self.assertEqual(rendered, "false: 0.50\n true: 0.50\n  (E): 0.50")
+        self.assertEqual(rendered, "  0: 50%\n  1: 50%\n(E): 0.50")
 
     def test_unswept_distribution_aligns_numeric_labels(self):
         rendered = dice._format_result_text(interpret_statement("d20", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "  1: 0.05\n  2: 0.05\n  3: 0.05\n  4: 0.05\n  5: 0.05\n  6: 0.05\n  7: 0.05\n  8: 0.05\n  9: 0.05\n 10: 0.05\n 11: 0.05\n 12: 0.05\n 13: 0.05\n 14: 0.05\n 15: 0.05\n 16: 0.05\n 17: 0.05\n 18: 0.05\n 19: 0.05\n 20: 0.05\n(E): 10.50",
+            "  1: 5%\n  2: 5%\n  3: 5%\n  4: 5%\n  5: 5%\n  6: 5%\n  7: 5%\n  8: 5%\n  9: 5%\n 10: 5%\n 11: 5%\n 12: 5%\n 13: 5%\n 14: 5%\n 15: 5%\n 16: 5%\n 17: 5%\n 18: 5%\n 19: 5%\n 20: 5%\n(E): 10.50",
         )
 
     def test_scalar_distribution_collapses_to_number(self):
@@ -43,21 +44,21 @@ class CliFormattingTest(unittest.TestCase):
         rendered = dice._format_result_text(interpret_statement("d20 >= [AC:10:12]", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "  /AC    10    11    12\nfalse  0.45  0.50  0.55\n true  0.55  0.50  0.45\n  (E)  0.55  0.50  0.45",
+            "/AC    10    11    12\n  0   45%   50%   55%\n  1   55%   50%   45%\n(E)  0.55  0.50  0.45",
         )
 
     def test_distribution_sweep_shows_integral_probabilities_without_decimal_padding(self):
         rendered = dice._format_result_text(interpret_statement("d2 >= [AC:1:3]", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "  /AC  1     2  3\n true  1  0.50  0\nfalse  0  0.50  1\n  (E)  1  0.50  0",
+            "/AC     1     2     3\n  1  100%   50%    0%\n  0    0%   50%  100%\n(E)     1  0.50     0",
         )
 
     def test_numeric_distribution_sweep_includes_mean_row(self):
         rendered = dice._format_result_text(interpret_statement("d20 + 6 >= [AC:10:12] -> 2d6 + 4", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "/AC    10    11    12\n  6  0.02  0.02  0.02\n  7  0.05  0.04  0.04\n  8  0.07  0.07  0.06\n  9  0.09  0.09  0.08\n 10  0.12  0.11  0.10\n 11  0.14  0.13  0.12\n 12  0.12  0.11  0.10\n 13  0.09  0.09  0.08\n 14  0.07  0.07  0.06\n 15  0.05  0.04  0.04\n 16  0.02  0.02  0.02\n(E)  9.24  8.69  7.92",
+            "/AC    10    11    12\n  6    2%    2%    2%\n  7    5%    4%    4%\n  8    7%    7%    6%\n  9    9%    9%    8%\n 10   12%   11%   10%\n 11   14%   13%   12%\n 12   12%   11%   10%\n 13    9%    9%    8%\n 14    7%    7%    6%\n 15    5%    4%    4%\n 16    2%    2%    2%\n(E)  9.24  8.69  7.92",
         )
 
     def test_named_scalar_sweep_uses_single_axis_header(self):
@@ -84,8 +85,8 @@ class CliFormattingTest(unittest.TestCase):
         self.assertEqual(
             payload["cells"][0]["distribution"],
             [
-                {"outcome": "false", "probability": 0.5},
-                {"outcome": "true", "probability": 0.5},
+                {"outcome": 0, "probability": 0.5},
+                {"outcome": 1, "probability": 0.5},
             ],
         )
 
@@ -112,6 +113,23 @@ class CliInteractiveTest(unittest.TestCase):
         fake_readline.set_history_length.assert_called_once_with(dice.REPL_HISTORY_LENGTH)
         fake_readline.write_history_file.assert_called_once_with(history_path)
 
+    def test_repl_completion_uses_interpreter_candidates(self):
+        fake_readline = mock.Mock()
+        interpreter = Interpreter(None)
+        interpreter.global_scope["bonus"] = 2
+        interpreter.register_function(lambda ac: ac, name="hit")
+        fake_readline.get_line_buffer.return_value = "bo"
+        fake_readline.get_begidx.return_value = 0
+        fake_readline.get_endidx.return_value = 2
+
+        dice._setup_repl_completion(interpreter, fake_readline)
+
+        completer = fake_readline.set_completer.call_args.args[0]
+        self.assertEqual(completer("bo", 0), "bonus")
+        self.assertIsNone(completer("bo", 1))
+        fake_readline.parse_and_bind.assert_called_once_with("tab: complete")
+        fake_readline.set_completer_delims.assert_called_once_with(dice.REPL_COMPLETER_DELIMS)
+
     def test_repl_errors_show_location_and_hint(self):
         args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
         with mock.patch("builtins.input", side_effect=["1 +", "exit"]):
@@ -135,6 +153,54 @@ class CliInteractiveTest(unittest.TestCase):
         self.assertIn("syntax error: unterminated string literal", stderr.getvalue())
         self.assertIn("<repl>:1:1", stderr.getvalue())
         self.assertIn("matching double quote", stderr.getvalue())
+
+
+class InterpreterCompletionTest(unittest.TestCase):
+    def test_identifier_completion_includes_builtins_and_user_symbols(self):
+        interpreter = Interpreter(None)
+        interpreter.global_scope["bonus"] = 2
+        interpret_statement("hit(ac) = d20 >= ac", interpreter=interpreter)
+
+        self.assertEqual(interpreter.complete("bo", line_buffer="bo", begidx=0, endidx=2), ["bonus"])
+        self.assertEqual(interpreter.complete("hi", line_buffer="hi", begidx=0, endidx=2), ["hit"])
+        self.assertEqual(interpreter.complete("gre", line_buffer="gre", begidx=0, endidx=3), ["greater", "greaterorequal"])
+
+    def test_import_completion_omits_dice_extension(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "combat.dice").write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            (root / "lib").mkdir()
+            (root / "lib" / "damage.dice").write_text("damage(ac) = ac\n", encoding="utf-8")
+            interpreter = Interpreter(None, current_dir=root)
+
+            self.assertEqual(interpreter.complete("co", line_buffer='import "co', begidx=8, endidx=10), ["combat"])
+
+            lib_completions = interpreter.complete("l", line_buffer='import "l', begidx=8, endidx=9)
+            self.assertIn("lib/", lib_completions)
+            self.assertIn("lib/damage", lib_completions)
+
+            self.assertEqual(interpreter.complete("lib/da", line_buffer='import "lib/da', begidx=8, endidx=14), ["lib/damage"])
+
+    def test_import_completion_supports_stdlib_prefix(self):
+        interpreter = Interpreter(None)
+        completions = interpreter.complete(
+            "std:dnd/wea",
+            line_buffer='import "std:dnd/wea',
+            begidx=8,
+            endidx=19,
+        )
+        self.assertEqual(completions, ["std:dnd/weapons"])
+
+    def test_import_completion_expands_single_stdlib_directory(self):
+        interpreter = Interpreter(None)
+        completions = interpreter.complete(
+            "std:",
+            line_buffer='import "std:',
+            begidx=8,
+            endidx=12,
+        )
+        self.assertIn("std:dnd/", completions)
+        self.assertIn("std:dnd/spells", completions)
 
 
 class CliMainIntegrationTest(unittest.TestCase):

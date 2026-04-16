@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from diceengine import Distributions, FALSE, TRUE, RenderConfig
+from diceengine import Distributions, RenderConfig
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -34,6 +34,7 @@ timeout_seconds = 5
 DEFAULT_ROUNDLEVEL = 2
 REPL_HISTORY_LENGTH = 1000
 NON_BLOCKING_RENDER_CONFIG = RenderConfig(interactive_blocking=False)
+REPL_COMPLETER_DELIMS = " \t\n\"'`(){}[];,|&<>!=+*"
 
 
 class InteractiveCommandError(Exception):
@@ -98,7 +99,7 @@ def _format_label(value, roundlevel=0):
 
 
 def _format_probability(value, roundlevel=0):
-    return _format_rounded_numeric(value, roundlevel)
+    return "{}%".format(_format_rounded_numeric(value * 100, roundlevel))
 
 
 def _axis_header(name):
@@ -128,13 +129,9 @@ def _format_key_value_lines(entries):
 
 def _distribution_mean(distrib):
     outcomes = list(distrib.keys())
-    if not outcomes or not all(_is_summary_scalar(outcome) for outcome in outcomes):
+    if not outcomes or not all(_is_numeric(outcome) for outcome in outcomes):
         return None
     return distrib.average()
-
-
-def _is_summary_scalar(value):
-    return _is_numeric(value) or value in (FALSE, TRUE)
 
 
 def _format_unswept_distribution(distrib, roundlevel=0):
@@ -309,6 +306,34 @@ def _save_repl_history(history_path, readline_module=None):
         pass
 
 
+def _setup_repl_completion(interpreter, readline_module=None):
+    readline_module = readline if readline_module is None else readline_module
+    if readline_module is None:
+        return None
+
+    def completer(text, state):
+        line_buffer = readline_module.get_line_buffer()
+        begidx = readline_module.get_begidx()
+        endidx = readline_module.get_endidx()
+        matches = interpreter.complete(
+            text,
+            line_buffer=line_buffer,
+            begidx=begidx,
+            endidx=endidx,
+        )
+        if state < len(matches):
+            return matches[state]
+        return None
+
+    if hasattr(readline_module, "parse_and_bind"):
+        readline_module.parse_and_bind("tab: complete")
+    if hasattr(readline_module, "set_completer_delims"):
+        readline_module.set_completer_delims(REPL_COMPLETER_DELIMS)
+    if hasattr(readline_module, "set_completer"):
+        readline_module.set_completer(completer)
+    return completer
+
+
 def _handle_repl_command(text, state):
     stripped = text.strip()
     if not stripped.startswith("$"):
@@ -459,6 +484,7 @@ def runinteractive(args):
     state = {"roundlevel": args.roundlevel}
     json_output = getattr(args, "json_output", False)
     history_path = _setup_repl_history()
+    _setup_repl_completion(interpreter)
     try:
         while True:
             try:
