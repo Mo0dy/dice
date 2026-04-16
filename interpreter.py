@@ -93,6 +93,7 @@ class Interpreter:
         imported_files=None,
         import_stack=None,
         render_config=None,
+        output_callback=None,
     ):
         self.ast = ast
         self.debug = debug
@@ -107,6 +108,7 @@ class Interpreter:
         self.imported_files = imported_files if imported_files is not None else set()
         self.import_stack = import_stack if import_stack is not None else []
         self._sweep_cache = {}
+        self.output_callback = output_callback
 
     def visit(self, node):
         method_name = "visit_" + type(node).__name__
@@ -767,7 +769,11 @@ class Interpreter:
         if node.op.type == MINUS:
             return self._with_runtime_context(node, lambda: self.executor.neg(self.visit(node.value)))
         if node.op.type == PRINT:
-            print(self.visit(node.value))
+            value = self.visit(node.value)
+            if self.output_callback is not None:
+                self.output_callback(value)
+            else:
+                print(value)
             return None
         self.exception("{} not implemented".format(node), node=node)
 

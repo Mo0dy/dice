@@ -566,10 +566,21 @@ def print_interactive_error(error):
 def runinteractive(args):
     """Run a simple interactive shell."""
     json_output = getattr(args, "json_output", False)
+
+    def emit_result(result):
+        print_result(
+            result,
+            args.verbose,
+            json_output=json_output,
+            roundlevel=state["roundlevel"],
+            probability_mode=interpreter.executor.render_config.probability_mode,
+        )
+
     interpreter = Interpreter(
         None,
         current_dir=os.getcwd(),
         render_config=NON_BLOCKING_RENDER_CONFIG,
+        output_callback=emit_result,
     )
     state = {
         "roundlevel": args.roundlevel,
@@ -683,10 +694,22 @@ def main():
     if args.file:
         if args.command:
             parser.error("--file cannot be combined with a command")
+
+        def emit_result(result):
+            print_result(
+                result,
+                args.verbose,
+                args.file,
+                json_output=args.json_output,
+                roundlevel=args.roundlevel,
+                probability_mode=interpreter.executor.render_config.probability_mode,
+            )
+
         interpreter = Interpreter(
             None,
             current_dir=os.path.dirname(os.path.abspath(args.file)),
             render_config=DEFERRED_RENDER_CONFIG,
+            output_callback=emit_result,
         )
         with open(args.file) as f:
             try:
@@ -720,6 +743,14 @@ def main():
         None,
         current_dir=os.getcwd(),
         render_config=DEFERRED_RENDER_CONFIG,
+        output_callback=lambda result: print_result(
+            result,
+            args.verbose,
+            command,
+            json_output=args.json_output,
+            roundlevel=args.roundlevel,
+            probability_mode=interpreter.executor.render_config.probability_mode,
+        ),
     )
     try:
         result = interpret_statement(
