@@ -452,9 +452,15 @@ def print_result(result, verbose=False, line="", json_output=False, roundlevel=0
     sys.stdout.write(rendered + "\n")
 
 
+def _resolve_cli_roundlevel(roundlevel, json_output=False):
+    if roundlevel is not None:
+        return roundlevel
+    return 0 if json_output else DEFAULT_ROUNDLEVEL
+
+
 def main():
     parser = argparse.ArgumentParser(description="Process some inputs.")
-    parser.add_argument("-R", "--round", "--roundlevel", dest="roundlevel", type=int, default=DEFAULT_ROUNDLEVEL, help="Set rounding level")
+    parser.add_argument("-R", "--round", "--roundlevel", dest="roundlevel", type=int, default=None, help="Set rounding level")
     parser.add_argument("-i", "--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("-f", "--file", dest="file", help="Execute a dice source file")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Print structured JSON output")
@@ -463,6 +469,7 @@ def main():
 
     # Parse arguments
     args = parser.parse_args()
+    args.roundlevel = _resolve_cli_roundlevel(args.roundlevel, json_output=args.json_output)
 
     if args.interactive:
         if args.file or args.command:

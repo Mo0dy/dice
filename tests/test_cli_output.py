@@ -122,6 +122,36 @@ class CliMainIntegrationTest(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["type"], "distributions")
 
+    def test_main_json_defaults_to_unrounded_output(self):
+        with mock.patch.object(sys, "argv", ["dice.py", "--json", "d3"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(
+            payload["cells"][0]["distribution"],
+            [
+                {"outcome": 1, "probability": 1 / 3},
+                {"outcome": 2, "probability": 1 / 3},
+                {"outcome": 3, "probability": 1 / 3},
+            ],
+        )
+
+    def test_main_json_honors_explicit_roundlevel(self):
+        with mock.patch.object(sys, "argv", ["dice.py", "--json", "-R", "2", "d3"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(
+            payload["cells"][0]["distribution"],
+            [
+                {"outcome": 1, "probability": 0.33},
+                {"outcome": 2, "probability": 0.33},
+                {"outcome": 3, "probability": 0.33},
+            ],
+        )
+
     def test_main_uses_interactive_flag_for_repl(self):
         with mock.patch.object(sys, "argv", ["dice.py", "--interactive"]):
             with mock.patch.object(dice, "runinteractive", return_value=0) as runinteractive:
