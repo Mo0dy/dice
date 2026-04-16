@@ -38,6 +38,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
 - `render(expr)` renders one result with smart defaults.
+- `renderp(expr)` renders one result and treats scalar y-values as probabilities.
 - `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
 - `expr $ f` passes `expr` as the first argument to `f`.
 - `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
@@ -139,7 +140,7 @@ python3 dice.py --file path/to/plot.dice
 ```
 
 ```text
-render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
+renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
 
 ## Functions
@@ -161,7 +162,7 @@ match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
 repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
-render(d20 >= [AC:10:20] -> 5 | 0 $ mean)
+renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
 
 ## Match
@@ -218,14 +219,18 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 ## Rendering
 
 - `render(expr)` renders one expression result immediately.
+- `renderp(expr)` renders one expression and forces scalar y-values to use probability formatting.
 - `render(expr, "axis label", "title")` renders one expression, overrides the x-axis label, and sets the figure title.
+- `renderp(expr, "axis label", "title")` does the same with probability formatting.
 - `render(expr1, "a", expr2, "b")` compares multiple compatible results on one chart.
 - `render(expr1, "a", expr2, "b", "axis label", "title")` compares multiple results, overrides the x-axis label, and sets the figure title.
+- `renderp(expr1, "a", expr2, "b", "axis label", "title")` does the same with probability formatting.
 - `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` switch render behavior inside dice programs.
 - `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
 - Axis labels come from named sweeps like `[AC:10..20]`.
 - Unnamed sweeps still render, but use fallback axis labels.
 - Comparison renders align one-sweep results by their sweep values; matching names help with labels but are not required.
+- `render(...)` still treats true distributions as probabilities automatically.
 - render probability displays default to percentages.
 - Supported quick-render shapes are:
   unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.

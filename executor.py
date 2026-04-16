@@ -121,6 +121,7 @@ class Executor(ABC):
         ]:
             self._register_host_function(getattr(self, name), name=name, sweep_mode=True)
         self._register_host_function(self.render, name="render", variadic=True, sweep_mode=True)
+        self._register_host_function(self.renderp, name="renderp", variadic=True, sweep_mode=True)
 
     def register_function(self, function, name=None):
         return self._register_host_function(function, name=name)
@@ -136,6 +137,9 @@ class Executor(ABC):
 
     def render(self, *args):
         return diceengine.render(*args, render_config=self.render_config)
+
+    def renderp(self, *args):
+        return diceengine.renderp(*args, render_config=self.render_config)
 
     def set_render_mode(self, mode):
         self.render_config = self.render_config.with_mode(mode)

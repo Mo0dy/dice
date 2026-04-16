@@ -62,6 +62,23 @@ class RenderStatementTest(unittest.TestCase):
         self.assertEqual(render_comparison.call_args.kwargs["x_label"], "Roll")
         self.assertEqual(render_comparison.call_args.kwargs["title"], "Comparison")
 
+    def test_renderp_passes_probability_override_for_single_expression(self):
+        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("line", "AC", "Probability"), None)
+        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
+            result = interpret_statement('renderp((d20 >= [AC:10:12]) $ mean, "AC", "Hit chance")')
+        self.assertIsNone(result)
+        render_result.assert_called_once()
+        self.assertTrue(render_result.call_args.kwargs["assume_probability"])
+
+    def test_renderp_passes_probability_override_for_comparison(self):
+        program = 'a = (d20 >= [AC:10:12]) $ mean\nb = (d20 >= [AC:10:12]) $ mean\nrenderp(a, "a", b, "b", "AC", "Hit chance")'
+        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_line", "AC", "Probability", ("a", "b")), None)
+        with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
+            result = interpret_file(program)
+        self.assertIsNone(result)
+        render_comparison.assert_called_once()
+        self.assertTrue(render_comparison.call_args.kwargs["assume_probability"])
+
     def test_render_returns_output_path_in_headless_mode(self):
         result = interpret_statement("render(d20)")
         self.assertIsInstance(result, str)
@@ -106,6 +123,7 @@ class RenderStatementTest(unittest.TestCase):
             mock_viewer.render_result.assert_called_once_with(
                 "one",
                 render_config=diceengine.RenderConfig(interactive_blocking=False),
+                assume_probability=False,
             )
         finally:
             diceengine._viewer_module = None
@@ -120,6 +138,17 @@ class ViewerSpecTest(unittest.TestCase):
         spec = viewer.build_render_spec(interpret_statement("~(d20 >= [AC:10:12] -> 5 | 0)"))
         self.assertEqual(spec.kind, "line")
         self.assertEqual(spec.x_label, "AC")
+        self.assertFalse(spec.probability_values)
+
+    def test_renderp_one_sweep_scalar_uses_probability_bar_spec(self):
+        spec = viewer.build_render_spec(
+            interpret_statement("(d20 >= [AC:10:12]) $ mean"),
+            assume_probability=True,
+        )
+        self.assertEqual(spec.kind, "bar_scalar")
+        self.assertEqual(spec.x_label, "AC")
+        self.assertTrue(spec.probability_values)
+        self.assertEqual(spec.y_label, "Probability")
 
     def test_one_sweep_distribution_uses_heatmap_spec(self):
         spec = viewer.build_render_spec(interpret_statement("d20 >= [AC:10:12]"))
@@ -131,6 +160,14 @@ class ViewerSpecTest(unittest.TestCase):
         self.assertEqual(spec.kind, "heatmap_scalar")
         self.assertEqual(spec.x_label, "BONUS")
         self.assertEqual(spec.y_label, "AC")
+
+    def test_renderp_two_sweep_scalar_uses_probability_heatmap_spec(self):
+        spec = viewer.build_render_spec(
+            interpret_statement("([AC:10:11] + [BONUS:1:2]) * 0.01"),
+            assume_probability=True,
+        )
+        self.assertEqual(spec.kind, "heatmap_scalar")
+        self.assertTrue(spec.probability_values)
 
     def test_comparison_of_unswept_distributions_uses_overlay_spec(self):
         spec, _ = viewer.build_comparison_spec([
@@ -146,6 +183,15 @@ class ViewerSpecTest(unittest.TestCase):
         ])
         self.assertEqual(spec.kind, "compare_line")
         self.assertEqual(spec.x_label, "AC")
+
+    def test_renderp_comparison_of_scalar_sweeps_uses_probability_overlay(self):
+        spec, _ = viewer.build_comparison_spec([
+            ("a", interpret_statement("(d20 >= [AC:10:12]) $ mean")),
+            ("b", interpret_statement("(d20 >= [AC:10:12]) $ mean")),
+        ], assume_probability=True)
+        self.assertEqual(spec.kind, "compare_line")
+        self.assertEqual(spec.x_label, "AC")
+        self.assertTrue(spec.probability_values)
 
     def test_comparison_of_bernoulli_sweeps_uses_probability_overlay_spec(self):
         spec, _ = viewer.build_comparison_spec([
@@ -204,6 +250,35 @@ class ViewerBackendTest(unittest.TestCase):
             )
             heights = [patch.get_height() for patch in ax.patches]
             self.assertEqual(heights, [0.5, 0.5])
+        finally:
+            viewer.plt.close(figure)
+
+    def test_probability_scalar_bar_scales_values_to_percent(self):
+        result = interpret_statement("(d20 >= [AC:10:12]) $ mean")
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer._plot_scalar_bar(
+                ax,
+                result,
+                render_config=diceengine.RenderConfig(),
+                probability_values=True,
+            )
+            for actual, expected in zip([patch.get_height() for patch in ax.patches], [55.0, 50.0, 45.0]):
+                self.assertAlmostEqual(actual, expected)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_probability_heatmap_scales_scalar_values_to_percent(self):
+        result = interpret_statement("([AC:10:11] + [BONUS:1:2]) * 0.01")
+        figure, ax = viewer.plt.subplots()
+        try:
+            image = viewer._plot_scalar_heatmap(
+                ax,
+                result,
+                render_config=diceengine.RenderConfig(),
+                probability_values=True,
+            )
+            self.assertEqual(image.get_array().tolist(), [[11.0, 12.0], [12.0, 13.0]])
         finally:
             viewer.plt.close(figure)
 

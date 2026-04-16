@@ -1114,13 +1114,17 @@ def _require_render_text(value, message, hint):
     return value
 
 
-def render(*args, render_config=None):
+def _render(*args, render_config=None, assume_probability=False):
     viewer = _get_viewer()
     render_config = render_config if render_config is not None else RenderConfig()
     if not args:
         runtime_error("render expects at least one expression")
     if len(args) == 1:
-        return viewer.render_result(args[0], render_config=render_config).output_path
+        return viewer.render_result(
+            args[0],
+            render_config=render_config,
+            assume_probability=assume_probability,
+        ).output_path
     if len(args) == 2:
         runtime_error(
             "render titles require an axis label before the title",
@@ -1133,7 +1137,13 @@ def render(*args, render_config=None):
                 "render comparisons require a label for every expression",
                 hint='Call render(value1, "Label 1", value2, "Label 2").',
             )
-        return viewer.render_result(args[0], x_label=axis_label, title=args[2], render_config=render_config).output_path
+        return viewer.render_result(
+            args[0],
+            x_label=axis_label,
+            title=args[2],
+            render_config=render_config,
+            assume_probability=assume_probability,
+        ).output_path
 
     comparison_axis_label = None
     comparison_title = None
@@ -1170,4 +1180,13 @@ def render(*args, render_config=None):
         x_label=comparison_axis_label,
         title=comparison_title,
         render_config=render_config,
+        assume_probability=assume_probability,
     ).output_path
+
+
+def render(*args, render_config=None):
+    return _render(*args, render_config=render_config, assume_probability=False)
+
+
+def renderp(*args, render_config=None):
+    return _render(*args, render_config=render_config, assume_probability=True)

@@ -188,10 +188,10 @@ DND_CASES = (
         one_score_greater_than_x = (score > [X:3:18]) $ mean
 
         render(one_score_exact, "Ability score", "Single ability score distribution")
-        render(any_score_at_least_target, "Target score", "Chance any of 6 scores reaches target")
+        renderp(any_score_at_least_target, "Target score", "Chance any of 6 scores reaches target")
         render(total_modifier_sum, "Total modifier sum", "Total modifier sum across 6 scores")
-        render(at_least_one_exact_target, "Target score", "Chance any of 6 scores equals target")
-        render(one_score_greater_than_x, "Threshold x", "Chance a single score is greater than x")
+        renderp(at_least_one_exact_target, "Target score", "Chance any of 6 scores equals target")
+        renderp(one_score_greater_than_x, "Threshold x", "Chance a single score is greater than x")
         """,
     ),
     _case(

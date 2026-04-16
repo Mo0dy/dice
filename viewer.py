@@ -19,6 +19,7 @@ class RenderSpec:
     x_label: str
     y_label: str
     series_labels: tuple = ()
+    probability_values: bool = False
 
 
 @dataclass(frozen=True)
@@ -164,35 +165,53 @@ def _all_bernoulli(results):
     return all(set(distribution.keys()).issubset({0, 1}) for distribution in _iter_result_distributions(results))
 
 
-def build_render_spec(result):
+def build_render_spec(result, assume_probability=False):
     result = _coerce_to_distributions(result)
     if result.is_unswept():
-        return RenderSpec("bar", "Outcome", "Probability")
+        return RenderSpec("bar", "Outcome", "Probability", probability_values=True)
     if len(result.axes) == 1:
         axis_name = _fallback_axis_name(result.axes[0], 0)
         if _all_scalar(result):
-            return RenderSpec("line", axis_name, "Value")
-        return RenderSpec("heatmap_distribution", axis_name, "Outcome")
+            return RenderSpec(
+                "bar_scalar" if assume_probability else "line",
+                axis_name,
+                "Probability" if assume_probability else "Value",
+                probability_values=assume_probability,
+            )
+        return RenderSpec("heatmap_distribution", axis_name, "Outcome", probability_values=True)
     if len(result.axes) == 2 and _all_scalar(result):
         return RenderSpec(
             "heatmap_scalar",
             _fallback_axis_name(result.axes[1], 1),
             _fallback_axis_name(result.axes[0], 0),
+            probability_values=assume_probability,
         )
     raise Exception("Viewer exception: render does not support this result shape yet")
 
 
-def build_comparison_spec(entries):
+def build_comparison_spec(entries, assume_probability=False):
     labels, raw_results = zip(*entries)
     results = [_coerce_to_distributions(result) for result in raw_results]
 
     if all(result.is_unswept() for result in results):
         _validate_outcome_domains(result.only_distribution() for result in results)
-        return RenderSpec("compare_bar", "Outcome", "Probability", tuple(labels)), results
+        return RenderSpec(
+            "compare_bar",
+            "Outcome",
+            "Probability",
+            tuple(labels),
+            probability_values=True,
+        ), results
 
     if all(len(result.axes) == 1 and _all_scalar(result) for result in results):
         _validate_same_axis_values(results)
-        return RenderSpec("compare_line", _common_axis_name(results), "Value", tuple(labels)), results
+        return RenderSpec(
+            "compare_line",
+            _common_axis_name(results),
+            "Probability" if assume_probability else "Value",
+            tuple(labels),
+            probability_values=assume_probability,
+        ), results
 
     if all(len(result.axes) == 1 for result in results):
         _validate_same_axis_values(results)
@@ -203,12 +222,14 @@ def build_comparison_spec(entries):
                 _common_axis_name(results),
                 "Probability",
                 tuple(labels),
+                probability_values=True,
             ), results
         return RenderSpec(
             "compare_distribution_line",
             _common_axis_name(results),
             "Probability",
             tuple(labels),
+            probability_values=True,
         ), results
 
     raise Exception(
@@ -232,12 +253,35 @@ def _plot_unswept_bar(ax, result, label=None, render_config=None):
         ax.legend()
 
 
-def _plot_scalar_line(ax, result, label=None):
+def _plot_scalar_line(ax, result, label=None, render_config=None, probability_values=False):
     axis = result.axes[0]
     x_values = axis.values
     positions, tick_labels = _category_positions(x_values)
-    y_values = [_scalar_value(result.cells[(value,)]) for value in x_values]
+    y_values = [
+        _scale_probability(_scalar_value(result.cells[(value,)]), render_config=render_config)
+        if probability_values
+        else _scalar_value(result.cells[(value,)])
+        for value in x_values
+    ]
     ax.plot(positions, y_values, marker="o", label=label)
+    if tick_labels is not None:
+        ax.set_xticks(positions)
+        ax.set_xticklabels(tick_labels)
+    if label:
+        ax.legend()
+
+
+def _plot_scalar_bar(ax, result, label=None, render_config=None, probability_values=False):
+    axis = result.axes[0]
+    x_values = axis.values
+    positions, tick_labels = _category_positions(x_values)
+    y_values = [
+        _scale_probability(_scalar_value(result.cells[(value,)]), render_config=render_config)
+        if probability_values
+        else _scalar_value(result.cells[(value,)])
+        for value in x_values
+    ]
+    ax.bar(positions, y_values, alpha=0.85, label=label)
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
@@ -274,14 +318,19 @@ def _plot_distribution_heatmap(ax, result, render_config=None):
     return image
 
 
-def _plot_scalar_heatmap(ax, result):
+def _plot_scalar_heatmap(ax, result, render_config=None, probability_values=False):
     y_values = result.axes[0].values
     x_values = result.axes[1].values
     matrix = []
     for y_value in y_values:
         row = []
         for x_value in x_values:
-            row.append(_scalar_value(result.cells[(y_value, x_value)]))
+            value = _scalar_value(result.cells[(y_value, x_value)])
+            row.append(
+                _scale_probability(value, render_config=render_config)
+                if probability_values
+                else value
+            )
         matrix.append(row)
     image = ax.imshow(matrix, aspect="auto", origin="lower")
     ax.set_xticks(range(len(x_values)))
@@ -291,16 +340,30 @@ def _plot_scalar_heatmap(ax, result):
     return image
 
 
-def render_result(result, label=None, x_label=None, title=None, render_config=None):
+def render_result(result, label=None, x_label=None, title=None, render_config=None, assume_probability=False):
     result = _coerce_to_distributions(result)
-    spec = build_render_spec(result)
+    spec = build_render_spec(result, assume_probability=assume_probability)
     render_config = _effective_render_config(render_config)
     figure, ax = plt.subplots()
 
     if spec.kind == "bar":
         _plot_unswept_bar(ax, result, label=label, render_config=render_config)
+    elif spec.kind == "bar_scalar":
+        _plot_scalar_bar(
+            ax,
+            result,
+            label=label,
+            render_config=render_config,
+            probability_values=spec.probability_values,
+        )
     elif spec.kind == "line":
-        _plot_scalar_line(ax, result, label=label)
+        _plot_scalar_line(
+            ax,
+            result,
+            label=label,
+            render_config=render_config,
+            probability_values=spec.probability_values,
+        )
     elif spec.kind == "heatmap_distribution":
         image = _plot_distribution_heatmap(ax, result, render_config=render_config)
         figure.colorbar(
@@ -309,8 +372,21 @@ def render_result(result, label=None, x_label=None, title=None, render_config=No
             label=render_config.probability_axis_label(default="percent"),
         )
     elif spec.kind == "heatmap_scalar":
-        image = _plot_scalar_heatmap(ax, result)
-        figure.colorbar(image, ax=ax, label="Value")
+        image = _plot_scalar_heatmap(
+            ax,
+            result,
+            render_config=render_config,
+            probability_values=spec.probability_values,
+        )
+        figure.colorbar(
+            image,
+            ax=ax,
+            label=(
+                render_config.probability_axis_label(default="percent")
+                if spec.probability_values
+                else "Value"
+            ),
+        )
     else:
         raise Exception("Viewer exception: unsupported render kind {}".format(spec.kind))
 
@@ -318,7 +394,9 @@ def render_result(result, label=None, x_label=None, title=None, render_config=No
         ax.set_title(title)
         _set_window_title(figure, title)
     ax.set_xlabel(x_label if x_label is not None else spec.x_label)
-    if spec.kind == "bar":
+    if spec.probability_values and spec.kind != "heatmap_scalar":
+        ax.set_ylabel(render_config.probability_axis_label(default="percent"))
+    elif spec.kind == "bar":
         ax.set_ylabel(render_config.probability_axis_label(default="percent"))
     else:
         ax.set_ylabel(spec.y_label)
@@ -327,8 +405,8 @@ def render_result(result, label=None, x_label=None, title=None, render_config=No
     return RenderOutcome(spec, output_path)
 
 
-def render_comparison(entries, x_label=None, title=None, render_config=None):
-    spec, results = build_comparison_spec(entries)
+def render_comparison(entries, x_label=None, title=None, render_config=None, assume_probability=False):
+    spec, results = build_comparison_spec(entries, assume_probability=assume_probability)
     render_config = _effective_render_config(render_config)
     figure, ax = plt.subplots()
 
@@ -356,7 +434,12 @@ def render_comparison(entries, x_label=None, title=None, render_config=None):
         x_values = results[0].axes[0].values
         positions, tick_labels = _category_positions(x_values)
         for label, result in zip(spec.series_labels, results):
-            y_values = [_scalar_value(result.cells[(value,)]) for value in x_values]
+            y_values = [
+                _scale_probability(_scalar_value(result.cells[(value,)]), render_config=render_config)
+                if spec.probability_values
+                else _scalar_value(result.cells[(value,)])
+                for value in x_values
+            ]
             ax.plot(positions, y_values, marker="o", label=label)
         if tick_labels is not None:
             ax.set_xticks(positions)
@@ -401,7 +484,7 @@ def render_comparison(entries, x_label=None, title=None, render_config=None):
         ax.set_title(title)
         _set_window_title(figure, title)
     ax.set_xlabel(x_label if x_label is not None else spec.x_label)
-    if spec.kind == "compare_bar" or spec.kind == "compare_probability_line" or spec.kind == "compare_distribution_line":
+    if spec.probability_values:
         ax.set_ylabel(render_config.probability_axis_label(default="percent"))
     else:
         ax.set_ylabel(spec.y_label)
