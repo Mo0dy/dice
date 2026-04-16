@@ -27,6 +27,13 @@ FALSE = "false"
 _viewer_module = None
 
 
+@dataclass(frozen=True)
+class RenderConfig:
+    """Viewer behavior knobs shared across runtime entry points."""
+
+    interactive_blocking: bool = True
+
+
 def exception(message):
     raise DiceRuntimeError(message)
 
@@ -800,15 +807,16 @@ def total(value):
     return total_with(add, value)
 
 
-def render(*args):
+def render(*args, render_config=None):
     viewer = _get_viewer()
+    render_config = render_config if render_config is not None else RenderConfig()
 
     if not args:
         runtime_error("render expects at least one expression")
 
     if len(args) == 1:
         try:
-            render_outcome = viewer.render_result(args[0])
+            render_outcome = viewer.render_result(args[0], render_config=render_config)
         except Exception as error:
             message = str(error)
             if message.startswith("Viewer exception: "):
@@ -833,7 +841,7 @@ def render(*args):
         runtime_error("render comparisons need at least two expressions")
 
     try:
-        render_outcome = viewer.render_comparison(entries)
+        render_outcome = viewer.render_comparison(entries, render_config=render_config)
     except Exception as error:
         message = str(error)
         if message.startswith("Viewer exception: "):

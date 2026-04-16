@@ -10,7 +10,7 @@ os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "dice-
 from matplotlib.backends import BackendFilter, backend_registry
 import matplotlib.pyplot as plt
 
-from diceengine import Distributions, _coerce_to_distributions
+from diceengine import Distributions, RenderConfig, _coerce_to_distributions
 
 
 @dataclass(frozen=True)
@@ -48,11 +48,16 @@ def _is_interactive_backend(backend_name):
     return normalized in interactive_backends
 
 
-def _show_figure(figure):
+def _show_figure(figure, render_config=None):
+    render_config = render_config if render_config is not None else RenderConfig()
     backend = plt.get_backend()
     if _is_interactive_backend(backend):
-        plt.show()
-        plt.close(figure)
+        if render_config.interactive_blocking:
+            plt.show()
+            plt.close(figure)
+            return None
+        plt.show(block=False)
+        plt.pause(0.001)
         return None
 
     handle, path = tempfile.mkstemp(prefix="dice-render-", suffix=".png")
@@ -217,7 +222,7 @@ def _plot_scalar_heatmap(ax, result):
     return image
 
 
-def render_result(result, label=None):
+def render_result(result, label=None, render_config=None):
     result = _coerce_to_distributions(result)
     spec = build_render_spec(result)
     figure, ax = plt.subplots()
@@ -238,11 +243,11 @@ def render_result(result, label=None):
     ax.set_xlabel(spec.x_label)
     ax.set_ylabel(spec.y_label)
     figure.tight_layout()
-    output_path = _show_figure(figure)
+    output_path = _show_figure(figure, render_config=render_config)
     return RenderOutcome(spec, output_path)
 
 
-def render_comparison(entries):
+def render_comparison(entries, render_config=None):
     spec, results = build_comparison_spec(entries)
     figure, ax = plt.subplots()
 
@@ -279,5 +284,5 @@ def render_comparison(entries):
     ax.set_ylabel(spec.y_label)
     ax.legend()
     figure.tight_layout()
-    output_path = _show_figure(figure)
+    output_path = _show_figure(figure, render_config=render_config)
     return RenderOutcome(spec, output_path)

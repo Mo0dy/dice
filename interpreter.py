@@ -17,6 +17,7 @@ from diceengine import (
     Sweep,
     Distrib,
     Distributions,
+    RenderConfig,
     TRUE,
     FALSE,
     _accumulate_distribution_contributions,
@@ -48,7 +49,16 @@ class Interpreter():
     # TODO: should I add typeguards here?
     # The runtime/executor layer still owns most semantic type validation.
 
-    def __init__(self, ast, debug=False, executor=None, current_dir=None, imported_files=None, import_stack=None):
+    def __init__(
+        self,
+        ast,
+        debug=False,
+        executor=None,
+        current_dir=None,
+        imported_files=None,
+        import_stack=None,
+        render_config=None,
+    ):
         """Works on a pre-generated abstract syntax tree"""
         self.ast = ast
         self.debug = debug
@@ -56,7 +66,12 @@ class Interpreter():
         self.callable_scope = {}
         self.local_scopes = []
         self.call_stack = []
-        self.executor = executor if executor is not None else ExactExecutor()
+        self.render_config = render_config if render_config is not None else RenderConfig()
+        self.executor = (
+            executor
+            if executor is not None
+            else ExactExecutor(render_config=self.render_config)
+        )
         self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
         self.stdlib_root = os.path.abspath(STDLIB_ROOT)
         self.imported_files = imported_files if imported_files is not None else set()

@@ -20,8 +20,11 @@ class HostFunction:
 class Executor(ABC):
     """Abstract interpreter backend plus named host-callable registry."""
 
-    def __init__(self):
+    def __init__(self, render_config=None):
         self.functions = {}
+        self.render_config = (
+            render_config if render_config is not None else diceengine.RenderConfig()
+        )
         self._register_builtin_functions()
 
     def _callable_arity(self, function):
@@ -95,7 +98,7 @@ class Executor(ABC):
         return diceengine.total_with(self.add, value)
 
     def render(self, *args):
-        return diceengine.render(*args)
+        return diceengine.render(*args, render_config=self.render_config)
 
     @abstractmethod
     def choose(self, left, right):

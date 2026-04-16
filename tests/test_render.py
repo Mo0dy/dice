@@ -77,6 +77,24 @@ class RenderStatementTest(unittest.TestCase):
         finally:
             diceengine._viewer_module = None
 
+    def test_dice_session_uses_non_blocking_render_config(self):
+        diceengine._viewer_module = None
+        mock_viewer = mock.Mock()
+        mock_viewer.render_result.return_value = viewer.RenderOutcome(
+            viewer.RenderSpec("bar", "Outcome", "Probability"),
+            None,
+        )
+        session = dice.dice_interpreter()
+        try:
+            with mock.patch("diceengine.importlib.import_module", return_value=mock_viewer):
+                session.interpreter.executor.render("one")
+            mock_viewer.render_result.assert_called_once_with(
+                "one",
+                render_config=diceengine.RenderConfig(interactive_blocking=False),
+            )
+        finally:
+            diceengine._viewer_module = None
+
 
 class ViewerSpecTest(unittest.TestCase):
     def test_unswept_distribution_uses_bar_spec(self):
@@ -139,9 +157,31 @@ class ViewerBackendTest(unittest.TestCase):
         try:
             with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
                 with mock.patch.object(viewer.plt, "show") as show:
-                    output_path = viewer._show_figure(figure)
+                    with mock.patch.object(viewer.plt, "close") as close:
+                        output_path = viewer._show_figure(figure)
             self.assertIsNone(output_path)
             show.assert_called_once()
+            close.assert_called_once_with(figure)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_qtagg_can_render_non_blocking(self):
+        figure = viewer.plt.figure()
+        try:
+            with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
+                with mock.patch.object(viewer.plt, "show") as show:
+                    with mock.patch.object(viewer.plt, "pause") as pause:
+                        with mock.patch.object(viewer.plt, "close") as close:
+                            output_path = viewer._show_figure(
+                                figure,
+                                render_config=diceengine.RenderConfig(
+                                    interactive_blocking=False
+                                ),
+                            )
+            self.assertIsNone(output_path)
+            show.assert_called_once_with(block=False)
+            pause.assert_called_once_with(0.001)
+            close.assert_not_called()
         finally:
             viewer.plt.close(figure)
 

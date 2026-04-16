@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from diceengine import Distributions, FALSE, TRUE
+from diceengine import Distributions, FALSE, TRUE, RenderConfig
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -33,6 +33,7 @@ from lexer import Lexer, LexerError
 timeout_seconds = 5
 DEFAULT_ROUNDLEVEL = 2
 REPL_HISTORY_LENGTH = 1000
+NON_BLOCKING_RENDER_CONFIG = RenderConfig(interactive_blocking=False)
 
 
 class InteractiveCommandError(Exception):
@@ -335,9 +336,14 @@ def _round_result(result, roundlevel=0):
     return result
 
 
-def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_dir=None):
+def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_dir=None, render_config=None):
     if interpreter is None:
-        interpreter = Interpreter(ast, executor=executor, current_dir=current_dir)
+        interpreter = Interpreter(
+            ast,
+            executor=executor,
+            current_dir=current_dir,
+            render_config=render_config,
+        )
     else:
         interpreter.ast = ast
         if current_dir is not None:
@@ -347,14 +353,37 @@ def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_d
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_statement(text, roundlevel=0, executor=None, interpreter=None, current_dir=None, source_name=DEFAULT_SOURCE_NAME):
+def interpret_statement(
+    text,
+    roundlevel=0,
+    executor=None,
+    interpreter=None,
+    current_dir=None,
+    source_name=DEFAULT_SOURCE_NAME,
+    render_config=None,
+):
     parser = DiceParser(Lexer(text, source_name=source_name))
     ast = parser.parse() if (";" in text or "\n" in text) else parser.statement()
-    return _interpret_ast(ast, roundlevel, executor=executor, interpreter=interpreter, current_dir=current_dir)
+    return _interpret_ast(
+        ast,
+        roundlevel,
+        executor=executor,
+        interpreter=interpreter,
+        current_dir=current_dir,
+        render_config=render_config,
+    )
 
 
 @timeout_decorator.timeout(timeout_seconds)
-def interpret_file(text, roundlevel=0, executor=None, interpreter=None, current_dir=None, source_name=DEFAULT_SOURCE_NAME):
+def interpret_file(
+    text,
+    roundlevel=0,
+    executor=None,
+    interpreter=None,
+    current_dir=None,
+    source_name=DEFAULT_SOURCE_NAME,
+    render_config=None,
+):
     """Interpret a semicolon or newline separated program."""
     return _interpret_ast(
         DiceParser(Lexer(text, source_name=source_name)).parse(),
@@ -362,16 +391,25 @@ def interpret_file(text, roundlevel=0, executor=None, interpreter=None, current_
         executor=executor,
         interpreter=interpreter,
         current_dir=current_dir,
+        render_config=render_config,
     )
 
 
 class DiceSession(object):
     """Stateful Python-facing wrapper around the dice interpreter."""
 
-    def __init__(self, roundlevel=0, executor=None, current_dir=None):
+    def __init__(self, roundlevel=0, executor=None, current_dir=None, render_config=None):
         self.roundlevel = roundlevel
         self.current_dir = os.path.abspath(current_dir if current_dir is not None else os.getcwd())
-        self.interpreter = Interpreter(None, executor=executor, current_dir=self.current_dir)
+        session_render_config = (
+            render_config if render_config is not None else NON_BLOCKING_RENDER_CONFIG
+        )
+        self.interpreter = Interpreter(
+            None,
+            executor=executor,
+            current_dir=self.current_dir,
+            render_config=session_render_config,
+        )
 
     def __call__(self, text, current_dir=None):
         call_dir = self.current_dir if current_dir is None else os.path.abspath(current_dir)
@@ -393,8 +431,13 @@ class DiceSession(object):
         return self.interpreter.register_function(function, name=name)
 
 
-def dice_interpreter(roundlevel=0, current_dir=None, executor=None):
-    return DiceSession(roundlevel=roundlevel, current_dir=current_dir, executor=executor)
+def dice_interpreter(roundlevel=0, current_dir=None, executor=None, render_config=None):
+    return DiceSession(
+        roundlevel=roundlevel,
+        current_dir=current_dir,
+        executor=executor,
+        render_config=render_config,
+    )
 
 
 def print_interactive_error(error):
@@ -408,7 +451,11 @@ def print_interactive_error(error):
 
 def runinteractive(args):
     """Run a simple interactive shell."""
-    interpreter = Interpreter(None, current_dir=os.getcwd())
+    interpreter = Interpreter(
+        None,
+        current_dir=os.getcwd(),
+        render_config=NON_BLOCKING_RENDER_CONFIG,
+    )
     state = {"roundlevel": args.roundlevel}
     json_output = getattr(args, "json_output", False)
     history_path = _setup_repl_history()
