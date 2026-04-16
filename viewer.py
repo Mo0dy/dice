@@ -128,14 +128,14 @@ def _category_positions(values):
 def _common_axis_name(results):
     if not results:
         return "Sweep 1"
-    names = []
+    explicit_names = []
     for result in results:
         axis = result.axes[0]
-        names.append(_fallback_axis_name(axis, 0))
-    first = names[0]
-    if all(name == first for name in names):
-        return first
-    raise Exception("Viewer exception: render comparison requires matching sweep axis names")
+        if axis.name and not axis.name.startswith("sweep_"):
+            explicit_names.append(axis.name)
+    if explicit_names and len(set(explicit_names)) == 1:
+        return explicit_names[0]
+    return "Sweep 1"
 
 
 def _validate_same_axis_values(results):
@@ -145,13 +145,23 @@ def _validate_same_axis_values(results):
             raise Exception("Viewer exception: render comparison requires matching sweep axis values")
 
 
-def _validate_outcome_domains(results):
+def _validate_outcome_domains(distributions):
     outcome_types = set()
-    for result in results:
-        for outcome in result.only_distribution().keys():
+    for distribution in distributions:
+        for outcome in distribution.keys():
             outcome_types.add(isinstance(outcome, (int, float)))
     if len(outcome_types) > 1:
         raise Exception("Viewer exception: render comparison requires consistent outcome domains")
+
+
+def _iter_result_distributions(results):
+    for result in results:
+        for distribution in result.cells.values():
+            yield distribution
+
+
+def _all_bernoulli(results):
+    return all(set(distribution.keys()).issubset({0, 1}) for distribution in _iter_result_distributions(results))
 
 
 def build_render_spec(result):
@@ -177,14 +187,33 @@ def build_comparison_spec(entries):
     results = [_coerce_to_distributions(result) for result in raw_results]
 
     if all(result.is_unswept() for result in results):
-        _validate_outcome_domains(results)
+        _validate_outcome_domains(result.only_distribution() for result in results)
         return RenderSpec("compare_bar", "Outcome", "Probability", tuple(labels)), results
 
     if all(len(result.axes) == 1 and _all_scalar(result) for result in results):
         _validate_same_axis_values(results)
         return RenderSpec("compare_line", _common_axis_name(results), "Value", tuple(labels)), results
 
-    raise Exception("Viewer exception: render comparison only supports unswept distributions or one-sweep scalar results")
+    if all(len(result.axes) == 1 for result in results):
+        _validate_same_axis_values(results)
+        _validate_outcome_domains(_iter_result_distributions(results))
+        if _all_bernoulli(results):
+            return RenderSpec(
+                "compare_probability_line",
+                _common_axis_name(results),
+                "Probability",
+                tuple(labels),
+            ), results
+        return RenderSpec(
+            "compare_distribution_line",
+            _common_axis_name(results),
+            "Probability",
+            tuple(labels),
+        ), results
+
+    raise Exception(
+        "Viewer exception: render comparison only supports unswept distributions, one-sweep scalar results, or one-sweep distribution results"
+    )
 
 
 def _plot_unswept_bar(ax, result, label=None, render_config=None):
@@ -332,6 +361,39 @@ def render_comparison(entries, x_label=None, title=None, render_config=None):
         if tick_labels is not None:
             ax.set_xticks(positions)
             ax.set_xticklabels(tick_labels)
+    elif spec.kind == "compare_probability_line":
+        x_values = results[0].axes[0].values
+        positions, tick_labels = _category_positions(x_values)
+        for label, result in zip(spec.series_labels, results):
+            y_values = [
+                _scale_probability(result.cells[(value,)][1], render_config=render_config)
+                for value in x_values
+            ]
+            ax.plot(positions, y_values, marker="o", label=label)
+        if tick_labels is not None:
+            ax.set_xticks(positions)
+            ax.set_xticklabels(tick_labels)
+    elif spec.kind == "compare_distribution_line":
+        x_values = results[0].axes[0].values
+        positions, tick_labels = _category_positions(x_values)
+        all_outcomes = []
+        seen = set()
+        for result in results:
+            for distribution in result.cells.values():
+                for outcome in _ordered_values(distribution.keys()):
+                    if outcome not in seen:
+                        all_outcomes.append(outcome)
+                        seen.add(outcome)
+        for label, result in zip(spec.series_labels, results):
+            for outcome in all_outcomes:
+                y_values = [
+                    _scale_probability(result.cells[(value,)][outcome], render_config=render_config)
+                    for value in x_values
+                ]
+                ax.plot(positions, y_values, marker="o", label="{}: {}".format(label, outcome))
+        if tick_labels is not None:
+            ax.set_xticks(positions)
+            ax.set_xticklabels(tick_labels)
     else:
         raise Exception("Viewer exception: unsupported comparison render kind {}".format(spec.kind))
 
@@ -339,7 +401,7 @@ def render_comparison(entries, x_label=None, title=None, render_config=None):
         ax.set_title(title)
         _set_window_title(figure, title)
     ax.set_xlabel(x_label if x_label is not None else spec.x_label)
-    if spec.kind == "compare_bar":
+    if spec.kind == "compare_bar" or spec.kind == "compare_probability_line" or spec.kind == "compare_distribution_line":
         ax.set_ylabel(render_config.probability_axis_label(default="percent"))
     else:
         ax.set_ylabel(spec.y_label)

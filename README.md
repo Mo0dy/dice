@@ -190,6 +190,7 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 - `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
 - Axis labels come from named sweeps like `[AC:10..20]`.
 - Unnamed sweeps still render, but use fallback axis labels.
+- Comparison renders align one-sweep results by their sweep values; matching names help with labels but are not required.
 - render probability displays default to percentages.
 - Supported quick-render shapes are:
   unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.

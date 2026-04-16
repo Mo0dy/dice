@@ -147,6 +147,22 @@ class ViewerSpecTest(unittest.TestCase):
         self.assertEqual(spec.kind, "compare_line")
         self.assertEqual(spec.x_label, "AC")
 
+    def test_comparison_of_bernoulli_sweeps_uses_probability_overlay_spec(self):
+        spec, _ = viewer.build_comparison_spec([
+            ("a", interpret_statement("d20 >= [AC:10:12]")),
+            ("b", interpret_statement("d20 >= [AC:10:12]")),
+        ])
+        self.assertEqual(spec.kind, "compare_probability_line")
+        self.assertEqual(spec.x_label, "AC")
+
+    def test_comparison_of_distribution_sweeps_allows_unnamed_axes(self):
+        spec, _ = viewer.build_comparison_spec([
+            ("a", interpret_statement("d2 + [10:12]")),
+            ("b", interpret_statement("d2 + [10:12]")),
+        ])
+        self.assertEqual(spec.kind, "compare_distribution_line")
+        self.assertEqual(spec.x_label, "Sweep 1")
+
     def test_comparison_rejects_incompatible_sweep_values(self):
         with self.assertRaisesRegex(Exception, "matching sweep axis values"):
             viewer.build_comparison_spec([
@@ -154,11 +170,11 @@ class ViewerSpecTest(unittest.TestCase):
                 ("b", interpret_statement("~(d20 >= [AC:11:13] -> 7 | 0)")),
             ])
 
-    def test_comparison_rejects_heatmap_shapes(self):
-        with self.assertRaisesRegex(Exception, "only supports unswept distributions or one-sweep scalar results"):
+    def test_comparison_rejects_two_sweep_distribution_shapes(self):
+        with self.assertRaisesRegex(Exception, "one-sweep distribution results"):
             viewer.build_comparison_spec([
-                ("a", interpret_statement("d20 >= [AC:10:12]")),
-                ("b", interpret_statement("d20 >= [AC:10:12]")),
+                ("a", interpret_statement("d20 + [AC:10:11] + [BONUS:1:2]")),
+                ("b", interpret_statement("d20 + [AC:10:11] + [BONUS:1:2]")),
             ])
 
     def test_render_rejects_unsupported_shape(self):
