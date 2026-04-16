@@ -111,6 +111,8 @@ class Executor(ABC):
             "std",
             "cum",
             "surv",
+            "type",
+            "shape",
             "repeat_sum",
             "sumover",
             "total",
@@ -174,6 +176,12 @@ class Executor(ABC):
     @abstractmethod
     def sample(self, value):
         raise NotImplementedError
+
+    def type(self, value):
+        return diceengine.runtime_type(value)
+
+    def shape(self, value):
+        return diceengine.runtime_shape(value)
 
     @abstractmethod
     def reselse(self, condition, distrib_if, distrib_else):

@@ -40,6 +40,14 @@ class CliFormattingTest(unittest.TestCase):
         rendered = dice._format_result_text(interpret_statement("~(d20 >= 11 -> 5 | 0)", roundlevel=2), roundlevel=2)
         self.assertEqual(rendered, "2.50")
 
+    def test_string_result_renders_directly(self):
+        rendered = dice._format_result_text(interpret_statement("type(d20)"), roundlevel=2)
+        self.assertEqual(rendered, "Sweep[Distribution]")
+
+    def test_shape_result_renders_directly(self):
+        rendered = dice._format_result_text(interpret_statement("shape(d20 >= [AC:10:12])"), roundlevel=2)
+        self.assertEqual(rendered, "[AC: (10, 11, 12)]")
+
     def test_named_distribution_sweep_uses_table_header(self):
         rendered = dice._format_result_text(interpret_statement("d20 >= [AC:10:12]", roundlevel=2), roundlevel=2)
         self.assertEqual(
@@ -89,6 +97,16 @@ class CliFormattingTest(unittest.TestCase):
                 {"outcome": 1, "probability": 0.5},
             ],
         )
+
+    def test_json_output_serializes_string_result(self):
+        rendered = dice._format_result_json(interpret_statement("type(d20)"), roundlevel=2)
+        payload = json.loads(rendered)
+        self.assertEqual(payload, {"type": "string", "value": "Sweep[Distribution]"})
+
+    def test_json_output_serializes_shape_string_result(self):
+        rendered = dice._format_result_json(interpret_statement("shape(d20 >= [AC:10:12])"), roundlevel=2)
+        payload = json.loads(rendered)
+        self.assertEqual(payload, {"type": "string", "value": "[AC: (10, 11, 12)]"})
 
     def test_raw_probability_mode_uses_raw_text_probabilities(self):
         rendered = dice._format_result_text(
@@ -351,6 +369,19 @@ class CliMainIntegrationTest(unittest.TestCase):
                     exit_code = dice.main()
             self.assertEqual(exit_code, 0)
             self.assertEqual(stdout.getvalue(), "2\n")
+        finally:
+            os.unlink(path)
+
+    def test_main_file_print_statement_uses_cli_formatting(self):
+        with tempfile.NamedTemporaryFile("w+", suffix=".dice", delete=False) as handle:
+            handle.write("print d20 >= 11\n")
+            path = handle.name
+        try:
+            with mock.patch.object(sys, "argv", ["dice.py", "--file", path]):
+                with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                    exit_code = dice.main()
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(stdout.getvalue(), "  0: 50%\n  1: 50%\n(E): 0.50\n")
         finally:
             os.unlink(path)
 

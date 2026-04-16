@@ -51,6 +51,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `var(expr)` and `std(expr)` return variance and standard deviation as degenerate distributions.
 - `cum(expr)` returns the cumulative form of a numeric distribution using `P(X <= x)` at each outcome.
 - `surv(expr)` returns the survival form of a numeric distribution using `P(X > x)` at each outcome.
+- `type(expr)` returns the outer runtime shape as a string such as `Sweep[Distribution]`.
+- `shape(expr)` returns the sweep axes as a string such as `[AC: (10, 11, 12)]`.
 - operator-backed semantics are also available as functions such as `add(...)`, `roll(...)`, `greaterorequal(...)`, and `reselse(...)`.
 - `( ... )` groups expressions.
 

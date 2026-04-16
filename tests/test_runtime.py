@@ -137,6 +137,30 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[3], 0.25)
         self.assertAlmostEqual(result[4], 0.0)
 
+    def test_type_reports_outer_runtime_shape_for_distribution(self):
+        result = interpret_statement("type(d20)")
+        self.assertEqual(result, "Sweep[Distribution]")
+
+    def test_type_reports_raw_scalar_literal_shape(self):
+        result = interpret_statement("type(1)")
+        self.assertEqual(result, "int")
+
+    def test_shape_reports_empty_axes_for_unswept_expression(self):
+        result = interpret_statement("shape(d20)")
+        self.assertEqual(result, "[]")
+
+    def test_shape_reports_named_sweep_axes_and_values(self):
+        result = interpret_statement("shape(d20 >= [AC:10:12])")
+        self.assertEqual(result, "[AC: (10, 11, 12)]")
+
+    def test_shape_reports_sweep_literal_axes_and_values(self):
+        result = interpret_statement("shape([party:1, 2, 3])")
+        self.assertEqual(result, "[party: (1, 2, 3)]")
+
+    def test_shape_reports_multiple_axis_names(self):
+        result = interpret_statement("shape([AC:10, 11] + [BONUS:1, 2])")
+        self.assertEqual(result, "[AC: (10, 11), BONUS: (1, 2)]")
+
     def test_cum_and_surv_preserve_existing_sweeps(self):
         result = interpret_statement("cum(d4 + [bonus:0, 1])")
         self.assertEqual(len(result.axes), 1)

@@ -426,6 +426,52 @@ def _coerce_value_to_sweep(value):
     return Sweep.scalar(value)
 
 
+def _runtime_type_name(value):
+    if isinstance(value, Distribution):
+        return "Distribution"
+    if isinstance(value, FiniteMeasure):
+        return "FiniteMeasure"
+    if isinstance(value, SweepValues):
+        return "SweepValues"
+    if isinstance(value, Sweep):
+        cell_type_names = tuple(dict.fromkeys(_runtime_type_name(cell) for cell in value.values()))
+        if len(cell_type_names) == 1:
+            return "Sweep[{}]".format(cell_type_names[0])
+        return "Sweep[mixed:{}]".format(", ".join(cell_type_names))
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    if isinstance(value, str):
+        return "str"
+    runtime_error("unsupported runtime value {}".format(type(value)))
+
+
+def runtime_type(value):
+    return _runtime_type_name(value)
+
+
+def _runtime_shape_axis_entries(axes):
+    entries = []
+    unnamed_count = 0
+    for axis in axes:
+        if axis.name == axis.key or axis.name.startswith("sweep_"):
+            unnamed_count += 1
+            label = "<unnamed{}>".format(unnamed_count)
+        else:
+            label = axis.name
+        entries.append("{}: {}".format(label, repr(axis.values)))
+    return entries
+
+
+def runtime_shape(value):
+    if isinstance(value, SweepValues):
+        return "[{}]".format(", ".join(_runtime_shape_axis_entries((value.axis(),))))
+    if isinstance(value, Sweep):
+        return "[{}]".format(", ".join(_runtime_shape_axis_entries(value.axes)))
+    return "[]"
+
+
 def _coerce_to_measure_sweep(value):
     sweep = _coerce_value_to_sweep(value)
     return Sweep(sweep.axes, {coordinates: _coerce_to_measure_cell(cell) for coordinates, cell in sweep.items()})
