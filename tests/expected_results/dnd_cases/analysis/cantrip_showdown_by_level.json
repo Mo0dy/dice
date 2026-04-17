@@ -1,0 +1,347 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": "PLAN",
+      "values": [
+        "fire_bolt",
+        "sacred_flame",
+        "toll_the_dead",
+        "agonizing_eldritch_blast"
+      ]
+    },
+    {
+      "key": "sweep_1",
+      "name": "LEVEL",
+      "values": [
+        1,
+        5,
+        11,
+        17
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fire_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 4.125000000000002,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fire_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 8.25,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fire_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 11
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 12.375,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fire_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 17
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 16.49999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "sacred_flame"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 2.7,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "sacred_flame"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 5.3999999999999995,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "sacred_flame"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 11
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 8.099999999999998,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "sacred_flame"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 17
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 10.799999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "toll_the_dead"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 3.9,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "toll_the_dead"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 7.799999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "toll_the_dead"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 11
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 11.700000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "toll_the_dead"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 17
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 15.599999999999998,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "agonizing_eldritch_blast"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 1
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 6.450000000000002,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "agonizing_eldritch_blast"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 12.90000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "agonizing_eldritch_blast"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 11
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 19.350000000000016,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "agonizing_eldritch_blast"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 17
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 25.800000000000036,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

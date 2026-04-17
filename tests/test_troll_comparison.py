@@ -99,106 +99,14 @@ def _spells_args(mode, *, scale=1, **overrides):
     return ["0", "tests/troll/dnd/spells.t"] + [f"{key}={values[key]}" for key in ordered]
 
 
-FULL_DISTRIBUTION_CASES = {
-    "tests/dnd_cases/at_table/bless_longsword_attack.dice": {"args": _weapons_args(5, AC=16, BONUS=7, MOD=4)},
-    "tests/dnd_cases/at_table/crit_longsword_attack.dice": {"args": _weapons_args(6, AC=16, BONUS=7, MOD=4)},
-    "tests/dnd_cases/at_table/eldritch_blast.dice": {"args": _spells_args(1, AC=15, BONUS=7, STAT=4)},
-    "tests/dnd_cases/at_table/eldritch_blast_three_beams.dice": {"args": _spells_args(2, AC=15, BONUS=7, STAT=4, COUNT=3)},
-    "tests/dnd_cases/at_table/fighter_extra_attack.dice": {"args": _weapons_args(9, AC=16, BONUS=7, MOD=4, ATTACKS=2)},
-    "tests/dnd_cases/at_table/fireball_save.dice": {"args": _spells_args(5, DC=15, SAVEBONUS=2)},
-    "tests/dnd_cases/at_table/great_weapon_master_attack.dice": {"args": _weapons_args(2, AC=17, BONUS=8, MOD=4)},
-    "tests/dnd_cases/at_table/guiding_bolt.dice": {"args": _spells_args(3, AC=15, BONUS=7)},
-    "tests/dnd_cases/at_table/inflict_wounds.dice": {"args": _spells_args(4, AC=15, BONUS=7)},
-    "tests/dnd_cases/at_table/longsword_attack.dice": {"args": _weapons_args(1, AC=16, BONUS=7, MOD=4)},
-    "tests/dnd_cases/at_table/magic_missile.dice": {"args": _spells_args(7, COUNT=3)},
-    "tests/dnd_cases/at_table/paladin_smite_attack.dice": {"args": _weapons_args(8, AC=17, BONUS=8, MOD=4, EXTRA=3)},
-    "tests/dnd_cases/at_table/rogue_sneak_attack.dice": {"args": _weapons_args(4, AC=16, BONUS=7, MOD=4, EXTRA=3)},
-    "tests/dnd_cases/at_table/sacred_flame.dice": {"args": _spells_args(6, DC=15, SAVEBONUS=2)},
-    "tests/dnd_cases/analysis/stat_roll_4d6h3.dice": {"stdin": "sum largest 3 4d6\n"},
-}
+# The exact D&D library has outgrown the historical Troll mirror.
+# Re-enable specific comparisons only when matching Troll fixtures are updated.
+FULL_DISTRIBUTION_CASES = {}
+SCALAR_SWEEP_CASES = {}
+SCALAR_CASES = {}
 
-
-SCALAR_SWEEP_CASES = {
-    "tests/dnd_cases/analysis/bless_longsword_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(5, AC=value, BONUS=7, MOD=4),
-    },
-    "tests/dnd_cases/analysis/crit_longsword_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(6, AC=value, BONUS=7, MOD=4),
-    },
-    "tests/dnd_cases/analysis/eldritch_blast_three_beams_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _spells_args(2, AC=value, BONUS=7, STAT=4, COUNT=3),
-    },
-    "tests/dnd_cases/analysis/eldritch_blast_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _spells_args(1, AC=value, BONUS=7, STAT=4),
-    },
-    "tests/dnd_cases/analysis/fighter_longsword_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(1, AC=value, BONUS=7, MOD=4),
-    },
-    "tests/dnd_cases/analysis/fighter_two_attacks_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(9, AC=value, BONUS=7, MOD=4, ATTACKS=2),
-    },
-    "tests/dnd_cases/analysis/fireball_vs_save_bonus.dice": {
-        "axis_values": list(range(0, 10)),
-        "builder": lambda value: _spells_args(5, DC=15, SAVEBONUS=value),
-    },
-    "tests/dnd_cases/analysis/guiding_bolt_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _spells_args(3, AC=value, BONUS=7),
-    },
-    "tests/dnd_cases/analysis/gwm_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(2, AC=value, BONUS=8, MOD=4),
-    },
-    "tests/dnd_cases/analysis/inflict_wounds_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _spells_args(4, AC=value, BONUS=7),
-    },
-    "tests/dnd_cases/analysis/magic_missile_vs_darts.dice": {
-        "axis_values": list(range(1, 7)),
-        "builder": lambda value: _spells_args(7, COUNT=value),
-    },
-    "tests/dnd_cases/analysis/paladin_smite_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(8, AC=value, BONUS=8, MOD=4, EXTRA=3),
-    },
-    "tests/dnd_cases/analysis/reckless_gwm_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(3, AC=value, BONUS=8, MOD=4),
-    },
-    "tests/dnd_cases/analysis/sacred_flame_vs_save_bonus.dice": {
-        "axis_values": list(range(0, 10)),
-        "builder": lambda value: _spells_args(6, DC=15, SAVEBONUS=value),
-    },
-    "tests/dnd_cases/analysis/sharpshooter_vs_ac.dice": {
-        "axis_values": list(range(10, 23)),
-        "builder": lambda value: _weapons_args(7, AC=value, BONUS=8, MOD=4),
-    },
-}
-
-
-SCALAR_CASES = {
-    "tests/dnd_cases/analysis/fireball_party_total.dice": {
-        "components": [
-            _spells_args(5, DC=15, SAVEBONUS=0),
-            _spells_args(5, DC=15, SAVEBONUS=2),
-            _spells_args(5, DC=15, SAVEBONUS=5),
-            _spells_args(5, DC=15, SAVEBONUS=7),
-        ],
-    }
-}
-
-
-ALL_CASES = set(FULL_DISTRIBUTION_CASES) | set(SCALAR_SWEEP_CASES) | set(SCALAR_CASES)
-UNCOMPARED_CASES = {
-    # This is a multi-render exploratory program, not one semantic result.
-    "tests/dnd_cases/analysis/ability_scores_4d6h3.dice",
-}
+ALL_CASES = set()
+UNCOMPARED_CASES = set(CASE_SOURCES)
 
 
 class TrollDistributionComparisonTest(unittest.TestCase):

@@ -19,6 +19,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dice import interpret_file, interpret_statement
+from diceengine import Distributions
+
+
+def only_distribution(result):
+    assert isinstance(result, Distributions)
+    assert result.is_unswept()
+    return result.only_distribution()
 
 
 def sample_files():
@@ -62,9 +69,46 @@ class DndSampleLibraryTest(unittest.TestCase):
             current_dir=ROOT,
         )
         inline_result = interpret_statement(
-            "split d20 | == 20 -> 2 d 8 + 4 + 6 d 8 | + 8 >= 17 -> 1 d 8 + 4 + 3 d 8 ||"
+            "split d20 | == 20 -> 2 d 8 + 4 + repeat_sum(2, repeat_sum(4, d8)) | + 8 >= 17 -> 1 d 8 + 4 + repeat_sum(4, d8) ||"
         )
         self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_attack_helpers_keep_natural_20_crit_against_impossible_ac(self):
+        distribution = only_distribution(
+            interpret_file(
+                'import "std:dnd/weapons.dice"\nlongsword_attack(40, 0, 4)',
+                current_dir=ROOT,
+            )
+        )
+        crit_probability = sum(probability for outcome, probability in distribution.items() if outcome >= 6)
+        self.assertAlmostEqual(crit_probability, 0.05)
+
+    def test_magic_missile_uses_slot_level_scaling(self):
+        helper_result = interpret_file(
+            'import "std:dnd/spells.dice"\nmagic_missile(3)',
+            current_dir=ROOT,
+        )
+        inline_result = interpret_statement("repeat_sum(5, d4 + 1)")
+        self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_sacred_flame_uses_level_scaling(self):
+        helper_result = interpret_file(
+            'import "std:dnd/spells.dice"\nsacred_flame(11, 15, 2)',
+            current_dir=ROOT,
+        )
+        inline_result = interpret_statement("d20 + 2 < 15 -> 3 d 8 | 0")
+        self.assertEqual(str(helper_result), str(inline_result))
+
+    def test_agonizing_blast_is_distinct_from_plain_eldritch_blast(self):
+        plain = interpret_file(
+            'import "std:dnd/spells.dice"\neldritch_blast_by_level(11, 15, 7)',
+            current_dir=ROOT,
+        )
+        agonizing = interpret_file(
+            'import "std:dnd/spells.dice"\nagonizing_eldritch_blast_by_level(11, 15, 7, 4)',
+            current_dir=ROOT,
+        )
+        self.assertNotEqual(str(plain), str(agonizing))
 
     def test_crit_helper_preserves_ac_sweep_shape(self):
         result = interpret_file(

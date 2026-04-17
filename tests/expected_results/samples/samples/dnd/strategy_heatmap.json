@@ -5,9 +5,10 @@
       "name": "PLAN",
       "values": [
         "fighter_two_attacks",
+        "great_weapon_master",
         "paladin_smite",
-        "sharpshooter",
-        "eldritch_blast"
+        "hunters_mark_longbow",
+        "agonizing_eldritch_blast"
       ]
     },
     {
@@ -46,7 +47,7 @@
       ],
       "distribution": [
         {
-          "outcome": 15.300000000000006,
+          "outcome": 15.750000000000009,
           "probability": 1.0
         }
       ]
@@ -66,7 +67,7 @@
       ],
       "distribution": [
         {
-          "outcome": 14.450000000000006,
+          "outcome": 14.900000000000006,
           "probability": 1.0
         }
       ]
@@ -86,7 +87,7 @@
       ],
       "distribution": [
         {
-          "outcome": 13.600000000000003,
+          "outcome": 14.05,
           "probability": 1.0
         }
       ]
@@ -106,7 +107,7 @@
       ],
       "distribution": [
         {
-          "outcome": 12.750000000000002,
+          "outcome": 13.2,
           "probability": 1.0
         }
       ]
@@ -122,6 +123,246 @@
           "axis_key": "sweep_1",
           "axis_name": "AC",
           "value": 14
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 12.349999999999996,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 15
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 11.499999999999996,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 16
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 10.649999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 17
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 9.799999999999997,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 18
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 8.950000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 19
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 8.1,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 20
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 7.249999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 21
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 6.4,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fighter_two_attacks"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 22
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 5.550000000000002,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "great_weapon_master"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 10
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 15.049999999999997,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "great_weapon_master"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 11
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 14.0,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "great_weapon_master"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 12
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 12.95,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "great_weapon_master"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 13
         }
       ],
       "distribution": [
@@ -136,7 +377,27 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "AC",
+          "value": 14
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 10.85,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -146,7 +407,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.049999999999999,
+          "outcome": 9.799999999999999,
           "probability": 1.0
         }
       ]
@@ -156,7 +417,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -166,7 +427,7 @@
       ],
       "distribution": [
         {
-          "outcome": 10.199999999999998,
+          "outcome": 8.749999999999998,
           "probability": 1.0
         }
       ]
@@ -176,7 +437,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -186,7 +447,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.35,
+          "outcome": 7.700000000000002,
           "probability": 1.0
         }
       ]
@@ -196,7 +457,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -206,7 +467,7 @@
       ],
       "distribution": [
         {
-          "outcome": 8.499999999999998,
+          "outcome": 6.650000000000001,
           "probability": 1.0
         }
       ]
@@ -216,7 +477,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -226,7 +487,7 @@
       ],
       "distribution": [
         {
-          "outcome": 7.649999999999998,
+          "outcome": 5.6000000000000005,
           "probability": 1.0
         }
       ]
@@ -236,7 +497,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -246,7 +507,7 @@
       ],
       "distribution": [
         {
-          "outcome": 6.799999999999998,
+          "outcome": 4.550000000000002,
           "probability": 1.0
         }
       ]
@@ -256,7 +517,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -266,7 +527,7 @@
       ],
       "distribution": [
         {
-          "outcome": 5.949999999999999,
+          "outcome": 3.5,
           "probability": 1.0
         }
       ]
@@ -276,7 +537,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "fighter_two_attacks"
+          "value": "great_weapon_master"
         },
         {
           "axis_key": "sweep_1",
@@ -286,7 +547,7 @@
       ],
       "distribution": [
         {
-          "outcome": 5.100000000000001,
+          "outcome": 2.45,
           "probability": 1.0
         }
       ]
@@ -306,7 +567,7 @@
       ],
       "distribution": [
         {
-          "outcome": 21.8,
+          "outcome": 26.3,
           "probability": 1.0
         }
       ]
@@ -326,7 +587,7 @@
       ],
       "distribution": [
         {
-          "outcome": 20.7,
+          "outcome": 24.975,
           "probability": 1.0
         }
       ]
@@ -346,7 +607,7 @@
       ],
       "distribution": [
         {
-          "outcome": 19.599999999999998,
+          "outcome": 23.65,
           "probability": 1.0
         }
       ]
@@ -366,7 +627,7 @@
       ],
       "distribution": [
         {
-          "outcome": 18.499999999999996,
+          "outcome": 22.325000000000003,
           "probability": 1.0
         }
       ]
@@ -386,7 +647,7 @@
       ],
       "distribution": [
         {
-          "outcome": 17.399999999999995,
+          "outcome": 21.0,
           "probability": 1.0
         }
       ]
@@ -406,7 +667,7 @@
       ],
       "distribution": [
         {
-          "outcome": 16.299999999999997,
+          "outcome": 19.675,
           "probability": 1.0
         }
       ]
@@ -426,7 +687,7 @@
       ],
       "distribution": [
         {
-          "outcome": 15.2,
+          "outcome": 18.349999999999998,
           "probability": 1.0
         }
       ]
@@ -446,7 +707,7 @@
       ],
       "distribution": [
         {
-          "outcome": 14.1,
+          "outcome": 17.025000000000002,
           "probability": 1.0
         }
       ]
@@ -466,7 +727,7 @@
       ],
       "distribution": [
         {
-          "outcome": 13.000000000000002,
+          "outcome": 15.700000000000001,
           "probability": 1.0
         }
       ]
@@ -486,7 +747,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.899999999999999,
+          "outcome": 14.375,
           "probability": 1.0
         }
       ]
@@ -506,7 +767,7 @@
       ],
       "distribution": [
         {
-          "outcome": 10.800000000000004,
+          "outcome": 13.05,
           "probability": 1.0
         }
       ]
@@ -526,7 +787,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.700000000000003,
+          "outcome": 11.725000000000001,
           "probability": 1.0
         }
       ]
@@ -546,7 +807,7 @@
       ],
       "distribution": [
         {
-          "outcome": 8.600000000000003,
+          "outcome": 10.4,
           "probability": 1.0
         }
       ]
@@ -556,7 +817,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -566,7 +827,7 @@
       ],
       "distribution": [
         {
-          "outcome": 12.950000000000001,
+          "outcome": 11.8,
           "probability": 1.0
         }
       ]
@@ -576,7 +837,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -586,7 +847,7 @@
       ],
       "distribution": [
         {
-          "outcome": 12.025,
+          "outcome": 11.8,
           "probability": 1.0
         }
       ]
@@ -596,7 +857,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -606,7 +867,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.1,
+          "outcome": 11.199999999999998,
           "probability": 1.0
         }
       ]
@@ -616,7 +877,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -626,7 +887,7 @@
       ],
       "distribution": [
         {
-          "outcome": 10.174999999999999,
+          "outcome": 10.6,
           "probability": 1.0
         }
       ]
@@ -636,7 +897,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -646,7 +907,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.249999999999998,
+          "outcome": 9.999999999999998,
           "probability": 1.0
         }
       ]
@@ -656,7 +917,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -666,7 +927,7 @@
       ],
       "distribution": [
         {
-          "outcome": 8.325,
+          "outcome": 9.399999999999999,
           "probability": 1.0
         }
       ]
@@ -676,7 +937,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -686,7 +947,7 @@
       ],
       "distribution": [
         {
-          "outcome": 7.3999999999999995,
+          "outcome": 8.799999999999999,
           "probability": 1.0
         }
       ]
@@ -696,7 +957,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -706,7 +967,7 @@
       ],
       "distribution": [
         {
-          "outcome": 6.475,
+          "outcome": 8.2,
           "probability": 1.0
         }
       ]
@@ -716,7 +977,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -726,7 +987,7 @@
       ],
       "distribution": [
         {
-          "outcome": 5.55,
+          "outcome": 7.6000000000000005,
           "probability": 1.0
         }
       ]
@@ -736,7 +997,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -746,7 +1007,7 @@
       ],
       "distribution": [
         {
-          "outcome": 4.625,
+          "outcome": 6.999999999999999,
           "probability": 1.0
         }
       ]
@@ -756,7 +1017,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -766,7 +1027,7 @@
       ],
       "distribution": [
         {
-          "outcome": 3.7,
+          "outcome": 6.399999999999999,
           "probability": 1.0
         }
       ]
@@ -776,7 +1037,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -786,7 +1047,7 @@
       ],
       "distribution": [
         {
-          "outcome": 2.775000000000001,
+          "outcome": 5.8,
           "probability": 1.0
         }
       ]
@@ -796,7 +1057,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "sharpshooter"
+          "value": "hunters_mark_longbow"
         },
         {
           "axis_key": "sweep_1",
@@ -806,7 +1067,7 @@
       ],
       "distribution": [
         {
-          "outcome": 1.85,
+          "outcome": 5.2,
           "probability": 1.0
         }
       ]
@@ -816,7 +1077,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -826,7 +1087,7 @@
       ],
       "distribution": [
         {
-          "outcome": 25.650000000000016,
+          "outcome": 26.47500000000004,
           "probability": 1.0
         }
       ]
@@ -836,7 +1097,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -846,7 +1107,7 @@
       ],
       "distribution": [
         {
-          "outcome": 24.225000000000012,
+          "outcome": 25.05000000000005,
           "probability": 1.0
         }
       ]
@@ -856,7 +1117,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -866,7 +1127,7 @@
       ],
       "distribution": [
         {
-          "outcome": 22.800000000000008,
+          "outcome": 23.62500000000004,
           "probability": 1.0
         }
       ]
@@ -876,7 +1137,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -886,7 +1147,7 @@
       ],
       "distribution": [
         {
-          "outcome": 21.37500000000001,
+          "outcome": 22.20000000000003,
           "probability": 1.0
         }
       ]
@@ -896,7 +1157,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -906,7 +1167,7 @@
       ],
       "distribution": [
         {
-          "outcome": 19.95,
+          "outcome": 20.77500000000002,
           "probability": 1.0
         }
       ]
@@ -916,7 +1177,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -926,7 +1187,7 @@
       ],
       "distribution": [
         {
-          "outcome": 18.525,
+          "outcome": 19.350000000000016,
           "probability": 1.0
         }
       ]
@@ -936,7 +1197,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -946,7 +1207,7 @@
       ],
       "distribution": [
         {
-          "outcome": 17.099999999999998,
+          "outcome": 17.925000000000015,
           "probability": 1.0
         }
       ]
@@ -956,7 +1217,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -966,7 +1227,7 @@
       ],
       "distribution": [
         {
-          "outcome": 15.67499999999999,
+          "outcome": 16.500000000000007,
           "probability": 1.0
         }
       ]
@@ -976,7 +1237,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -986,7 +1247,7 @@
       ],
       "distribution": [
         {
-          "outcome": 14.249999999999993,
+          "outcome": 15.075000000000006,
           "probability": 1.0
         }
       ]
@@ -996,7 +1257,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -1006,7 +1267,7 @@
       ],
       "distribution": [
         {
-          "outcome": 12.825000000000001,
+          "outcome": 13.650000000000002,
           "probability": 1.0
         }
       ]
@@ -1016,7 +1277,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -1026,7 +1287,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.400000000000002,
+          "outcome": 12.224999999999996,
           "probability": 1.0
         }
       ]
@@ -1036,7 +1297,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -1046,7 +1307,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.975,
+          "outcome": 10.8,
           "probability": 1.0
         }
       ]
@@ -1056,7 +1317,7 @@
         {
           "axis_key": "sweep_0",
           "axis_name": "PLAN",
-          "value": "eldritch_blast"
+          "value": "agonizing_eldritch_blast"
         },
         {
           "axis_key": "sweep_1",
@@ -1066,7 +1327,7 @@
       ],
       "distribution": [
         {
-          "outcome": 8.55,
+          "outcome": 9.375000000000004,
           "probability": 1.0
         }
       ]

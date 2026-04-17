@@ -31,7 +31,7 @@
       ],
       "distribution": [
         {
-          "outcome": 12.600000000000003,
+          "outcome": 13.3,
           "probability": 1.0
         }
       ]
@@ -46,7 +46,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.9,
+          "outcome": 12.6,
           "probability": 1.0
         }
       ]
@@ -61,7 +61,7 @@
       ],
       "distribution": [
         {
-          "outcome": 11.200000000000001,
+          "outcome": 11.9,
           "probability": 1.0
         }
       ]
@@ -76,7 +76,7 @@
       ],
       "distribution": [
         {
-          "outcome": 10.500000000000002,
+          "outcome": 11.200000000000001,
           "probability": 1.0
         }
       ]
@@ -91,7 +91,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.800000000000002,
+          "outcome": 10.499999999999998,
           "probability": 1.0
         }
       ]
@@ -106,7 +106,7 @@
       ],
       "distribution": [
         {
-          "outcome": 9.100000000000001,
+          "outcome": 9.8,
           "probability": 1.0
         }
       ]
@@ -121,7 +121,7 @@
       ],
       "distribution": [
         {
-          "outcome": 8.4,
+          "outcome": 9.1,
           "probability": 1.0
         }
       ]
@@ -136,7 +136,7 @@
       ],
       "distribution": [
         {
-          "outcome": 7.6999999999999975,
+          "outcome": 8.4,
           "probability": 1.0
         }
       ]
@@ -151,7 +151,7 @@
       ],
       "distribution": [
         {
-          "outcome": 6.999999999999998,
+          "outcome": 7.699999999999999,
           "probability": 1.0
         }
       ]
@@ -166,7 +166,7 @@
       ],
       "distribution": [
         {
-          "outcome": 6.3,
+          "outcome": 6.999999999999999,
           "probability": 1.0
         }
       ]
@@ -181,7 +181,7 @@
       ],
       "distribution": [
         {
-          "outcome": 5.599999999999999,
+          "outcome": 6.3,
           "probability": 1.0
         }
       ]
@@ -196,7 +196,7 @@
       ],
       "distribution": [
         {
-          "outcome": 4.899999999999999,
+          "outcome": 5.6,
           "probability": 1.0
         }
       ]
@@ -211,7 +211,7 @@
       ],
       "distribution": [
         {
-          "outcome": 4.2,
+          "outcome": 4.899999999999999,
           "probability": 1.0
         }
       ]

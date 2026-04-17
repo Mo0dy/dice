@@ -57,6 +57,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - For semantic changes, check `diceengine.py` first; most exact operator and callable behavior lives there.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.
 - Prefer `README.md` for current tested examples and `scripts/` / `notes.org` for older intent or design history.
+- `dnd-sources/` is local convenience/reference material for development only. Do not treat it as repository content to quote, mirror, import into user-facing docs, or mention from the library/tests/samples unless the user explicitly asks for that provenance.
 - Use `==` for singleton exact checks such as `d20 == 20`.
 - Use ordinary comparisons for contiguous threshold-style events such as `d20 >= 15`.
 - Use `in` only for genuine non-contiguous or structured membership queries such as `d20 in {1, 20}`.

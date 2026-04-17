@@ -1,10 +1,36 @@
-# Spell-style examples built on the shared combat helpers.
+# Exact 2014 5e spell helpers.
 import "std:dnd/core.dice"
 
-eldritch_blast(ac, bonus, cha) = damage_on_hit(ac, bonus, 1 d 10 + cha)
-eldritch_blast_action(beams, ac, bonus, cha) = repeat_sum(beams, eldritch_blast(ac, bonus, cha))
-guiding_bolt(ac, bonus) = damage_on_hit(ac, bonus, 4 d 6)
-inflict_wounds(ac, bonus) = damage_on_hit(ac, bonus, 3 d 10)
-fireball(dc, save_bonus) = save_half(dc, save_bonus, 8 d 6)
-sacred_flame(dc, save_bonus) = save_fail(dc, save_bonus) -> 2 d 8 | 0
-magic_missile(darts) = darts d 4 + darts
+eldritch_blast(ac, bonus) = attack_damage(ac, bonus, d10, 2 d 10)
+eldritch_blast_action(beams, ac, bonus) = repeat_sum(beams, eldritch_blast(ac, bonus))
+eldritch_blast_by_level(level, ac, bonus) = eldritch_blast_action(eldritch_blast_beams(level), ac, bonus)
+
+agonizing_eldritch_blast(ac, bonus, cha) = attack_damage(ac, bonus, d10 + cha, 2 d 10 + cha)
+agonizing_eldritch_blast_action(beams, ac, bonus, cha) = repeat_sum(beams, agonizing_eldritch_blast(ac, bonus, cha))
+agonizing_eldritch_blast_by_level(level, ac, bonus, cha) = agonizing_eldritch_blast_action(eldritch_blast_beams(level), ac, bonus, cha)
+hex_eldritch_blast(ac, bonus, cha) = attack_damage(ac, bonus, d10 + cha + d6, 2 d 10 + cha + 2 d 6)
+hex_eldritch_blast_action(beams, ac, bonus, cha) = repeat_sum(beams, hex_eldritch_blast(ac, bonus, cha))
+
+fire_bolt(level, ac, bonus) = attack_damage(ac, bonus, cantrip_dice(level, 10), repeat_sum(2, cantrip_dice(level, 10)))
+ray_of_frost(level, ac, bonus) = attack_damage(ac, bonus, cantrip_dice(level, 8), repeat_sum(2, cantrip_dice(level, 8)))
+guiding_bolt(slot_level, ac, bonus) = attack_damage(ac, bonus, repeat_sum(slot_level + 3, d6), repeat_sum(2, repeat_sum(slot_level + 3, d6)))
+inflict_wounds(slot_level, ac, bonus) = attack_damage(ac, bonus, repeat_sum(slot_level + 2, d10), repeat_sum(2, repeat_sum(slot_level + 2, d10)))
+chromatic_orb(slot_level, ac, bonus) = attack_damage(ac, bonus, repeat_sum(slot_level + 2, d8), repeat_sum(2, repeat_sum(slot_level + 2, d8)))
+scorching_ray(slot_level, ac, bonus) = repeat_sum(slot_level + 1, attack_damage(ac, bonus, 2 d 6, 4 d 6))
+ice_knife(slot_level, ac, bonus, save_bonus, dc) = attack_damage(ac, bonus, d10, 2 d 10) + save_half(dc, save_bonus, repeat_sum(slot_level + 1, d6))
+
+magic_missile(slot_level) = repeat_sum(slot_level + 2, d4 + 1)
+magic_missile_darts(darts) = repeat_sum(darts, d4 + 1)
+
+burning_hands(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level + 2, d6))
+shatter(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level + 1, d8))
+fireball(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6))
+lightning_bolt(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6))
+spirit_guardians(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level, d8))
+moonbeam(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level, d10))
+cone_of_cold(slot_level, dc, save_bonus) = save_half(dc, save_bonus, repeat_sum(slot_level + 3, d8))
+disintegrate(slot_level, dc, save_bonus) = save_none(dc, save_bonus, repeat_sum(slot_level + slot_level + slot_level - 8, d6) + 40)
+
+sacred_flame(level, dc, save_bonus) = save_none(dc, save_bonus, cantrip_dice(level, 8))
+toll_the_dead(level, dc, save_bonus) = save_none(dc, save_bonus, cantrip_dice(level, 8))
+toll_the_dead_wounded(level, dc, save_bonus) = save_none(dc, save_bonus, cantrip_dice(level, 12))

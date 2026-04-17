@@ -33,7 +33,6 @@ DND_CASES = (
         "at_table",
         "bless_longsword_attack",
         """
-        # Fighter with bless attacking AC 16.
         import "std:dnd/weapons.dice"
 
         bless_longsword(16, 7, 4)
@@ -41,9 +40,26 @@ DND_CASES = (
     ),
     _case(
         "at_table",
+        "burning_hands_first_level",
+        """
+        import "std:dnd/spells.dice"
+
+        burning_hands(1, 14, 2)
+        """,
+    ),
+    _case(
+        "at_table",
+        "chromatic_orb_second_level",
+        """
+        import "std:dnd/spells.dice"
+
+        chromatic_orb(2, 15, 7)
+        """,
+    ),
+    _case(
+        "at_table",
         "crit_longsword_attack",
         """
-        # Shared-roll crit logic using split.
         import "std:dnd/weapons.dice"
 
         crit_longsword(16, 7, 4)
@@ -53,27 +69,33 @@ DND_CASES = (
         "at_table",
         "eldritch_blast",
         """
-        # Eldritch blast against a moderate AC target.
         import "std:dnd/spells.dice"
 
-        eldritch_blast(15, 7, 4)
+        eldritch_blast(15, 7)
         """,
     ),
     _case(
         "at_table",
         "eldritch_blast_three_beams",
         """
-        # High-level eldritch blast with three beams.
         import "std:dnd/spells.dice"
 
-        eldritch_blast_action(3, 15, 7, 4)
+        eldritch_blast_by_level(11, 15, 7)
+        """,
+    ),
+    _case(
+        "at_table",
+        "agonizing_eldritch_blast_three_beams",
+        """
+        import "std:dnd/spells.dice"
+
+        agonizing_eldritch_blast_by_level(11, 15, 7, 4)
         """,
     ),
     _case(
         "at_table",
         "fighter_extra_attack",
         """
-        # Fighter making two longsword attacks.
         import "std:dnd/weapons.dice"
 
         fighter_attack_action(2, 16, 7, 4)
@@ -81,19 +103,26 @@ DND_CASES = (
     ),
     _case(
         "at_table",
-        "fireball_save",
+        "fire_bolt_level_11",
         """
-        # Fireball against a creature with +2 Dexterity save.
         import "std:dnd/spells.dice"
 
-        fireball(15, 2)
+        fire_bolt(11, 15, 8)
+        """,
+    ),
+    _case(
+        "at_table",
+        "fireball_save",
+        """
+        import "std:dnd/spells.dice"
+
+        fireball(3, 15, 2)
         """,
     ),
     _case(
         "at_table",
         "great_weapon_master_attack",
         """
-        # Great weapon master swing into AC 17.
         import "std:dnd/weapons.dice"
 
         great_weapon_master(17, 8, 4)
@@ -101,29 +130,71 @@ DND_CASES = (
     ),
     _case(
         "at_table",
+        "greatsword_gwf_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        greatsword_attack_gwf(16, 7, 4)
+        """,
+    ),
+    _case(
+        "at_table",
         "guiding_bolt",
         """
-        # Guiding bolt against AC 15.
         import "std:dnd/spells.dice"
 
-        guiding_bolt(15, 7)
+        guiding_bolt(1, 15, 7)
+        """,
+    ),
+    _case(
+        "at_table",
+        "hunters_mark_longbow_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        hunters_mark_longbow(16, 9, 4)
+        """,
+    ),
+    _case(
+        "at_table",
+        "ice_knife_first_level",
+        """
+        import "std:dnd/spells.dice"
+
+        ice_knife(1, 15, 7, 2, 14)
         """,
     ),
     _case(
         "at_table",
         "inflict_wounds",
         """
-        # Inflict wounds against AC 15.
         import "std:dnd/spells.dice"
 
-        inflict_wounds(15, 7)
+        inflict_wounds(1, 15, 7)
+        """,
+    ),
+    _case(
+        "at_table",
+        "lightning_bolt_third_level",
+        """
+        import "std:dnd/spells.dice"
+
+        lightning_bolt(3, 15, 2)
+        """,
+    ),
+    _case(
+        "at_table",
+        "longbow_sharpshooter_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        longbow_sharpshooter(16, 9, 4)
         """,
     ),
     _case(
         "at_table",
         "longsword_attack",
         """
-        # Fighter with a longsword attacking AC 16.
         import "std:dnd/weapons.dice"
 
         longsword_attack(16, 7, 4)
@@ -133,7 +204,6 @@ DND_CASES = (
         "at_table",
         "magic_missile",
         """
-        # Third-level magic missile represented as three darts.
         import "std:dnd/spells.dice"
 
         magic_missile(3)
@@ -143,7 +213,6 @@ DND_CASES = (
         "at_table",
         "paladin_smite_attack",
         """
-        # Paladin smite into AC 17 with a third-level slot.
         import "std:dnd/weapons.dice"
 
         paladin_smite(17, 8, 4, 3)
@@ -151,9 +220,17 @@ DND_CASES = (
     ),
     _case(
         "at_table",
+        "paladin_smite_vs_fiend",
+        """
+        import "std:dnd/weapons.dice"
+
+        paladin_smite_vs_fiend(17, 8, 4, 5)
+        """,
+    ),
+    _case(
+        "at_table",
         "rogue_sneak_attack",
         """
-        # Rapier sneak attack with 3d6 bonus damage.
         import "std:dnd/weapons.dice"
 
         rapier_sneak_attack(16, 7, 4, 3)
@@ -163,27 +240,58 @@ DND_CASES = (
         "at_table",
         "sacred_flame",
         """
-        # Sacred flame against a creature with +2 Dexterity save.
         import "std:dnd/spells.dice"
 
-        sacred_flame(15, 2)
+        sacred_flame(5, 15, 2)
+        """,
+    ),
+    _case(
+        "at_table",
+        "scorching_ray_second_level",
+        """
+        import "std:dnd/spells.dice"
+
+        scorching_ray(2, 15, 7)
+        """,
+    ),
+    _case(
+        "at_table",
+        "shatter_second_level",
+        """
+        import "std:dnd/spells.dice"
+
+        shatter(2, 15, 1)
+        """,
+    ),
+    _case(
+        "at_table",
+        "spirit_guardians_third_level",
+        """
+        import "std:dnd/spells.dice"
+
+        spirit_guardians(3, 15, 2)
+        """,
+    ),
+    _case(
+        "at_table",
+        "toll_the_dead_wounded",
+        """
+        import "std:dnd/spells.dice"
+
+        toll_the_dead_wounded(11, 15, 2)
         """,
     ),
     _case(
         "analysis",
         "ability_scores_4d6h3",
         """
-        # D&D ability score analysis using classic 4d6 drop lowest.
-        #
-        # This fixture keeps the richer analysis that used to live in the sample tree,
-        # but it now belongs to the tests because it mainly exists to pin semantics.
+        import "std:dnd/core.dice"
 
         score = 4 d 6 h 3
-        mod(x) = (x - 10) / 2
 
         one_score_exact = score
         any_score_at_least_target = ((repeat_sum(6, score >= [TARGET:3:18])) >= 1) $ mean
-        total_modifier_sum = repeat_sum(6, mod(score))
+        total_modifier_sum = repeat_sum(6, ability_mod(score))
         at_least_one_exact_target = ((repeat_sum(6, score == [TARGET:3:18])) >= 1) $ mean
         one_score_greater_than_x = (score > [X:3:18]) $ mean
 
@@ -196,9 +304,17 @@ DND_CASES = (
     ),
     _case(
         "analysis",
+        "agonizing_eldritch_blast_three_beams_vs_ac",
+        """
+        import "std:dnd/spells.dice"
+
+        ~agonizing_eldritch_blast_by_level(11, [10:22], 7, 4)
+        """,
+    ),
+    _case(
+        "analysis",
         "bless_longsword_vs_ac",
         """
-        # Expected blessed longsword damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~bless_longsword([10:22], 7, 4)
@@ -206,9 +322,19 @@ DND_CASES = (
     ),
     _case(
         "analysis",
+        "cantrip_showdown_by_level",
+        """
+        import "std:dnd/spells.dice"
+
+        cantrip_damage(plan, level) = split plan as name | name == "fire_bolt" -> fire_bolt(level, 15, 8) $ mean | name == "sacred_flame" -> sacred_flame(level, 15, 2) $ mean | name == "toll_the_dead" -> toll_the_dead_wounded(level, 15, 2) $ mean | otherwise -> agonizing_eldritch_blast_by_level(level, 15, 7, 4) $ mean
+
+        cantrip_damage([PLAN:"fire_bolt", "sacred_flame", "toll_the_dead", "agonizing_eldritch_blast"], [LEVEL:1, 5, 11, 17])
+        """,
+    ),
+    _case(
+        "analysis",
         "crit_longsword_vs_ac",
         """
-        # Expected crit-aware longsword damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~crit_longsword([10:22], 7, 4)
@@ -218,27 +344,24 @@ DND_CASES = (
         "analysis",
         "eldritch_blast_three_beams_vs_ac",
         """
-        # Expected three-beam eldritch blast damage across armor classes.
         import "std:dnd/spells.dice"
 
-        ~eldritch_blast_action(3, [10:22], 7, 4)
+        ~eldritch_blast_by_level(11, [10:22], 7)
         """,
     ),
     _case(
         "analysis",
         "eldritch_blast_vs_ac",
         """
-        # Expected eldritch blast damage across armor classes.
         import "std:dnd/spells.dice"
 
-        ~eldritch_blast([10:22], 7, 4)
+        ~eldritch_blast([10:22], 7)
         """,
     ),
     _case(
         "analysis",
         "fighter_longsword_vs_ac",
         """
-        # Expected longsword damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~longsword_attack([10:22], 7, 4)
@@ -248,7 +371,6 @@ DND_CASES = (
         "analysis",
         "fighter_two_attacks_vs_ac",
         """
-        # Expected two-attack fighter damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~fighter_attack_action(2, [10:22], 7, 4)
@@ -258,37 +380,42 @@ DND_CASES = (
         "analysis",
         "fireball_party_total",
         """
-        # Party total expected fireball damage across four save bonuses.
         import "std:dnd/spells.dice"
 
-        sumover("party", ~fireball(15, [party:0, 2, 5, 7]))
+        sumover("party", ~fireball(3, 15, [party:0, 2, 5, 7]))
         """,
     ),
     _case(
         "analysis",
         "fireball_vs_save_bonus",
         """
-        # Expected fireball damage across save bonuses.
         import "std:dnd/spells.dice"
 
-        ~fireball(15, [0:9])
+        ~fireball(3, 15, [0:9])
+        """,
+    ),
+    _case(
+        "analysis",
+        "greatsword_gwf_vs_ac",
+        """
+        import "std:dnd/weapons.dice"
+
+        ~greatsword_attack_gwf([10:22], 7, 4)
         """,
     ),
     _case(
         "analysis",
         "guiding_bolt_vs_ac",
         """
-        # Expected guiding bolt damage across armor classes.
         import "std:dnd/spells.dice"
 
-        ~guiding_bolt([10:22], 7)
+        ~guiding_bolt(1, [10:22], 7)
         """,
     ),
     _case(
         "analysis",
         "gwm_vs_ac",
         """
-        # Expected great weapon master damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~great_weapon_master([10:22], 8, 4)
@@ -296,29 +423,35 @@ DND_CASES = (
     ),
     _case(
         "analysis",
-        "inflict_wounds_vs_ac",
+        "hunters_mark_longbow_vs_ac",
         """
-        # Expected inflict wounds damage across armor classes.
-        import "std:dnd/spells.dice"
+        import "std:dnd/weapons.dice"
 
-        ~inflict_wounds([10:22], 7)
+        ~hunters_mark_longbow([10:22], 9, 4)
         """,
     ),
     _case(
         "analysis",
-        "magic_missile_vs_darts",
+        "inflict_wounds_vs_ac",
         """
-        # Expected magic missile damage as the dart count rises.
         import "std:dnd/spells.dice"
 
-        ~magic_missile([1:6])
+        ~inflict_wounds(1, [10:22], 7)
+        """,
+    ),
+    _case(
+        "analysis",
+        "magic_missile_vs_slot",
+        """
+        import "std:dnd/spells.dice"
+
+        ~magic_missile([1:9])
         """,
     ),
     _case(
         "analysis",
         "paladin_smite_vs_ac",
         """
-        # Expected paladin smite damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~paladin_smite([10:22], 8, 4, 3)
@@ -328,7 +461,6 @@ DND_CASES = (
         "analysis",
         "reckless_gwm_vs_ac",
         """
-        # Expected reckless great weapon master damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~reckless_great_weapon_master([10:22], 8, 4)
@@ -338,17 +470,24 @@ DND_CASES = (
         "analysis",
         "sacred_flame_vs_save_bonus",
         """
-        # Expected sacred flame damage across save bonuses.
         import "std:dnd/spells.dice"
 
-        ~sacred_flame(15, [0:9])
+        ~sacred_flame(11, 15, [0:9])
+        """,
+    ),
+    _case(
+        "analysis",
+        "scorching_ray_vs_slot_level",
+        """
+        import "std:dnd/spells.dice"
+
+        ~scorching_ray([2:9], 15, 7)
         """,
     ),
     _case(
         "analysis",
         "sharpshooter_vs_ac",
         """
-        # Expected sharpshooter damage across armor classes.
         import "std:dnd/weapons.dice"
 
         ~sharpshooter([10:22], 8, 4)
@@ -356,9 +495,19 @@ DND_CASES = (
     ),
     _case(
         "analysis",
+        "spell_slot_showdown",
+        """
+        import "std:dnd/spells.dice"
+
+        slot_damage(plan, slot_level) = split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
+
+        slot_damage([PLAN:"chromatic_orb", "guiding_bolt", "scorching_ray", "magic_missile", "fireball"], [SLOT:3, 4, 5])
+        """,
+    ),
+    _case(
+        "analysis",
         "stat_roll_4d6h3",
         """
-        # Single 4d6 drop-lowest stat roll distribution.
         stat_roll() = 4 d 6 h 3
 
         stat_roll()

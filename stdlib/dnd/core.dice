@@ -1,10 +1,67 @@
-# Shared combat helpers for approximate D&D examples.
+# Exact 2014 5e combat helpers.
+#
+# Attack-roll helpers model the actual rules:
+# - natural 1 always misses
+# - natural 20 always hits and crits
+# - critical hits double only the damage dice
+#
+# Save helpers intentionally do not special-case natural 1 or 20 because
+# ordinary saving throws in 5e do not auto-fail or auto-succeed.
 
-hit(ac, bonus) = d20 + bonus >= ac
-hit_adv(ac, bonus) = d+20 + bonus >= ac
+ability_mod(score) = (score - 10) / 2
+
+proficiency_bonus(level) = split level | >= 17 -> 6 | >= 13 -> 5 | >= 9 -> 4 | >= 5 -> 3 | otherwise -> 2
+
+cantrip_dice(level, die_size) = split level | >= 17 -> 4 d die_size | >= 11 -> 3 d die_size | >= 5 -> 2 d die_size | otherwise -> d die_size
+
+eldritch_blast_beams(level) = split level | >= 17 -> 4 | >= 11 -> 3 | >= 5 -> 2 | otherwise -> 1
+
+reroll_1_or_2(die_size) = split d die_size | <= 2 -> d die_size | otherwise -> @
+
+great_weapon_fighting_dice(dice_count, die_size) = repeat_sum(dice_count, reroll_1_or_2(die_size))
+
+hit_with_roll(roll, ac, total_bonus) = split roll as attack_roll | attack_roll == 1 -> 0 | attack_roll == 20 -> 1 | attack_roll + total_bonus >= ac -> 1 ||
+
+attack_damage_with_roll(roll, ac, total_bonus, hit_damage, crit_damage) = split roll as attack_roll | attack_roll == 1 -> 0 | attack_roll == 20 -> crit_damage | attack_roll + total_bonus >= ac -> hit_damage ||
+
+hit(ac, bonus) = hit_with_roll(d20, ac, bonus)
+hit_adv(ac, bonus) = hit_with_roll(d+20, ac, bonus)
+hit_dis(ac, bonus) = hit_with_roll(d-20, ac, bonus)
+hit_bless(ac, bonus) = hit_with_roll(d20, ac, bonus + d4)
+hit_adv_bless(ac, bonus) = hit_with_roll(d+20, ac, bonus + d4)
+
 damage_on_hit(ac, bonus, dmg) = hit(ac, bonus) -> dmg | 0
 damage_on_hit_adv(ac, bonus, dmg) = hit_adv(ac, bonus) -> dmg | 0
-crit_hit(ac, bonus, hit_damage, crit_damage) = split d20 | == 20 -> crit_damage | + bonus >= ac -> hit_damage ||
 
-save_fail(dc, save_bonus) = d20 + save_bonus < dc
-save_half(dc, save_bonus, dmg) = save_fail(dc, save_bonus) -> dmg | // 2
+attack_damage(ac, bonus, hit_damage, crit_damage) = attack_damage_with_roll(d20, ac, bonus, hit_damage, crit_damage)
+attack_damage_adv(ac, bonus, hit_damage, crit_damage) = attack_damage_with_roll(d+20, ac, bonus, hit_damage, crit_damage)
+attack_damage_dis(ac, bonus, hit_damage, crit_damage) = attack_damage_with_roll(d-20, ac, bonus, hit_damage, crit_damage)
+attack_damage_bless(ac, bonus, hit_damage, crit_damage) = attack_damage_with_roll(d20, ac, bonus + d4, hit_damage, crit_damage)
+attack_damage_adv_bless(ac, bonus, hit_damage, crit_damage) = attack_damage_with_roll(d+20, ac, bonus + d4, hit_damage, crit_damage)
+
+crit_hit(ac, bonus, hit_damage, crit_damage) = attack_damage(ac, bonus, hit_damage, crit_damage)
+
+save_success_with_roll(roll, dc, total_bonus) = roll + total_bonus >= dc
+save_fail_with_roll(roll, dc, total_bonus) = roll + total_bonus < dc
+
+save_success(dc, save_bonus) = save_success_with_roll(d20, dc, save_bonus)
+save_success_adv(dc, save_bonus) = save_success_with_roll(d+20, dc, save_bonus)
+save_success_dis(dc, save_bonus) = save_success_with_roll(d-20, dc, save_bonus)
+save_fail(dc, save_bonus) = save_fail_with_roll(d20, dc, save_bonus)
+save_fail_adv(dc, save_bonus) = save_fail_with_roll(d+20, dc, save_bonus)
+save_fail_dis(dc, save_bonus) = save_fail_with_roll(d-20, dc, save_bonus)
+
+save_half_with_roll(roll, dc, total_bonus, dmg) = save_success_with_roll(roll, dc, total_bonus) -> dmg // 2 | dmg
+save_none_with_roll(roll, dc, total_bonus, dmg) = save_fail_with_roll(roll, dc, total_bonus) -> dmg | 0
+save_evasion_with_roll(roll, dc, total_bonus, dmg) = save_success_with_roll(roll, dc, total_bonus) -> 0 | dmg // 2
+
+save_half(dc, save_bonus, dmg) = save_half_with_roll(d20, dc, save_bonus, dmg)
+save_half_adv(dc, save_bonus, dmg) = save_half_with_roll(d+20, dc, save_bonus, dmg)
+save_half_dis(dc, save_bonus, dmg) = save_half_with_roll(d-20, dc, save_bonus, dmg)
+save_none(dc, save_bonus, dmg) = save_none_with_roll(d20, dc, save_bonus, dmg)
+save_none_adv(dc, save_bonus, dmg) = save_none_with_roll(d+20, dc, save_bonus, dmg)
+save_none_dis(dc, save_bonus, dmg) = save_none_with_roll(d-20, dc, save_bonus, dmg)
+save_evasion(dc, save_bonus, dmg) = save_evasion_with_roll(d20, dc, save_bonus, dmg)
+
+bless_save_half(dc, save_bonus, dmg) = save_half_with_roll(d20, dc, save_bonus + d4, dmg)
+bless_save_none(dc, save_bonus, dmg) = save_none_with_roll(d20, dc, save_bonus + d4, dmg)

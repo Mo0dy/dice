@@ -1,0 +1,327 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": "PLAN",
+      "values": [
+        "chromatic_orb",
+        "guiding_bolt",
+        "scorching_ray",
+        "magic_missile",
+        "fireball"
+      ]
+    },
+    {
+      "key": "sweep_1",
+      "name": "SLOT",
+      "values": [
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "chromatic_orb"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 15.75,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "chromatic_orb"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 18.900000000000006,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "chromatic_orb"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 22.04999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "guiding_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 14.699999999999994,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "guiding_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 17.15,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "guiding_bolt"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 19.60000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "scorching_ray"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 19.6,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "scorching_ray"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 24.500000000000004,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "scorching_ray"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 29.400000000000006,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "magic_missile"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 17.5,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "magic_missile"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 21.0,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "magic_missile"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 24.5,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fireball"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 3
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 22.299999999999997,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fireball"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 4
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 25.09999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "PLAN",
+          "value": "fireball"
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "SLOT",
+          "value": 5
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 27.899999999999977,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

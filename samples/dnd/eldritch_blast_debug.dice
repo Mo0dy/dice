@@ -1,18 +1,10 @@
-# Diagnose the eldritch blast profile from combat_profiles.dice.
+# Inspect the shape of eldritch blast as the rules stack up.
 #
-# The current stdlib spell is:
-#   eldritch_blast(ac, bonus, cha) = damage_on_hit(ac, bonus, 1 d 10 + cha)
-# and the three-beam action is:
-#   eldritch_blast_action(beams, ac, bonus, cha) = repeat_sum(beams, ...)
-#
-# So the "weird" action profile is a mixture of:
-# - 0 hits  -> 0 damage
-# - 1 hit   -> 1 d 10 + cha
-# - 2 hits  -> repeat_sum(2, 1 d 10 + cha)
-# - 3 hits  -> repeat_sum(3, 1 d 10 + cha)
-#
-# Attack-roll spells can crit in 5e, but the current stdlib helper does not
-# model crits. A crit-aware comparison is defined below for inspection.
+# This contrasts:
+# - the plain spell
+# - the Agonizing Blast invocation
+# - Hex on top of Agonizing Blast
+# - three-beam hit-count distribution at 11th level
 
 import "std:dnd/core.dice"
 import "std:dnd/spells.dice"
@@ -20,26 +12,19 @@ import "std:dnd/spells.dice"
 ac = 15
 bonus = 7
 cha = 4
-beams = 3
+level = 11
+beams = eldritch_blast_beams(level)
 
-hit_chance = hit(ac, bonus)
+plain_beam = eldritch_blast(ac, bonus)
+agonizing_beam = agonizing_eldritch_blast(ac, bonus, cha)
+hexed_beam = hex_eldritch_blast(ac, bonus, cha)
 hit_count = repeat_sum(beams, hit(ac, bonus))
+plain_action = eldritch_blast_by_level(level, ac, bonus)
+agonizing_action = agonizing_eldritch_blast_by_level(level, ac, bonus, cha)
+hexed_action = hex_eldritch_blast_action(beams, ac, bonus, cha)
 
-beam_damage = 1 d 10 + cha
-one_beam = eldritch_blast(ac, bonus, cha)
-action_damage = eldritch_blast_action(beams, ac, bonus, cha)
-
-one_hit_damage = beam_damage
-two_hit_damage = repeat_sum(2, beam_damage)
-three_hit_damage = repeat_sum(3, beam_damage)
-
-eldritch_blast_beam_with_crits(ac, bonus, cha) = split d20 | == 20 -> 2 d 10 + cha | + bonus >= ac -> 1 d 10 + cha ||
-action_damage_with_crits = repeat_sum(beams, eldritch_blast_beam_with_crits(ac, bonus, cha))
-
-render(hit_count, "Hits landed", "Eldritch blast hit-count distribution")
-render(one_beam, "Damage", "Single-beam eldritch blast damage")
-render(one_hit_damage, "Damage", "Beam damage with exactly one hit")
-render(two_hit_damage, "Damage", "Beam damage with exactly two hits")
-render(three_hit_damage, "Damage", "Beam damage with exactly three hits")
-render(action_damage, "Damage", "Three-beam eldritch blast action")
-render(action_damage_with_crits, "Damage", "Three-beam eldritch blast action with crits")
+render(hit_count, "Hits landed", "11th-level eldritch blast hit-count distribution")
+render(plain_beam, "Damage", "Single plain eldritch blast beam")
+render(agonizing_beam, "Damage", "Single Agonizing Blast beam")
+render(hexed_beam, "Damage", "Single Hex + Agonizing Blast beam")
+render(plain_action, "Plain", agonizing_action, "Agonizing", hexed_action, "Hex + Agonizing", "Damage", "Three-beam eldritch blast profiles")
