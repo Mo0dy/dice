@@ -311,6 +311,9 @@ class Executor(ABC):
             "shape",
             "repeat_sum",
             "sumover",
+            "meanover",
+            "maxover",
+            "argmaxover",
             "total",
             "set_render_mode",
             "set_probability_mode",
@@ -325,8 +328,17 @@ class Executor(ABC):
     def repeat_sum(self, count, value):
         return diceengine.repeat_sum_with(self.add, count, value)
 
-    def sumover(self, axis_name: str, value: diceengine.Sweep[Any]) -> diceengine.Sweep[Any]:
-        return diceengine.sumover_with(self.add, axis_name, value)
+    def sumover(self, value, axes=None):
+        return diceengine.sumover_with(self.add, value, diceengine._OMITTED if axes is None else axes)
+
+    def meanover(self, value, axes=None):
+        return diceengine.meanover(value, diceengine._OMITTED if axes is None else axes)
+
+    def maxover(self, value, axes=None):
+        return diceengine.maxover(value, diceengine._OMITTED if axes is None else axes)
+
+    def argmaxover(self, value, axes=None):
+        return diceengine.argmaxover(value, diceengine._OMITTED if axes is None else axes)
 
     def total(self, value: diceengine.Sweep[Any]) -> diceengine.Sweep[Any]:
         return diceengine.total_with(self.add, value)
@@ -355,6 +367,18 @@ class Executor(ABC):
 
     @abstractmethod
     def mean(self, value):
+        raise NotImplementedError
+
+    @abstractmethod
+    def meanover(self, value, axes=None):
+        raise NotImplementedError
+
+    @abstractmethod
+    def maxover(self, value, axes=None):
+        raise NotImplementedError
+
+    @abstractmethod
+    def argmaxover(self, value, axes=None):
         raise NotImplementedError
 
     @abstractmethod
@@ -475,6 +499,15 @@ class ExactExecutor(Executor):
 
     def mean(self, value):
         return diceengine.mean(value)
+
+    def meanover(self, value, axes=None):
+        return diceengine.meanover(value, diceengine._OMITTED if axes is None else axes)
+
+    def maxover(self, value, axes=None):
+        return diceengine.maxover(value, diceengine._OMITTED if axes is None else axes)
+
+    def argmaxover(self, value, axes=None):
+        return diceengine.argmaxover(value, diceengine._OMITTED if axes is None else axes)
 
     def var(self, value):
         return diceengine.var(value)

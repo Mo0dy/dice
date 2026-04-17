@@ -2,6 +2,7 @@
 
 This document is a syntax and semantics sketch for multidimensional sweep indexing.
 It reflects the current brainstorming direction, not a committed language contract.
+The current implementation now supports reducer naming and the core indexing/reducer machinery, but still rejects explicit keep-lists that try to drop unfixed axes without also reducing or fixing them first.
 
 Related design note: [TUPLE_AND_RECORD_IMPL.md](TUPLE_AND_RECORD_IMPL.md)
 
@@ -9,11 +10,11 @@ Related design note: [TUPLE_AND_RECORD_IMPL.md](TUPLE_AND_RECORD_IMPL.md)
 
 - `expr[...]` is a view builder over an existing sweep.
 - Reductions stay outside brackets as ordinary functions.
-- The reduction API is value-first:
-  - `sum(value, axes?)`
-  - `mean(value, axes?)`
-  - `max(value, axes?)`
-  - `argmax(value, axes?)`
+- Sweep reductions use an explicit `...over` suffix so they do not collide semantically with ordinary distribution/value functions:
+  - `sumover(value, axes?)`
+  - `meanover(value, axes?)`
+  - `maxover(value, axes?)`
+  - `argmaxover(value, axes?)`
 - Omitting `axes` means "reduce over all sweep axes" if that reduction makes sense.
 - Tuples and records become first-class runtime values.
 - Field access on records is still deferred; indexing examples here assume tuples/records are passed around as opaque values for now.
@@ -118,28 +119,28 @@ The user should be able to:
 ### One axis
 
 ```dice
-sum(damage, "PLAN")
-mean(damage, "SEED")
-max(damage, "PLAN")
-argmax(damage, "PLAN")
+sumover(damage, "PLAN")
+meanover(damage, "SEED")
+maxover(damage, "PLAN")
+argmaxover(damage, "PLAN")
 ```
 
 ### Multiple axes
 
 ```dice
-sum(damage, ("PLAN", "LEVEL"))
-mean(damage, ("SEED", "LEVEL"))
-max(damage, ("PLAN", "LEVEL"))
-argmax(damage, ("PLAN", "LEVEL"))
+sumover(damage, ("PLAN", "LEVEL"))
+meanover(damage, ("SEED", "LEVEL"))
+maxover(damage, ("PLAN", "LEVEL"))
+argmaxover(damage, ("PLAN", "LEVEL"))
 ```
 
 ### All axes
 
 ```dice
-sum(damage)
-mean(damage)
-max(damage)
-argmax(damage)
+sumover(damage)
+meanover(damage)
+maxover(damage)
+argmaxover(damage)
 ```
 
 This means:
@@ -148,11 +149,11 @@ This means:
 - if `axes` is given, reduce only those axes
 
 This makes `total(...)` largely redundant.
-It can survive as a compatibility helper if needed, but the clearer long-term surface is `sum(value, axes?)`.
+It can survive as a compatibility helper if needed, but the clearer long-term surface is `sumover(value, axes?)`.
 
 ## What Each Reducer Returns
 
-### `sum`, `mean`, `max`
+### `sumover`, `meanover`, `maxover`
 
 These return ordinary reduced cell values.
 
@@ -165,7 +166,7 @@ PLAN x AC x LEVEL x SEED -> number
 then:
 
 ```dice
-mean(damage, ("SEED", "LEVEL"))
+meanover(damage, ("SEED", "LEVEL"))
 ```
 
 returns:
@@ -174,10 +175,10 @@ returns:
 PLAN x AC -> number
 ```
 
-### `argmax` over one axis
+### `argmaxover` over one axis
 
 ```dice
-argmax(damage, "PLAN")
+argmaxover(damage, "PLAN")
 ```
 
 returns:
@@ -196,10 +197,10 @@ not just the bare string.
 
 That matters because the result can then be fed directly back into indexing.
 
-### `argmax` over multiple axes
+### `argmaxover` over multiple axes
 
 ```dice
-argmax(damage, ("PLAN", "LEVEL"))
+argmaxover(damage, ("PLAN", "LEVEL"))
 ```
 
 returns:
@@ -450,7 +451,7 @@ This assumes positional refs use the current axis order at the point where index
 ### Sum away nuisance axes
 
 ```dice
-sum(damage, ("SEED", "LEVEL"))
+sumover(damage, ("SEED", "LEVEL"))
 ```
 
 Shape:
@@ -462,7 +463,7 @@ PLAN x AC
 ### Mean over simulation seed, then inspect one plan
 
 ```dice
-mean(damage, "SEED")[PLAN: "great_weapon_master", "AC", "LEVEL"]
+meanover(damage, "SEED")[PLAN: "great_weapon_master", "AC", "LEVEL"]
 ```
 
 Shape:
@@ -474,7 +475,7 @@ AC x LEVEL
 ### Reduce all axes
 
 ```dice
-sum(damage)
+sumover(damage)
 ```
 
 Shape:
@@ -486,7 +487,7 @@ unswept scalar or distribution
 ### Reduce after slicing
 
 ```dice
-max(
+maxover(
     damage[
         PLAN in {"longsword", "great_weapon_master", "hunters_mark_longbow"},
         LEVEL in {5, 11, 17}
@@ -506,7 +507,7 @@ AC x SEED
 ### Best plan at each AC, LEVEL, SEED
 
 ```dice
-best_plan = argmax(damage, "PLAN")
+best_plan = argmaxover(damage, "PLAN")
 ```
 
 Shape:
@@ -530,7 +531,7 @@ AC x LEVEL x SEED
 ### Best plan at one level only
 
 ```dice
-best_plan_11 = argmax(damage[LEVEL: 11], "PLAN")
+best_plan_11 = argmaxover(damage[LEVEL: 11], "PLAN")
 best_damage_11 = damage[LEVEL: 11, best_plan_11, "AC"]
 ```
 
@@ -548,7 +549,7 @@ The second example uses the explicit keep rule to drop `SEED`.
 ### Best `(PLAN, LEVEL)` pair at each AC and SEED
 
 ```dice
-best_choice = argmax(damage, ("PLAN", "LEVEL"))
+best_choice = argmaxover(damage, ("PLAN", "LEVEL"))
 ```
 
 Shape:
@@ -588,7 +589,7 @@ martial_only = damage[
     PLAN in {"longsword", "great_weapon_master", "hunters_mark_longbow"}
 ]
 
-best_martial = argmax(martial_only, ("PLAN", "LEVEL"))
+best_martial = argmaxover(martial_only, ("PLAN", "LEVEL"))
 martial_value = martial_only[best_martial]
 ```
 
@@ -629,8 +630,8 @@ AC
 ### Average out SEED, then choose the best plan and level
 
 ```dice
-mean_damage = mean(damage, "SEED")
-best_choice = argmax(mean_damage, ("PLAN", "LEVEL"))
+mean_damage = meanover(damage, "SEED")
+best_choice = argmaxover(mean_damage, ("PLAN", "LEVEL"))
 best_curve = mean_damage[best_choice, "AC"]
 ```
 
@@ -647,7 +648,7 @@ best_curve  : AC
 Once the gather story exists, comparison studies become much stronger.
 
 ```dice
-best_plan = argmax(damage, "PLAN")
+best_plan = argmaxover(damage, "PLAN")
 best_damage = damage[best_plan]
 gwm = damage[PLAN: "great_weapon_master"]
 ```
@@ -656,8 +657,8 @@ Now compare an adaptive strategy against a fixed strategy:
 
 ```dice
 render(
-    mean(best_damage, "SEED")[LEVEL: 11, "AC"], "Best plan",
-    mean(gwm, "SEED")[LEVEL: 11, "AC"], "Always GWM",
+    meanover(best_damage, "SEED")[LEVEL: 11, "AC"], "Best plan",
+    meanover(gwm, "SEED")[LEVEL: 11, "AC"], "Always GWM",
     "Armor class",
     "Adaptive best plan versus fixed GWM at level 11"
 )
@@ -671,14 +672,14 @@ These examples imply a few important constraints:
 - Positional refs use the current axis order, not some remembered original order.
 - `expr[coord]` requires the coordinate keys to refer to axes that actually exist in `expr`.
 - `expr[coord]` requires coordinate values to be present in the corresponding axis domains.
-- `expr[argmax(...)]` works because `argmax` returns coordinate records.
+- `expr[argmaxover(...)]` works because `argmaxover` returns coordinate records.
 - If any explicit keep axes are mentioned, only those axes remain visible.
 - Filter clauses should preserve the original axis order, not reorder to match literal order.
-- `sum(value)` and friends should fail clearly if reducing all axes does not make semantic sense for the cell type.
+- `sumover(value)` and friends should fail clearly if reducing all axes does not make semantic sense for the cell type.
 
 ## Open Questions
 
-- Should `argmax(value, "PLAN")` return `(PLAN: "...")` or the bare axis value `"..."`?
+- Should `argmaxover(value, "PLAN")` return `(PLAN: "...")` or the bare axis value `"..."`?
   This document assumes the record form because it composes better with `[]`.
   Answer: User record form.
 - Do we want a first-class filter value type later, analogous to axis specs and coordinates?
@@ -694,9 +695,9 @@ The most coherent story now looks like this:
 
 - tuples and records become first-class values
 - axis specs and coordinates are ordinary values
-- reducers take `value` first and optional `axes` second
+- sweep reducers use `...over`, take `value` first, and optional `axes` second
 - `[]` accepts mixed axis refs, coordinates, axis specs, coordinate values, and filters
-- `argmax` over multiple axes returns coordinate records
+- `argmaxover` over multiple axes returns coordinate records
 - those coordinate records can be fed straight back into indexing
 
 That is strong enough to express:

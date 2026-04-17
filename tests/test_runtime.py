@@ -306,11 +306,11 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(str(direct), str(explicit))
 
     def test_sumover_reduces_named_axis(self):
-        result = only_distribution(interpret_statement('sumover("party", [party:1, 2, 3])'))
+        result = only_distribution(interpret_statement('sumover([party:1, 2, 3], "party")'))
         self.assertEqual(result[6], 1)
 
     def test_sumover_preserves_other_axes(self):
-        result = interpret_statement('sumover("party", [AC:10, 11] + [party:1, 2])')
+        result = interpret_statement('sumover([AC:10, 11] + [party:1, 2], "party")')
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.cells[(10,)][23], 1)
@@ -322,7 +322,7 @@ class RuntimeTest(unittest.TestCase):
 
     def test_sumover_rejects_missing_named_axis(self):
         with self.assertRaisesRegex(Exception, "could not find named axis"):
-            interpret_statement('sumover("party", [1..3])')
+            interpret_statement('sumover([1..3], "party")')
 
     def test_total_rejects_unnamed_axis(self):
         with self.assertRaisesRegex(Exception, "exactly one named axis"):
@@ -333,7 +333,7 @@ class RuntimeTest(unittest.TestCase):
             interpret_statement("total([party:1, 2] + [AC:10, 11])")
 
     def test_sumover_accepts_comparison_results(self):
-        result = only_distribution(interpret_statement('sumover("party", d20 >= [party:10, 11])'))
+        result = only_distribution(interpret_statement('sumover(d20 >= [party:10, 11], "party")'))
         self.assertAlmostEqual(result[0], 0.225)
         self.assertAlmostEqual(result[1], 0.5)
         self.assertAlmostEqual(result[2], 0.275)

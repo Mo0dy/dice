@@ -1,0 +1,103 @@
+{
+  "axes": [
+    {
+      "key": "sweep_2",
+      "name": "AC",
+      "values": [
+        100,
+        300
+      ]
+    },
+    {
+      "key": "sweep_1",
+      "name": "LEVEL",
+      "values": [
+        10,
+        20
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 100
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 10
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 112,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 100
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 20
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 122,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 300
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 10
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 312,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 300
+        },
+        {
+          "axis_key": "sweep_1",
+          "axis_name": "LEVEL",
+          "value": 20
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 322,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

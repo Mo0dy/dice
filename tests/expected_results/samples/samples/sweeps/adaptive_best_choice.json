@@ -1,0 +1,45 @@
+{
+  "axes": [
+    {
+      "key": "sweep_2",
+      "name": "AC",
+      "values": [
+        10,
+        30
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 10
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 35,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "AC",
+          "value": 30
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 55,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

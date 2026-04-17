@@ -25,6 +25,9 @@ from syntaxtree import (
     TupleLiteral,
     RecordLiteral,
     RecordEntry,
+    SweepIndex,
+    SweepIndexCoordinate,
+    SweepIndexFilter,
     Param,
     CallArg,
     LocalAssign,
@@ -367,6 +370,80 @@ class DiceParser(Parser):
         self.eat(RPAREN)
         return TupleLiteral(items, token)
 
+    def index_clause(self):
+        if self.current_token.type in (ID, INTEGER) and self.peek_token.type == COLON:
+            key_token = self.current_token
+            self.eat(key_token.type)
+            self.eat(COLON)
+            return SweepIndexCoordinate(key_token.value, key_token.type, self.expr(), key_token)
+        if self.current_token.type in (ID, INTEGER) and self.peek_token.type == IN:
+            key_token = self.current_token
+            self.eat(key_token.type)
+            self.eat(IN)
+            return SweepIndexFilter(key_token.value, key_token.type, self.expr(), key_token)
+        return self.expr()
+
+    def index_expr(self, value):
+        token = self.current_token
+        self.eat(LBRACK)
+        if self.current_token.type == RBRACK:
+            self.exception(
+                "sweep indexing requires at least one clause",
+                token=self.current_token,
+                hint='Write something like expr["AC"] or expr[LEVEL: 11].',
+            )
+        clauses = [self.index_clause()]
+        while self.current_token.type == COMMA:
+            self.eat(COMMA)
+            clauses.append(self.index_clause())
+        self.eat(RBRACK)
+        return SweepIndex(value, clauses, token)
+
+    def primary(self):
+        if self.current_token.type == LBRACK:
+            return self.sweep_literal()
+        elif self.current_token.type == LBRACE:
+            return self.measure_literal()
+        elif self.current_token.type == SPLIT:
+            return self.split_expr()
+        elif self.current_token.type == MATCH:
+            self.exception(
+                "'match' was replaced by 'split'",
+                token=self.current_token,
+                hint="Rewrite this as 'split ... | guard -> result'.",
+            )
+        elif self.current_token.type == LPAREN:
+            return self.parenthesized_value()
+        elif self.current_token.type == ID:
+            token = self.current_token
+            self.eat(ID)
+            if self.current_token.type == LPAREN:
+                return self.call(Val(token))
+            return Val(token)
+        elif self.current_token.type == STRING:
+            token = self.current_token
+            self.eat(STRING)
+            return Val(token)
+        elif self.current_token.type == FLOAT:
+            token = self.current_token
+            self.eat(FLOAT)
+            return Val(token)
+        elif self.current_token.type == INTEGER:
+            token = self.current_token
+            self.eat(INTEGER)
+            return Val(token)
+        else:
+            self.exception(
+                "expected an expression",
+                token=self.current_token,
+                hint="Try a number, identifier, function call, parenthesized expression, or dice expression.",
+            )
+
+    def postfix(self, node):
+        while self.current_token.type == LBRACK:
+            node = self.index_expr(node)
+        return node
+
     def _anonymous_name(self, token):
         return Val(Token(ID, "@", span=token.span))
 
@@ -490,21 +567,7 @@ class DiceParser(Parser):
         return Split(value, name, clauses, token)
 
     def factor(self):
-        if self.current_token.type == LBRACK:
-            return self.sweep_literal()
-        elif self.current_token.type == LBRACE:
-            return self.measure_literal()
-        elif self.current_token.type == SPLIT:
-            return self.split_expr()
-        elif self.current_token.type == MATCH:
-            self.exception(
-                "'match' was replaced by 'split'",
-                token=self.current_token,
-                hint="Rewrite this as 'split ... | guard -> result'.",
-            )
-        elif self.current_token.type == LPAREN:
-            return self.parenthesized_value()
-        elif self.current_token.type == ROLL:
+        if self.current_token.type == ROLL:
             token = self.current_token
             self.eat(ROLL)
             return UnOp(self.factor(), token)
@@ -532,30 +595,7 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(AT)
             return Val(Token(ID, "@", span=token.span))
-        elif self.current_token.type == ID:
-            token = self.current_token
-            self.eat(ID)
-            if self.current_token.type == LPAREN:
-                return self.call(Val(token))
-            return Val(token)
-        elif self.current_token.type == STRING:
-            token = self.current_token
-            self.eat(STRING)
-            return Val(token)
-        elif self.current_token.type == FLOAT:
-            token = self.current_token
-            self.eat(FLOAT)
-            return Val(token)
-        elif self.current_token.type == INTEGER:
-            token = self.current_token
-            self.eat(INTEGER)
-            return Val(token)
-        else:
-            self.exception(
-                "expected an expression",
-                token=self.current_token,
-                hint="Try a number, identifier, function call, parenthesized expression, or dice expression.",
-            )
+        return self.postfix(self.primary())
 
     def call_arg(self):
         if self.current_token.type == ID and self.peek_token.type == ASSIGN:

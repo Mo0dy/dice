@@ -320,6 +320,48 @@ class RecordLiteral(AST):
         return result
 
 
+class SweepIndexCoordinate(AST):
+    """One coordinate entry inside sweep indexing."""
+
+    def __init__(self, key, key_type, value, token):
+        self.key = key
+        self.key_type = key_type
+        self.value = value
+        self.token = token
+
+    def __repr__(self):
+        return "SweepIndexCoordinate: {}: {}".format(self.key, self.value)
+
+
+class SweepIndexFilter(AST):
+    """One axis-domain filter inside sweep indexing."""
+
+    def __init__(self, key, key_type, value, token):
+        self.key = key
+        self.key_type = key_type
+        self.value = value
+        self.token = token
+
+    def __repr__(self):
+        return "SweepIndexFilter: {} in {}".format(self.key, self.value)
+
+
+class SweepIndex(AST):
+    """Postfix sweep indexing expression."""
+
+    def __init__(self, value, clauses, token):
+        self.value = value
+        self.clauses = clauses
+        self.token = token
+
+    def __repr__(self):
+        result = "SweepIndex"
+        result += '\t|'.join(('\n' + "value: " + str(self.value).lstrip()).splitlines(True))
+        for clause in self.clauses:
+            result += '\t|'.join(('\n' + "clause: " + str(clause).lstrip()).splitlines(True))
+        return result
+
+
 class Val(AST):
     """Value end node"""
     def __init__(self, token):

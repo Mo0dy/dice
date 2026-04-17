@@ -383,7 +383,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        sumover("party", ~fireball(15, [party:0, 2, 5, 7], slot_level=3))
+        sumover(~fireball(15, [party:0, 2, 5, 7], slot_level=3), "party")
         """,
     ),
     _case(

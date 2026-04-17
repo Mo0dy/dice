@@ -63,6 +63,7 @@ from diceengine import (
     _deterministic_numeric_value,
     _lookup_projected,
     _union_axes,
+    sweep_index,
 )
 from executor import ExactExecutor
 from executor import DiceDefault, MISSING, ParameterSpec, get_dicefunction_metadata, validate_runtime_value
@@ -944,6 +945,32 @@ class Interpreter:
 
     def visit_RecordLiteral(self, node):
         return RecordValue((entry.key, self.visit(entry.value)) for entry in node.entries)
+
+    def visit_SweepIndex(self, node):
+        value = self.visit(node.value)
+        clauses = []
+        for clause in node.clauses:
+            clause_type = type(clause).__name__
+            if clause_type == "SweepIndexCoordinate":
+                clauses.append(
+                    {
+                        "kind": "coordinate",
+                        "key": clause.key,
+                        "value": self.visit(clause.value),
+                    }
+                )
+                continue
+            if clause_type == "SweepIndexFilter":
+                clauses.append(
+                    {
+                        "kind": "filter",
+                        "key": clause.key,
+                        "value": self.visit(clause.value),
+                    }
+                )
+                continue
+            clauses.append({"kind": "value", "value": self.visit(clause)})
+        return self._with_runtime_context(node, lambda: sweep_index(value, clauses))
 
     def visit_Val(self, node):
         if node.token.type in [INTEGER, FLOAT, STRING]:

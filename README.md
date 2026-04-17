@@ -46,7 +46,10 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `expr ^ n` evaluates `expr` independently `n` times and adds the results.
 - `repeat_sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
   `repeat_sum(n, expr)` remains supported as an explicit alias for `expr ^ n`.
-- `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
+- `expr[...]` indexes an existing sweep using coordinate entries such as `PLAN: 11`, filters such as `AC in {12, 16}`, and axis specs such as `"AC"`, `0`, or `("AC", "PLAN")`.
+- `sumover(expr, axes?)`, `meanover(expr, axes?)`, `maxover(expr, axes?)`, and `argmaxover(expr, axes?)` reduce sweep axes without changing the meaning of plain distribution helpers such as `mean(expr)`.
+- reducer `axes` may be omitted to reduce across all sweep axes, or passed as one axis ref or a tuple such as `"PLAN"`, `0`, or `("PLAN", "LEVEL")`.
+- `argmaxover(...)` returns coordinate records such as `(PLAN: "gwm")` or `(PLAN: "gwm", LEVEL: 11)`, and those records can be fed back into `expr[...]`.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
 - `render(expr)` renders one result with smart defaults.
 - `renderp(expr)` renders one result and treats scalar y-values as probabilities.
@@ -69,6 +72,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `( ... )` groups expressions.
 - tuple and record comparison operators are not supported yet.
 - tuple and record field access is not supported yet.
+- explicit keep-lists inside `expr[...]` can currently reorder the remaining axes, but they cannot drop still-unfixed axes yet.
+- when positional axis refs are used in reducers or `expr[...]`, they refer to the current visible axis order at that point in the expression.
 
 ## Running Dice
 
@@ -185,7 +190,9 @@ split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3
 d2 ^ 3
-sumover("party", [party:1, 2, 3])
+sumover([party:1, 2, 3], "party")
+meanover(d2 + [bonus:0, 1], "bonus")
+([PLAN:1, 2] + [AC:10, 11])["AC", "PLAN"]
 total([party:1, 2, 3])
 renderp(d20 >= [AC:10..20] -> 5 | 0 $ mean)
 ```
@@ -321,7 +328,8 @@ split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3
 d2 ^ 3
-sumover("party", [party:1, 2, 3])
+sumover([party:1, 2, 3], "party")
+argmaxover([PLAN:1, 2] + [AC:10, 11], "PLAN")
 total([party:1, 2, 3])
 render(d20)
 add(1, 1)

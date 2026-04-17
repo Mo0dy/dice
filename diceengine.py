@@ -29,6 +29,7 @@ FALSE = 0
 PROBABILITY_TOLERANCE = 1e-9
 _viewer_module = None
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_OMITTED = object()
 
 
 def exception(message):
@@ -832,21 +833,90 @@ def _accumulate_distribution_contributions(contributions):
     return Sweep(combined_axes, cells)
 
 
-def _resolve_target_axis(value, axis_name):
-    if not isinstance(axis_name, str):
+def _resolve_axis_ref(axes, axis_ref, opname):
+    if isinstance(axis_ref, int):
+        if axis_ref < 0 or axis_ref >= len(axes):
+            runtime_error(
+                "{} could not find axis position {}".format(opname, axis_ref),
+                hint="Use a position between 0 and {}.".format(max(len(axes) - 1, 0)),
+            )
+        return axes[axis_ref]
+    if isinstance(axis_ref, str):
+        matches = [axis for axis in axes if axis.name == axis_ref]
+        if not matches:
+            runtime_error(
+                "{} could not find named axis {}".format(opname, axis_ref),
+                hint='Use a named sweep axis like [AC:10..12] or a positional ref like 0.',
+            )
+        if len(matches) > 1:
+            runtime_error("{} found multiple axes named {}".format(opname, axis_ref))
+        return matches[0]
+    runtime_error(
+        "{} expects axis refs to be integers or strings".format(opname),
+        hint='Use a positional axis like 0 or a named axis like "AC".',
+    )
+
+
+def _axis_spec_refs(value, opname):
+    if isinstance(value, TupleValue):
+        refs = tuple(value.items)
+    elif isinstance(value, tuple):
+        refs = tuple(value)
+    else:
+        refs = (value,)
+    if not refs:
+        runtime_error("{} expects at least one axis".format(opname))
+    for ref in refs:
+        if not isinstance(ref, (int, str)):
+            runtime_error(
+                "{} expects axis specs made of integers or strings".format(opname),
+                hint='Use axis specs like "AC", 0, or ("AC", "PLAN").',
+            )
+    return refs
+
+
+def _default_coordinate_key(axes, axis):
+    if axis.name != axis.key and not axis.name.startswith("sweep_"):
+        return axis.name
+    return axes.index(axis)
+
+
+def _resolve_axis_spec(axes, axes_value, opname):
+    refs = _axis_spec_refs(axes_value, opname)
+    resolved = []
+    seen = set()
+    for ref in refs:
+        axis = _resolve_axis_ref(axes, ref, opname)
+        if axis.key in seen:
+            runtime_error("{} cannot mention the same axis twice".format(opname))
+        seen.add(axis.key)
+        resolved.append((axis, ref))
+    return tuple(resolved)
+
+
+def _selector_scalar(value, opname):
+    if isinstance(value, Distribution):
+        items = list(value.items())
+        if len(items) != 1 or abs(items[0][1] - 1.0) > PROBABILITY_TOLERANCE:
+            runtime_error("{} expects deterministic selector values".format(opname))
+        value = items[0][0]
+    if isinstance(value, (int, float, str, TupleValue, RecordValue)):
+        return value
+    runtime_error(
+        "{} expects selector values to be deterministic scalars".format(opname),
+        hint="Use deterministic sweep values or coordinate records when indexing.",
+    )
+
+
+def _filter_domain(value, opname):
+    sweep = _coerce_value_to_sweep(value)
+    if not sweep.is_unswept():
         runtime_error(
-            "sumover expects a string axis name",
-            hint='Pass the axis name as a string, for example sumover("party", value).',
+            "{} filters must use an unswept domain".format(opname),
+            hint='Use a literal like {12, 16, 20} or a variable holding one.',
         )
-    matches = [axis for axis in value.axes if axis.name == axis_name and axis.name != axis.key]
-    if not matches:
-        runtime_error(
-            "sumover could not find named axis {}".format(axis_name),
-            hint="Create a named sweep like [party:1, 2, 3] before calling sumover.",
-        )
-    if len(matches) > 1:
-        runtime_error("sumover found multiple axes named {}".format(axis_name))
-    return matches[0]
+    measure = _coerce_to_measure_cell(sweep.only_value())
+    return {outcome for outcome, _ in measure.items()}
 
 
 def _resolve_total_axis(value):
@@ -864,29 +934,204 @@ def _resolve_total_axis(value):
     return axis
 
 
-def _coordinates_without_axis(axes, coordinates, target_key):
-    return tuple(coordinate for axis, coordinate in zip(axes, coordinates) if axis.key != target_key)
-
-
-def _sum_axis(add_function, value, target_axis):
-    sweep = _coerce_value_to_sweep(value)
-    remaining_axes = tuple(axis for axis in sweep.axes if axis.key != target_axis.key)
+def _apply_reduction(sweep, targets, opname, reducer):
+    if not targets:
+        if opname == "argmaxover":
+            runtime_error("{} expects at least one sweep axis".format(opname))
+        return sweep
+    target_keys = {axis.key for axis, _ in targets}
+    remaining_axes = tuple(axis for axis in sweep.axes if axis.key not in target_keys)
     grouped = {}
     for coordinates, cell in sweep.items():
-        remaining_coordinates = _coordinates_without_axis(sweep.axes, coordinates, target_axis.key)
-        grouped.setdefault(remaining_coordinates, []).append(cell)
+        remaining_coordinates = tuple(
+            coordinate for axis, coordinate in zip(sweep.axes, coordinates) if axis.key not in target_keys
+        )
+        target_coordinates = tuple(
+            coordinate for axis, coordinate in zip(sweep.axes, coordinates) if axis.key in target_keys
+        )
+        grouped.setdefault(remaining_coordinates, []).append((target_coordinates, cell))
     cells = {}
-    for remaining_coordinates, cell_values in grouped.items():
-        reduced = 0
-        for cell in cell_values:
-            reduced = add_function(reduced, cell)
+    for remaining_coordinates, entries in grouped.items():
+        reduced = reducer(targets, entries)
         reduced_sweep = _coerce_value_to_sweep(reduced)
         if not reduced_sweep.is_unswept():
-            runtime_error("sumover reduction produced an unexpected sweep")
+            runtime_error("{} reduction produced an unexpected sweep".format(opname))
         cells[remaining_coordinates] = reduced_sweep.only_value()
     if not cells:
         return Sweep.scalar(0)
     return Sweep(remaining_axes, cells)
+
+
+def _mean_reduce_cell(entries):
+    cells = [cell for _, cell in entries]
+    if all(isinstance(cell, (int, float)) for cell in cells):
+        return sum(cells) / len(cells)
+
+    normalized_entries = []
+    probability_like = True
+    for cell in cells:
+        if isinstance(cell, (int, float)):
+            measure = _deterministic_distribution(cell)
+        elif isinstance(cell, Distribution):
+            measure = cell
+        elif isinstance(cell, FiniteMeasure):
+            measure = cell
+            probability_like = False
+        else:
+            runtime_error(
+                "meanover expects numeric scalars or finite measures",
+                hint="Apply meanover to numeric sweeps or sweeps of measure-like cells.",
+            )
+        for outcome, weight in measure.items():
+            normalized_entries.append((outcome, weight / len(cells)))
+    if probability_like:
+        return Distribution(normalized_entries)
+    return FiniteMeasure(normalized_entries)
+
+
+def _max_key(cell, opname):
+    if isinstance(cell, (int, float)):
+        return cell
+    if isinstance(cell, Distribution):
+        return cell.average()
+    runtime_error(
+        "{} expects numeric scalars or distributions".format(opname),
+        hint="Apply {} to deterministic numeric cells or distributions with numeric outcomes.".format(opname),
+    )
+
+
+def _argmax_record(targets, coordinates):
+    return RecordValue((record_key, coordinate) for (_, record_key), coordinate in zip(targets, coordinates))
+
+
+def _resolve_reduction_targets(sweep, axes_value, opname):
+    if axes_value is _OMITTED:
+        return tuple((axis, _default_coordinate_key(sweep.axes, axis)) for axis in sweep.axes)
+    return _resolve_axis_spec(sweep.axes, axes_value, opname)
+
+
+def _coordinate_selectors_from_record_value(value, opname):
+    sweep = _coerce_value_to_sweep(value)
+    if sweep.is_unswept():
+        record = sweep.only_value()
+        if not isinstance(record, RecordValue):
+            runtime_error(
+                "{} expects coordinate records inside []".format(opname),
+                hint='Use a record like (PLAN: "gwm", LEVEL: 11).',
+            )
+        return [(key, Sweep.scalar(selector)) for key, selector in record.items()]
+
+    selector_cells = {}
+    expected_keys = None
+    for coordinates, record in sweep.items():
+        if not isinstance(record, RecordValue):
+            runtime_error(
+                "{} expects swept coordinate clauses to contain record values".format(opname),
+                hint="Use argmaxover(...) or a sweep of record values here.",
+            )
+        keys = tuple(key for key, _ in record.items())
+        if expected_keys is None:
+            expected_keys = keys
+        elif keys != expected_keys:
+            runtime_error("{} expects swept coordinate records to use the same keys everywhere".format(opname))
+        for key, selector in record.items():
+            selector_cells.setdefault(key, {})[coordinates] = selector
+    return [(key, Sweep(sweep.axes, cells)) for key, cells in selector_cells.items()]
+
+
+def sweep_index(value, clauses):
+    opname = "sweep indexing"
+    sweep = _coerce_value_to_sweep(value)
+    if not sweep.axes:
+        runtime_error("{} expects a swept value".format(opname))
+
+    keep_refs = []
+    coordinate_specs = []
+    filter_specs = []
+    for clause in clauses:
+        kind = clause["kind"]
+        if kind == "coordinate":
+            coordinate_specs.append((clause["key"], _coerce_value_to_sweep(clause["value"])))
+            continue
+        if kind == "filter":
+            filter_specs.append((clause["key"], _filter_domain(clause["value"], opname)))
+            continue
+        raw_value = _coerce_value_to_sweep(clause["value"])
+        if raw_value.is_unswept():
+            literal = raw_value.only_value()
+            if isinstance(literal, RecordValue):
+                coordinate_specs.extend(_coordinate_selectors_from_record_value(literal, opname))
+            else:
+                keep_refs.extend(_axis_spec_refs(_selector_scalar(literal, opname), opname))
+            continue
+        coordinate_specs.extend(_coordinate_selectors_from_record_value(raw_value, opname))
+
+    filter_by_key = {}
+    for axis_ref, domain in filter_specs:
+        axis = _resolve_axis_ref(sweep.axes, axis_ref, opname)
+        if axis.key in filter_by_key:
+            runtime_error("{} cannot filter the same axis twice".format(opname))
+        filter_by_key[axis.key] = domain
+
+    selector_by_key = {}
+    for axis_ref, selector in coordinate_specs:
+        axis = _resolve_axis_ref(sweep.axes, axis_ref, opname)
+        if axis.key in selector_by_key or axis.key in filter_by_key:
+            runtime_error("{} cannot mention the same axis twice".format(opname))
+        selector_by_key[axis.key] = _coerce_value_to_sweep(selector)
+
+    remaining_axes = []
+    for axis in sweep.axes:
+        if axis.key in selector_by_key:
+            continue
+        values = tuple(value for value in axis.values if value in filter_by_key.get(axis.key, set(axis.values)))
+        if not values:
+            runtime_error("{} removed every value from axis {}".format(opname, axis.name))
+        remaining_axes.append(SweepAxis(axis.key, axis.name, values))
+
+    if keep_refs:
+        resolved_keep = [(_resolve_axis_ref(tuple(remaining_axes), axis_ref, opname), axis_ref) for axis_ref in keep_refs]
+        keep_keys = [axis.key for axis, _ in resolved_keep]
+        if len(set(keep_keys)) != len(keep_keys):
+            runtime_error("{} cannot mention the same axis twice".format(opname))
+        remaining_keys = [axis.key for axis in remaining_axes]
+        if set(keep_keys) != set(remaining_keys):
+            runtime_error(
+                "{} cannot drop unfixed axes yet".format(opname),
+                hint="Fix or reduce the omitted axes before reordering the remaining ones.",
+            )
+        output_axes = tuple(next(axis for axis in remaining_axes if axis.key == key) for key in keep_keys)
+    else:
+        output_axes = tuple(remaining_axes)
+
+    output_axis_keys = {axis.key for axis in output_axes}
+    for axis_key, selector in selector_by_key.items():
+        for dependency_axis in selector.axes:
+            if dependency_axis.key == axis_key:
+                runtime_error("{} selectors cannot vary over the axis they select".format(opname))
+            if dependency_axis.key not in output_axis_keys:
+                runtime_error(
+                    "{} selectors may only depend on axes that remain visible".format(opname),
+                    hint="Keep the selector's dependency axes visible, or reduce them first.",
+                )
+
+    source_cells = sweep.cells
+    output_index = {axis.key: idx for idx, axis in enumerate(output_axes)}
+    cells = {}
+    for output_coordinates in _coordinates_space(output_axes):
+        source_coordinates = []
+        for axis in sweep.axes:
+            if axis.key in selector_by_key:
+                selected_value = _selector_scalar(selector_by_key[axis.key].lookup(output_axes, output_coordinates), opname)
+                if selected_value not in axis.values:
+                    runtime_error(
+                        "{} selected value {} outside axis {}".format(opname, selected_value, axis.name),
+                    )
+                source_coordinates.append(selected_value)
+                continue
+            source_coordinates.append(output_coordinates[output_index[axis.key]])
+        cells[output_coordinates] = source_cells[tuple(source_coordinates)]
+    return Sweep(output_axes, cells)
 
 
 def choose(left, right):
@@ -1206,20 +1451,71 @@ def repeat_sum(count, value):
     return repeat_sum_with(add, count, value)
 
 
-def sumover_with(add_function, axis_name, value):
+def sumover_with(add_function, value, axes=_OMITTED):
     sweep = _coerce_value_to_sweep(value)
-    target_axis = _resolve_target_axis(sweep, axis_name)
-    return _sum_axis(add_function, sweep, target_axis)
+    targets = _resolve_reduction_targets(sweep, axes, "sumover")
+    return _apply_reduction(
+        sweep,
+        targets,
+        "sumover",
+        lambda _targets, entries: _sumover_reduce_entries(add_function, entries),
+    )
 
 
-def sumover(axis_name, value):
-    return sumover_with(add, axis_name, value)
+def _sumover_reduce_entries(add_function, entries):
+    reduced = 0
+    for _, cell in entries:
+        reduced = add_function(reduced, cell)
+    reduced_sweep = _coerce_value_to_sweep(reduced)
+    if not reduced_sweep.is_unswept():
+        runtime_error("sumover reduction produced an unexpected sweep")
+    return reduced_sweep.only_value()
+
+
+def sumover(value, axes=_OMITTED):
+    return sumover_with(add, value, axes)
+
+
+def meanover(value, axes=_OMITTED):
+    sweep = _coerce_value_to_sweep(value)
+    targets = _resolve_reduction_targets(sweep, axes, "meanover")
+    return _apply_reduction(sweep, targets, "meanover", lambda _targets, entries: _mean_reduce_cell(entries))
+
+
+def maxover(value, axes=_OMITTED):
+    sweep = _coerce_value_to_sweep(value)
+    targets = _resolve_reduction_targets(sweep, axes, "maxover")
+    return _apply_reduction(
+        sweep,
+        targets,
+        "maxover",
+        lambda _targets, entries: max(entries, key=lambda item: _max_key(item[1], "maxover"))[1],
+    )
+
+
+def argmaxover(value, axes=_OMITTED):
+    sweep = _coerce_value_to_sweep(value)
+    targets = _resolve_reduction_targets(sweep, axes, "argmaxover")
+    return _apply_reduction(
+        sweep,
+        targets,
+        "argmaxover",
+        lambda resolved_targets, entries: _argmax_record(
+            resolved_targets,
+            max(entries, key=lambda item: _max_key(item[1], "argmaxover"))[0],
+        ),
+    )
 
 
 def total_with(add_function, value):
     sweep = _coerce_value_to_sweep(value)
     target_axis = _resolve_total_axis(sweep)
-    return _sum_axis(add_function, sweep, target_axis)
+    return _apply_reduction(
+        sweep,
+        ((target_axis, target_axis.name),),
+        "total",
+        lambda _targets, entries: _sumover_reduce_entries(add_function, entries),
+    )
 
 
 def total(value):
