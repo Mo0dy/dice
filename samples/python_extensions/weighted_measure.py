@@ -1,10 +1,11 @@
-from dice import dice_interpreter
+from dice import dice_interpreter, dicefunction
 from diceengine import FiniteMeasure
 
 
 def build_result():
     session = dice_interpreter()
 
+    @dicefunction
     def weather():
         return FiniteMeasure((("sun", 2), ("rain", 1)))
 

@@ -5,8 +5,11 @@
 from __future__ import annotations
 
 from difflib import get_close_matches
+import hashlib
+import importlib.util
 import os
 import re
+import sys
 from itertools import product
 
 from diagnostics import DiagnosticError, DiagnosticWarning, RuntimeError as DiceRuntimeError
@@ -53,8 +56,6 @@ from diceengine import (
     TRUE,
     FALSE,
     _accumulate_distribution_contributions,
-    _coerce_to_measure_cell,
-    _coerce_to_distribution_cell,
     _coerce_value_to_sweep,
     _coerce_to_distributions,
     _deterministic_numeric_value,
@@ -62,7 +63,7 @@ from diceengine import (
     _union_axes,
 )
 from executor import ExactExecutor
-from executor import DiceDefault, MISSING, ParameterSpec
+from executor import DiceDefault, MISSING, ParameterSpec, get_dicefunction_metadata, validate_runtime_value
 
 
 STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
@@ -206,7 +207,10 @@ class Interpreter:
         )
 
     def register_function(self, function, name=None):
-        callable_name = name if name is not None else function.__name__
+        metadata = get_dicefunction_metadata(function)
+        if metadata is None:
+            self.exception("Python functions must be decorated with @dicefunction to be registered")
+        callable_name = name if name is not None else metadata.export_name
         if not callable_name:
             self.exception("python functions must have a name")
         if callable_name in self.callable_scope or callable_name in self.executor.functions:
@@ -451,11 +455,10 @@ class Interpreter:
         return [candidate for candidate in candidates if candidate.startswith(text)]
 
     def _validate_runtime_value(self, value):
-        if value is None:
-            return value
-        if isinstance(value, (int, float, str, SweepValues, FiniteMeasure, Distribution, Sweep)):
-            return value
-        self.exception("Unsupported host value type {}".format(type(value)))
+        try:
+            return validate_runtime_value(value)
+        except Exception as error:
+            self.exception(str(error))
 
     def _literal_scalar_value(self, value, *, node, context, hint=None):
         if isinstance(value, (int, float, str)):
@@ -583,39 +586,44 @@ class Interpreter:
             self.call_stack.pop()
 
     def _call_host_function(self, entry, values):
-        if entry.sweep_mode:
-            return self._validate_runtime_value(entry.function(*values))
-        def convert_argument(projected, annotation):
-            if annotation is Distribution:
-                return _coerce_to_distribution_cell(projected)
-            if annotation is FiniteMeasure:
-                return _coerce_to_measure_cell(projected)
-            return projected
-
-        sweeps = [_coerce_value_to_sweep(value) for value in values]
-        combined_axes = _union_axes(sweeps)
-        if not combined_axes:
-            projected = [
-                convert_argument(sweep.only_value(), entry.parameters[index].annotation if index < len(entry.parameters) else None)
-                for index, sweep in enumerate(sweeps)
-            ]
-            return self._validate_runtime_value(entry.function(*projected))
-        cells = {}
-        for coordinates in product(*(axis.values for axis in combined_axes)):
-            projected = [
-                convert_argument(
-                    sweep.lookup(combined_axes, coordinates),
-                    entry.parameters[index].annotation if index < len(entry.parameters) else None,
-                )
-                for index, sweep in enumerate(sweeps)
-            ]
-            cells[coordinates] = self._validate_runtime_value(entry.function(*projected))
-        return Sweep(combined_axes, cells)
+        return self._validate_runtime_value(entry.function(*values))
 
     def _parse_imported_source(self, resolved_path):
         with open(resolved_path, encoding="utf-8") as handle:
             text = handle.read()
         return DiceParser(Lexer(text, source_name=resolved_path)).parse()
+
+    def _load_imported_python_module(self, resolved_path):
+        module_name = "dice_import_{}".format(hashlib.sha256(resolved_path.encode("utf-8")).hexdigest())
+        spec = importlib.util.spec_from_file_location(module_name, resolved_path)
+        if spec is None or spec.loader is None:
+            raise DiceRuntimeError("Could not import {!r}".format(resolved_path))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            sys.modules.pop(module_name, None)
+            raise
+        return module
+
+    def _import_python_exports(self, module, node):
+        exported = []
+        for value in module.__dict__.values():
+            metadata = get_dicefunction_metadata(value)
+            if metadata is None:
+                continue
+            if getattr(value, "__module__", None) != module.__name__:
+                continue
+            exported.append(value)
+        if not exported:
+            self.exception(
+                "Python module {} defines no @dicefunction exports".format(getattr(module, "__file__", module.__name__)),
+                node=node.path,
+                hint="Decorate exported functions with @dicefunction before importing the file.",
+            )
+        for function in exported:
+            self.register_function(function)
 
     def visit_VarOp(self, node):
         if node.op.type == SEMI:
@@ -666,12 +674,16 @@ class Interpreter:
                 node=node.path,
                 hint="Check that the file exists and that the path is relative to the importing file.",
             )
-        ast = self._parse_imported_source(resolved_path)
         self.imported_files.add(resolved_path)
         self.import_stack.append(resolved_path)
         previous_dir = self.current_dir
         self.current_dir = os.path.dirname(resolved_path)
         try:
+            if resolved_path.endswith(".py"):
+                module = self._load_imported_python_module(resolved_path)
+                self._import_python_exports(module, node)
+                return None
+            ast = self._parse_imported_source(resolved_path)
             return self.evaluate(ast)
         finally:
             self.current_dir = previous_dir

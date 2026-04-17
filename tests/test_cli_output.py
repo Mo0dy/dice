@@ -200,7 +200,12 @@ class CliInteractiveTest(unittest.TestCase):
         fake_readline = mock.Mock()
         interpreter = Interpreter(None)
         interpreter.global_scope["bonus"] = 2
-        interpreter.register_function(lambda ac: ac, name="hit")
+
+        @dice.dicefunction
+        def hit(ac):
+            return ac
+
+        interpreter.register_function(hit)
         fake_readline.get_line_buffer.return_value = "bo"
         fake_readline.get_begidx.return_value = 0
         fake_readline.get_endidx.return_value = 2
@@ -252,11 +257,13 @@ class InterpreterCompletionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
             (root / "combat.dice").write_text("hit(ac): d20 >= ac\n", encoding="utf-8")
+            (root / "helpers.py").write_text("from dice import dicefunction\n", encoding="utf-8")
             (root / "lib").mkdir()
             (root / "lib" / "damage.dice").write_text("damage(ac): ac\n", encoding="utf-8")
             interpreter = Interpreter(None, current_dir=root)
 
             self.assertEqual(interpreter.complete("co", line_buffer='import "co', begidx=8, endidx=10), ["combat"])
+            self.assertEqual(interpreter.complete("he", line_buffer='import "he', begidx=8, endidx=10), ["helpers.py"])
 
             lib_completions = interpreter.complete("l", line_buffer='import "l', begidx=8, endidx=9)
             self.assertIn("lib/", lib_completions)

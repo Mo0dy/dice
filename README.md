@@ -259,7 +259,7 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 You can also keep a persistent dice session from Python:
 
 ```python
-from dice import dice_interpreter
+from dice import D, dice_interpreter, dicefunction
 from diceengine import Distribution, FiniteMeasure, Sweep, greaterorequal, rollsingle
 
 session = dice_interpreter()
@@ -267,17 +267,24 @@ result = session("d20 >= [AC:10..12] -> 5 | 0")
 session.assign("cached", result)
 session("render(cached)")
 
+@dicefunction
+def add_two(value):
+    return value + 2
+
+session.register_function(add_two)
+
 direct = greaterorequal(rollsingle(20), 11)
 ```
 
-Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backend. Register Python functions with `session.register_function(...)`.
+Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backend. Decorate exported Python helpers with `@dicefunction`, then register them with `session.register_function(...)`.
 
-- Untyped Python functions receive projected cell values, not whole sweeps.
+- `@dicefunction` gives Python helpers dice lifting semantics in both direct Python calls and dice calls.
+- Untyped parameters receive projected cell values, not whole sweeps.
 - Parameters typed as `Distribution` or `FiniteMeasure` are auto-lifted cellwise.
 - Parameters typed as `Sweep[...]` receive the full sweep container.
 - Python host functions may use ordinary Python defaults and keyword arguments.
 - `from dice import D` allows dice-expression defaults for Python functions, for example `def fireball(dc, save_bonus=D("default_save_bonus")): ...`.
-- `D("...")` defaults are evaluated against dice globals only, not function parameters or caller locals.
+- `D("...")` defaults are evaluated against dice globals only during dice-session calls, not function parameters or caller locals.
 - Registered functions may return scalars, `FiniteMeasure`, `Distribution`, `Sweep[FiniteMeasure]`, or `Sweep[Distribution]`.
 
 User-facing extension samples live under [samples/python_extensions](/home/felix/_Documents/Projects/dice/samples/python_extensions).
@@ -286,9 +293,11 @@ User-facing extension samples live under [samples/python_extensions](/home/felix
 
 - `# ...` starts a line comment and can also appear after code on the same line.
 - `import "helpers"` imports another dice file once when the target is `helpers.dice`.
+- `import "helpers.py"` executes a Python file once and registers functions marked with `@dicefunction`.
 - Relative imports are resolved from the file that contains the import.
 - Absolute paths such as `import "/tmp/helpers"` are supported.
 - `std:...` imports such as `import "std:dnd/weapons"` resolve inside dice's packaged standard library.
+- Python imports execute trusted local code and require the explicit `.py` suffix.
 
 ## Examples
 

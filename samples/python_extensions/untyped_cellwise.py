@@ -1,9 +1,10 @@
-from dice import dice_interpreter
+from dice import dice_interpreter, dicefunction
 
 
 def build_result():
     session = dice_interpreter()
 
+    @dicefunction
     def add_two(value):
         return value + 2
 

@@ -96,6 +96,40 @@ class ImportAndCommentTest(unittest.TestCase):
             distribution = only_distribution(result)
             self.assertEqual(distribution[5], 1)
 
+    def test_import_loads_python_file_exports(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "helpers.py").write_text(
+                'from dice import dicefunction\n\n'
+                '@dicefunction\n'
+                'def add_bonus(value):\n'
+                '    return value + 2\n',
+                encoding="utf-8",
+            )
+            result = interpret_file(
+                'import "helpers.py"\nadd_bonus([1..2])',
+                current_dir=root,
+            )
+            self.assertEqual(result.axes[0].values, (1, 2))
+            self.assertEqual(result.cells[(1,)], 3)
+            self.assertEqual(result.cells[(2,)], 4)
+
+    def test_python_import_is_only_processed_once(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "helpers.py").write_text(
+                'from dice import dicefunction\n\n'
+                '@dicefunction\n'
+                'def add_bonus(value):\n'
+                '    return value + 2\n',
+                encoding="utf-8",
+            )
+            result = interpret_file(
+                'import "helpers.py"\nimport "helpers.py"\nadd_bonus(3)',
+                current_dir=root,
+            )
+            self.assertEqual(result, 5)
+
     def test_import_cycle_raises(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
@@ -112,6 +146,17 @@ class ImportAndCommentTest(unittest.TestCase):
                 interpret_file('import "shared.dice"\nx + 1', current_dir=root)
             )
             self.assertEqual(result[3], 1)
+
+    def test_python_import_requires_decorated_exports(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            (root / "helpers.py").write_text(
+                'def add_bonus(value):\n'
+                '    return value + 2\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(Exception, "defines no @dicefunction exports"):
+                interpret_file('import "helpers.py"\n1', current_dir=root)
 
     def test_import_loads_stdlib_file(self):
         helper_result = interpret_file(
