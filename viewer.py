@@ -37,6 +37,7 @@ class ChartRenderPlan:
     width_class: str
     payload: object
     x_label: str | None = None
+    y_label: str | None = None
     title: str | None = None
 
 
@@ -57,6 +58,7 @@ class RenderOutcome:
 _PALETTE = ("#2F5D8C", "#D97706", "#2F855A", "#B83280", "#4C51BF", "#C05621")
 _SEQUENTIAL_CMAP = "Blues"
 _DIVERGING_CMAP = "RdBu_r"
+_TAIL_CLIP_MASS = 0.001
 
 
 def _is_interactive_backend(backend_name):
@@ -188,6 +190,103 @@ def _format_percent_axis(ax):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _pos: "{}%".format(int(y) if float(y).is_integer() else f"{y:.0f}")))
 
 
+def _looks_like_damage_axis(label):
+    if not isinstance(label, str):
+        return False
+    normalized = label.strip().lower()
+    return normalized == "dmg" or "damage" in normalized
+
+
+def _add_plot_notes(ax, notes):
+    visible = [note for note in notes if note]
+    if not visible:
+        return
+    ax.text(
+        0.98,
+        0.98,
+        "\n".join(visible),
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=8.5,
+        color="#4A5568",
+        bbox={"facecolor": "white", "alpha": 0.92, "edgecolor": "#E2E8F0", "boxstyle": "round,pad=0.25"},
+    )
+
+
+def _central_probability_window(distrib):
+    outcomes = _ordered_values(distrib.keys())
+    if len(outcomes) < 25 or not all(isinstance(outcome, (int, float)) for outcome in outcomes):
+        return outcomes, None
+    probabilities = [distrib[outcome] for outcome in outcomes]
+    left_index = 0
+    right_index = len(outcomes) - 1
+    removed_mass = 0.0
+    while left_index < right_index:
+        left_mass = probabilities[left_index]
+        right_mass = probabilities[right_index]
+        if removed_mass + min(left_mass, right_mass) > _TAIL_CLIP_MASS:
+            break
+        if left_mass <= right_mass:
+            removed_mass += left_mass
+            left_index += 1
+        else:
+            removed_mass += right_mass
+            right_index -= 1
+    if left_index == 0 and right_index == len(outcomes) - 1:
+        return outcomes, None
+    kept = outcomes[left_index : right_index + 1]
+    if not kept:
+        return outcomes, None
+    return kept, "Showing central 99.9% of mass; tails omitted."
+
+
+def _dominant_zero_note(distrib, x_label):
+    if not _looks_like_damage_axis(x_label):
+        return None
+    if 0 not in distrib.keys():
+        return None
+    other_outcomes = [outcome for outcome in distrib.keys() if outcome != 0]
+    if not other_outcomes:
+        return None
+    zero_probability = distrib[0]
+    highest_other = max(distrib[outcome] for outcome in other_outcomes)
+    if zero_probability < 0.2 or zero_probability < highest_other * 2:
+        return None
+    return "0 dmg omitted from scale: {:.0f}% miss.".format(zero_probability * 100)
+
+
+def _dominant_zero_probability(distrib, x_label):
+    if not _looks_like_damage_axis(x_label):
+        return None
+    if 0 not in distrib.keys():
+        return None
+    other_outcomes = [outcome for outcome in distrib.keys() if outcome != 0]
+    if not other_outcomes:
+        return None
+    zero_probability = distrib[0]
+    highest_other = max(distrib[outcome] for outcome in other_outcomes)
+    if zero_probability < 0.2 or zero_probability < highest_other * 2:
+        return None
+    return zero_probability
+
+
+def _display_outcomes(distrib, x_label, clip_tails=True):
+    if clip_tails:
+        outcomes, tail_note = _central_probability_window(distrib)
+    else:
+        outcomes, tail_note = _ordered_values(distrib.keys()), None
+    notes = [tail_note]
+    zero_note = _dominant_zero_note(distrib, x_label)
+    if zero_note is not None and 0 in outcomes:
+        outcomes = tuple(outcome for outcome in outcomes if outcome != 0)
+        notes.append(zero_note)
+    if not outcomes:
+        outcomes = _ordered_values(distrib.keys())
+        notes = []
+    return outcomes, tuple(note for note in notes if note)
+
+
 def _validate_series_entries(entries):
     normalized = []
     for entry in entries:
@@ -217,7 +316,7 @@ def build_chart_plan(chart_spec):
         width_class = PanelWidthClass.NARROW
         if intent == "best":
             width_class = PanelWidthClass.WIDE
-            return ChartRenderPlan("best_strategy", width_class, result, chart_spec.x_label, chart_spec.title)
+            return ChartRenderPlan("best_strategy", width_class, result, chart_spec.x_label, chart_spec.y_label, chart_spec.title)
         if result.is_unswept():
             kind = "unswept_distribution" if intent in {"auto", "dist"} else intent
         elif len(result.axes) == 1:
@@ -233,7 +332,7 @@ def build_chart_plan(chart_spec):
             raise Exception("render does not support this result shape yet")
         if chart_spec.width_override is not None:
             width_class = chart_spec.width_override
-        return ChartRenderPlan(kind, width_class, result, chart_spec.x_label, chart_spec.title)
+        return ChartRenderPlan(kind, width_class, result, chart_spec.x_label, chart_spec.y_label, chart_spec.title)
 
     if intent in {"compare", "diff"}:
         normalized = _validate_series_entries(payload)
@@ -254,7 +353,7 @@ def build_chart_plan(chart_spec):
                 width_class = PanelWidthClass.WIDE
         if chart_spec.width_override is not None:
             width_class = chart_spec.width_override
-        return ChartRenderPlan(plan_kind, width_class, tuple(results), chart_spec.x_label, chart_spec.title)
+        return ChartRenderPlan(plan_kind, width_class, tuple(results), chart_spec.x_label, chart_spec.y_label, chart_spec.title)
 
     raise Exception("unknown chart intent {}".format(intent))
 
@@ -299,17 +398,20 @@ def build_report_plan(report_spec):
     return ReportRenderPlan(report_spec.title, hero, tuple(rows), tuple(notes))
 
 
-def _plot_unswept_distribution(ax, result, render_config):
+def _plot_unswept_distribution(ax, result, render_config, x_label=None, y_label=None):
     distrib = result.only_distribution()
-    outcomes = _ordered_values(distrib.keys())
+    outcomes, notes = _display_outcomes(distrib, x_label, clip_tails=True)
     positions, tick_labels = _category_positions(outcomes)
     values = [_scale_probability(distrib[outcome], render_config) for outcome in outcomes]
     ax.bar(positions, values, color=_PALETTE[0], alpha=0.9, edgecolor="white", linewidth=0.6)
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
-    ax.set_ylabel(_probability_label(render_config))
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label if y_label is not None else _probability_label(render_config))
     _format_percent_axis(ax)
+    _add_plot_notes(ax, notes)
 
 
 def _distribution_cdf(distrib):
@@ -332,7 +434,7 @@ def _distribution_surv(distrib):
     return xs, ys
 
 
-def _plot_distribution_curve(ax, result, render_config, mode):
+def _plot_distribution_curve(ax, result, render_config, mode, x_label=None, y_label=None):
     distrib = result.only_distribution()
     if mode == "cdf":
         xs, ys = _distribution_cdf(distrib)
@@ -344,11 +446,13 @@ def _plot_distribution_curve(ax, result, render_config, mode):
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
-    ax.set_ylabel(_probability_label(render_config))
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label if y_label is not None else _probability_label(render_config))
     _format_percent_axis(ax)
 
 
-def _plot_scalar_sweep(ax, result, render_config, x_label=None):
+def _plot_scalar_sweep(ax, result, render_config, x_label=None, y_label=None):
     axis = result.axes[0]
     x_values = axis.values
     positions, tick_labels = _category_positions(x_values)
@@ -359,10 +463,10 @@ def _plot_scalar_sweep(ax, result, render_config, x_label=None):
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
     ax.set_xlabel(x_label if x_label is not None else (axis.name if not axis.name.startswith("sweep_") else "Sweep 1"))
-    ax.set_ylabel("Value")
+    ax.set_ylabel(y_label if y_label is not None else "Value")
 
 
-def _plot_distribution_sweep(ax, result, render_config, x_label=None):
+def _plot_distribution_sweep(ax, result, render_config, x_label=None, y_label=None):
     axis = result.axes[0]
     x_values = axis.values
     all_outcomes = []
@@ -384,7 +488,7 @@ def _plot_distribution_sweep(ax, result, render_config, x_label=None):
     ax.set_yticks(range(len(all_outcomes)))
     ax.set_yticklabels([str(outcome) for outcome in all_outcomes])
     ax.set_xlabel(x_label if x_label is not None else (axis.name if not axis.name.startswith("sweep_") else "Sweep 1"))
-    ax.set_ylabel("Outcome")
+    ax.set_ylabel(y_label if y_label is not None else "Outcome")
     return image
 
 
@@ -418,14 +522,14 @@ def _draw_series_labels(ax, positions, series_data):
         )
 
 
-def _plot_compare_scalar(ax, entries, render_config, x_label=None):
+def _plot_compare_scalar(ax, entries, render_config, x_label=None, y_label=None):
     x_values = entries[0][1].axes[0].values
     positions, tick_labels = _category_positions(x_values)
     series_data = []
     for index, (label, result) in enumerate(entries):
         y_values = [_scalar_value(result.cells[(value,)]) for value in x_values]
         color = _PALETTE[index % len(_PALETTE)]
-        ax.plot(positions, y_values, color=color, linewidth=2.0)
+        ax.plot(positions, y_values, color=color, linewidth=2.0, label=label)
         ax.scatter(positions, y_values, color=color, s=16)
         series_data.append((color, label, y_values))
     if tick_labels is not None:
@@ -433,18 +537,39 @@ def _plot_compare_scalar(ax, entries, render_config, x_label=None):
         ax.set_xticklabels(tick_labels)
     axis_name = entries[0][1].axes[0].name
     ax.set_xlabel(x_label if x_label is not None else (axis_name if not axis_name.startswith("sweep_") else "Sweep 1"))
-    ax.set_ylabel("Value")
+    ax.set_ylabel(y_label if y_label is not None else "Value")
     if len(entries) <= 4:
         _draw_series_labels(ax, positions, series_data)
     else:
         ax.legend(frameon=False)
 
 
-def _plot_compare_unswept(ax, entries, render_config):
+def _plot_compare_unswept(ax, entries, render_config, x_label=None, y_label=None):
     all_outcomes = []
     seen = set()
+    notes = []
+    remove_zero = False
+    displayed_outcomes_by_label = {}
+    zero_probabilities = {}
     for _, result in entries:
-        for outcome in _ordered_values(result.only_distribution().keys()):
+        distrib = result.only_distribution()
+        outcomes, distrib_notes = _display_outcomes(distrib, x_label, clip_tails=False)
+        notes.extend(
+            note for note in distrib_notes if not note.startswith("0 dmg omitted from scale:")
+        )
+        displayed_outcomes_by_label[id(result)] = outcomes
+    if _looks_like_damage_axis(x_label):
+        for label, result in entries:
+            distrib = result.only_distribution()
+            zero_probability = _dominant_zero_probability(distrib, x_label)
+            if zero_probability is not None:
+                remove_zero = True
+                zero_probabilities[label] = zero_probability
+    for _, result in entries:
+        outcomes = displayed_outcomes_by_label[id(result)]
+        for outcome in outcomes:
+            if remove_zero and outcome == 0:
+                continue
             if outcome not in seen:
                 all_outcomes.append(outcome)
                 seen.add(outcome)
@@ -453,16 +578,28 @@ def _plot_compare_unswept(ax, entries, render_config):
         distrib = result.only_distribution()
         values = [_scale_probability(distrib[outcome], render_config) for outcome in all_outcomes]
         color = _PALETTE[index % len(_PALETTE)]
-        ax.step(positions, values, where="mid", color=color, linewidth=1.8, label=label)
+        display_label = label
+        if label in zero_probabilities:
+            display_label = "{} ({:.0f}% miss)".format(label, zero_probabilities[label] * 100)
+        ax.step(positions, values, where="mid", color=color, linewidth=1.8, label=display_label)
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
-    ax.set_ylabel(_probability_label(render_config))
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label if y_label is not None else _probability_label(render_config))
     _format_percent_axis(ax)
     ax.legend(frameon=False)
+    deduped_notes = []
+    for note in notes:
+        if note not in deduped_notes:
+            deduped_notes.append(note)
+    if zero_probabilities:
+        deduped_notes.insert(0, "0 dmg omitted from x-axis.")
+    _add_plot_notes(ax, deduped_notes)
 
 
-def _plot_diff(ax, entries, render_config, x_label=None):
+def _plot_diff(ax, entries, render_config, x_label=None, y_label=None):
     if len(entries) != 2:
         raise Exception("r_diff requires exactly two labeled entries")
     (left_label, left_result), (right_label, right_result) = entries
@@ -484,7 +621,7 @@ def _plot_diff(ax, entries, render_config, x_label=None):
         ax.set_xticklabels(tick_labels)
     axis_name = left_result.axes[0].name
     ax.set_xlabel(x_label if x_label is not None else (axis_name if not axis_name.startswith("sweep_") else "Sweep 1"))
-    ax.set_ylabel("{} - {}".format(left_label, right_label))
+    ax.set_ylabel(y_label if y_label is not None else "{} - {}".format(left_label, right_label))
 
 
 def _best_strategy_payload(result):
@@ -501,13 +638,12 @@ def _best_strategy_payload(result):
         margin = ordered[0][1] - ordered[1][1] if len(ordered) > 1 else 0
         margins.append(margin)
     winner_matrix = np.array([winner_indexes])
-    margin_matrix = np.array([margins])
-    return strategy_axis, condition_axis, winner_matrix, margin_matrix
+    return strategy_axis, condition_axis, winner_matrix, tuple(margins)
 
 
 def _plot_best_strategy(axes, result, render_config):
     ax_winner, ax_margin = axes
-    strategy_axis, condition_axis, winner_matrix, margin_matrix = _best_strategy_payload(result)
+    strategy_axis, condition_axis, winner_matrix, margins = _best_strategy_payload(result)
     cmap = ListedColormap(list(_PALETTE[: max(2, len(strategy_axis.values))]))
     image1 = ax_winner.imshow(winner_matrix, aspect="auto", origin="lower", cmap=cmap, vmin=0, vmax=max(0, len(strategy_axis.values) - 1))
     ax_winner.set_xticks(range(len(condition_axis.values)))
@@ -518,15 +654,16 @@ def _plot_best_strategy(axes, result, render_config):
     ax_winner.set_title("Best strategy")
     colorbar = ax_winner.figure.colorbar(image1, ax=ax_winner, ticks=range(len(strategy_axis.values)))
     colorbar.ax.set_yticklabels([str(value) for value in strategy_axis.values])
-
-    image2 = ax_margin.imshow(margin_matrix, aspect="auto", origin="lower", cmap=_SEQUENTIAL_CMAP)
-    ax_margin.set_xticks(range(len(condition_axis.values)))
-    ax_margin.set_xticklabels([str(value) for value in condition_axis.values])
-    ax_margin.set_yticks([0])
-    ax_margin.set_yticklabels(["Margin"])
+    x_values = condition_axis.values
+    positions, tick_labels = _category_positions(x_values)
+    ax_margin.plot(positions, margins, color=_PALETTE[0], linewidth=2.2)
+    ax_margin.fill_between(positions, margins, 0, color=_PALETTE[0], alpha=0.18)
+    if tick_labels is not None:
+        ax_margin.set_xticks(positions)
+        ax_margin.set_xticklabels(tick_labels)
     ax_margin.set_xlabel(condition_axis.name if not condition_axis.name.startswith("sweep_") else "Condition")
+    ax_margin.set_ylabel("Margin")
     ax_margin.set_title("Winner margin")
-    ax_margin.figure.colorbar(image2, ax=ax_margin)
 
 
 def render_chart_on_axes(figure, axes, plan, render_config):
@@ -534,40 +671,47 @@ def render_chart_on_axes(figure, axes, plan, render_config):
         _plot_best_strategy(axes, plan.payload, render_config)
         return
 
-    ax = axes if not isinstance(axes, (list, tuple, np.ndarray)) else axes[0]
+    if isinstance(axes, np.ndarray):
+        ax = axes.flat[0]
+    elif isinstance(axes, (list, tuple)):
+        ax = axes[0]
+    else:
+        ax = axes
     if plan.kind == "unswept_distribution":
-        _plot_unswept_distribution(ax, plan.payload, render_config)
+        _plot_unswept_distribution(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "cdf":
-        _plot_distribution_curve(ax, plan.payload, render_config, "cdf")
+        _plot_distribution_curve(ax, plan.payload, render_config, "cdf", x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "surv":
-        _plot_distribution_curve(ax, plan.payload, render_config, "surv")
+        _plot_distribution_curve(ax, plan.payload, render_config, "surv", x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "scalar_sweep":
-        _plot_scalar_sweep(ax, plan.payload, render_config, x_label=plan.x_label)
+        _plot_scalar_sweep(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "distribution_sweep":
-        image = _plot_distribution_sweep(ax, plan.payload, render_config, x_label=plan.x_label)
+        image = _plot_distribution_sweep(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
         figure.colorbar(image, ax=ax, label=_probability_label(render_config))
     elif plan.kind == "scalar_heatmap":
         image = _plot_scalar_heatmap(ax, plan.payload, render_config)
         figure.colorbar(image, ax=ax, label="Value")
     elif plan.kind == "compare_scalar":
-        _plot_compare_scalar(ax, plan.payload, render_config, x_label=plan.x_label)
+        _plot_compare_scalar(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "compare_unswept":
-        _plot_compare_unswept(ax, plan.payload, render_config)
+        _plot_compare_unswept(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "compare_faceted":
         entries = plan.payload
         subplots = ax
         if not isinstance(subplots, np.ndarray):
             subplots = np.array([subplots])
         for subplot, (label, result) in zip(subplots.flat, entries):
-            _plot_unswept_distribution(subplot, result, render_config)
-            subplot.set_title(label)
+            subplan = build_chart_plan(
+                ChartSpec("auto", result, x_label=plan.x_label, y_label=plan.y_label, title=label)
+            )
+            render_chart_on_axes(figure, subplot, subplan, render_config)
         for subplot in subplots.flat[len(entries):]:
             subplot.axis("off")
     elif plan.kind == "diff":
-        _plot_diff(ax, plan.payload, render_config, x_label=plan.x_label)
+        _plot_diff(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     else:
         raise Exception("unsupported chart plan {}".format(plan.kind))
-    if plan.title is not None:
+    if plan.title is not None and plan.kind != "compare_faceted":
         ax.set_title(plan.title)
 
 
@@ -576,7 +720,7 @@ def render_chart(chart_spec, *, render_config=None, path=None, output_format="pn
     render_config = render_config if render_config is not None else RenderConfig()
     plan = build_chart_plan(chart_spec)
     if plan.kind == "best_strategy":
-        figure, axes = plt.subplots(1, 2, figsize=(12, 4.8))
+        figure, axes = plt.subplots(2, 1, figsize=(11.5, 6.6), gridspec_kw={"height_ratios": [1.3, 1.0]})
     elif plan.kind == "compare_faceted":
         count = len(plan.payload)
         cols = 2
@@ -612,8 +756,8 @@ def render_report(report_spec, *, render_config=None, path=None, output_format="
 
     if plan.hero is not None:
         if plan.hero.kind == "best_strategy":
-            subgrid = outer[current_row].subgridspec(1, 2, wspace=0.28)
-            axes = [figure.add_subplot(subgrid[0, 0]), figure.add_subplot(subgrid[0, 1])]
+            subgrid = outer[current_row].subgridspec(2, 1, hspace=0.34, height_ratios=[1.3, 1.0])
+            axes = [figure.add_subplot(subgrid[0, 0]), figure.add_subplot(subgrid[1, 0])]
         elif plan.hero.kind == "compare_faceted":
             entries = plan.hero.payload
             cols = 2
@@ -629,8 +773,8 @@ def render_report(report_spec, *, render_config=None, path=None, output_format="
         if len(row) == 1:
             chart = row[0]
             if chart.kind == "best_strategy":
-                subgrid = outer[current_row].subgridspec(1, 2, wspace=0.28)
-                axes = [figure.add_subplot(subgrid[0, 0]), figure.add_subplot(subgrid[0, 1])]
+                subgrid = outer[current_row].subgridspec(2, 1, hspace=0.34, height_ratios=[1.3, 1.0])
+                axes = [figure.add_subplot(subgrid[0, 0]), figure.add_subplot(subgrid[1, 0])]
             elif chart.kind == "compare_faceted":
                 entries = chart.payload
                 cols = 2

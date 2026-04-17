@@ -455,6 +455,7 @@ class ChartSpec:
     intent: str
     payload: object
     x_label: str | None = None
+    y_label: str | None = None
     title: str | None = None
     width_override: str | None = None
 

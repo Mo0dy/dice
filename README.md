@@ -51,7 +51,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - reducer `axes` may be omitted to reduce across all sweep axes, or passed as one axis ref or a tuple such as `"PLAN"`, `0`, or `("PLAN", "LEVEL")`.
 - `argmaxover(...)` returns coordinate records such as `(PLAN: "gwm")` or `(PLAN: "gwm", LEVEL: 11)`, and those records can be fed back into `expr[...]`.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
-- `r_auto(expr, x="...")`, `r_dist(expr, x="...")`, `r_cdf(expr, x="...")`, and `r_surv(expr, x="...")` build chart specs.
+- `r_auto(expr, x="...", y="...")`, `r_dist(expr, x="...", y="...")`, `r_cdf(expr, x="...", y="...")`, and `r_surv(expr, x="...", y="...")` build chart specs.
 - `r_compare(("Label", expr), ...)`, `r_diff(("A", expr), ("B", expr), ...)`, and `r_best(expr, ...)` build comparison and strategy chart specs.
 - `r_title("...")`, `r_note("...")`, `r_hero(spec)`, and `r_row(spec1, spec2)` build the pending report.
 - `render(path=..., format="png", dpi=...)` flushes the pending report to output and resets report state.
@@ -253,9 +253,9 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 
 ## Rendering
 
-- `r_auto(expr, x="...", title="...")` builds a chart spec with smart defaults.
+- `r_auto(expr, x="...", y="...", title="...")` builds a chart spec with smart defaults.
 - `r_dist(expr, x="...", title="...")`, `r_cdf(...)`, and `r_surv(...)` build explicit distribution views.
-- `r_compare(("a", expr1), ("b", expr2), x="...", title="...")` builds a labeled comparison chart spec.
+- `r_compare(("a", expr1), ("b", expr2), x="...", y="...", title="...")` builds a labeled comparison chart spec.
 - `r_diff(("a", expr1), ("b", expr2), x="...", title="...")` builds a delta comparison chart spec.
 - `r_best(expr, title="...")` builds a strategy winner/margin chart spec for suitable sweeps.
 - bare top-level chart specs append themselves to the pending report in source order.

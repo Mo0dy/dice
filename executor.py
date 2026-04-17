@@ -347,10 +347,12 @@ class Executor(ABC):
         )
         chart_kw_parameters = (
             ParameterSpec("x", default_value=None, keyword_only=True),
+            ParameterSpec("y", default_value=None, keyword_only=True),
             ParameterSpec("title", default_value=None, keyword_only=True),
         )
         compare_kw_parameters = (
             ParameterSpec("x", default_value=None, keyword_only=True),
+            ParameterSpec("y", default_value=None, keyword_only=True),
             ParameterSpec("title", default_value=None, keyword_only=True),
         )
         self._register_host_function(self.r_auto, name="r_auto", sweep_mode=True, parameters=chart_kw_parameters, variadic=True, variadic_keyword_arguments=True)
@@ -392,36 +394,36 @@ class Executor(ABC):
     def total(self, value: diceengine.Sweep[Any]) -> diceengine.Sweep[Any]:
         return diceengine.total_with(self.add, value)
 
-    def _normalize_chart_arguments(self, args, x=None, title=None):
+    def _normalize_chart_arguments(self, args, x=None, y=None, title=None):
         if len(args) != 1:
             raise Exception("chart constructors expect exactly one expression")
-        return args[0], x, title
+        return args[0], x, y, title
 
-    def r_auto(self, *args, x=None, title=None):
-        value, x, title = self._normalize_chart_arguments(args, x=x, title=title)
-        return diceengine.ChartSpec("auto", payload=value, x_label=x, title=title)
+    def r_auto(self, *args, x=None, y=None, title=None):
+        value, x, y, title = self._normalize_chart_arguments(args, x=x, y=y, title=title)
+        return diceengine.ChartSpec("auto", payload=value, x_label=x, y_label=y, title=title)
 
-    def r_dist(self, *args, x=None, title=None):
-        value, x, title = self._normalize_chart_arguments(args, x=x, title=title)
-        return diceengine.ChartSpec("dist", payload=value, x_label=x, title=title)
+    def r_dist(self, *args, x=None, y=None, title=None):
+        value, x, y, title = self._normalize_chart_arguments(args, x=x, y=y, title=title)
+        return diceengine.ChartSpec("dist", payload=value, x_label=x, y_label=y, title=title)
 
-    def r_cdf(self, *args, x=None, title=None):
-        value, x, title = self._normalize_chart_arguments(args, x=x, title=title)
-        return diceengine.ChartSpec("cdf", payload=value, x_label=x, title=title)
+    def r_cdf(self, *args, x=None, y=None, title=None):
+        value, x, y, title = self._normalize_chart_arguments(args, x=x, y=y, title=title)
+        return diceengine.ChartSpec("cdf", payload=value, x_label=x, y_label=y, title=title)
 
-    def r_surv(self, *args, x=None, title=None):
-        value, x, title = self._normalize_chart_arguments(args, x=x, title=title)
-        return diceengine.ChartSpec("surv", payload=value, x_label=x, title=title)
+    def r_surv(self, *args, x=None, y=None, title=None):
+        value, x, y, title = self._normalize_chart_arguments(args, x=x, y=y, title=title)
+        return diceengine.ChartSpec("surv", payload=value, x_label=x, y_label=y, title=title)
 
-    def r_compare(self, *entries, x=None, title=None):
-        return diceengine.ChartSpec("compare", payload=tuple(entries), x_label=x, title=title)
+    def r_compare(self, *entries, x=None, y=None, title=None):
+        return diceengine.ChartSpec("compare", payload=tuple(entries), x_label=x, y_label=y, title=title)
 
-    def r_diff(self, *entries, x=None, title=None):
-        return diceengine.ChartSpec("diff", payload=tuple(entries), x_label=x, title=title)
+    def r_diff(self, *entries, x=None, y=None, title=None):
+        return diceengine.ChartSpec("diff", payload=tuple(entries), x_label=x, y_label=y, title=title)
 
-    def r_best(self, *args, x=None, title=None):
-        value, x, title = self._normalize_chart_arguments(args, x=x, title=title)
-        return diceengine.ChartSpec("best", payload=value, x_label=x, title=title)
+    def r_best(self, *args, x=None, y=None, title=None):
+        value, x, y, title = self._normalize_chart_arguments(args, x=x, y=y, title=title)
+        return diceengine.ChartSpec("best", payload=value, x_label=x, y_label=y, title=title)
 
     def r_title(self, text):
         self.pending_report = diceengine.report_set_title(self.pending_report, text)

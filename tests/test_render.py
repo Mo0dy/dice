@@ -66,6 +66,10 @@ class RenderRuntimeTest(unittest.TestCase):
         result = interpret_statement("chart = r_auto(d20); chart; render()")
         self.assertTrue(result.endswith(".png"))
 
+    def test_chart_constructors_accept_y_keyword(self):
+        chart = interpret_statement('r_auto(~([SLOT:1..3] * 2), x="Spell slot", y="Dmg")')
+        self.assertEqual(chart.y_label, "Dmg")
+
 
 class PlannerTest(unittest.TestCase):
     def setUp(self):
@@ -154,6 +158,58 @@ class FigureStructureTest(unittest.TestCase):
         try:
             viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
             self.assertEqual(len(figure.axes), 2)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_damage_distribution_can_omit_dominant_zero_from_scale(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor().r_dist(
+                interpret_statement("(d20 >= 18 -> d8 | 0)"),
+                x="Damage",
+                title="Damage profile",
+            )
+        )
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
+            note_text = "\n".join(text.get_text() for text in ax.texts)
+            self.assertIn("0 dmg omitted", note_text)
+            centers = [patch.get_x() + patch.get_width() / 2 for patch in ax.patches]
+            self.assertGreater(min(centers), 0)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_dense_distribution_can_clip_tails_with_annotation(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor().r_dist(
+                interpret_statement("d6 ^ 12"),
+                x="Total damage",
+            )
+        )
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
+            note_text = "\n".join(text.get_text() for text in ax.texts)
+            self.assertIn("central 99.9% of mass", note_text)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_best_strategy_margin_uses_line_plot_below_heatmap(self):
+        plan = viewer.build_chart_plan(
+            ChartSpec(
+                "best",
+                interpret_file(
+                    'score(plan, ac): split plan as name | name == "plain" -> ac | otherwise -> ac + 1\n'
+                    'score([PLAN:"plain", "hex"], [AC:10..12])'
+                ),
+            )
+        )
+        figure, axes = viewer.plt.subplots(2, 1)
+        try:
+            viewer.render_chart_on_axes(figure, axes, plan, RenderConfig())
+            self.assertEqual(len(axes[0].images), 1)
+            self.assertEqual(len(axes[1].images), 0)
+            self.assertEqual(len(axes[1].lines), 1)
         finally:
             viewer.plt.close(figure)
 
