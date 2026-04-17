@@ -1107,7 +1107,7 @@
       ],
       "distribution": [
         {
-          "outcome": 25.05000000000005,
+          "outcome": 25.050000000000054,
           "probability": 1.0
         }
       ]
@@ -1207,7 +1207,7 @@
       ],
       "distribution": [
         {
-          "outcome": 17.925000000000015,
+          "outcome": 17.925000000000022,
           "probability": 1.0
         }
       ]
@@ -1227,7 +1227,7 @@
       ],
       "distribution": [
         {
-          "outcome": 16.500000000000007,
+          "outcome": 16.50000000000001,
           "probability": 1.0
         }
       ]
@@ -1267,7 +1267,7 @@
       ],
       "distribution": [
         {
-          "outcome": 13.650000000000002,
+          "outcome": 13.650000000000004,
           "probability": 1.0
         }
       ]
@@ -1307,7 +1307,7 @@
       ],
       "distribution": [
         {
-          "outcome": 10.8,
+          "outcome": 10.800000000000004,
           "probability": 1.0
         }
       ]

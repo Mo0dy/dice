@@ -297,7 +297,7 @@ hit(ac): d20 >= ac; hit(11)
 hit(ac): d20 >= ac; damage(ac): hit(ac) -> 5 | 0; damage([10..15])
 hit(ac): d20 >= ac; hit([AC:10..15])
 crit(ac, dmg): d20 == 20 -> dmg | 0; crit(15, 8)
-import "std:dnd/weapons"; crit_longsword(16, 7, 4)
+import "std:dnd/weapons"; longsword_attack(16, 7, 4)
 always(): 5; always()
 rolln(a, b): a d b; rolln(2, 2)
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||

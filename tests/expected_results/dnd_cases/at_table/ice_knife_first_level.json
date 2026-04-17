@@ -94,11 +94,11 @@
         },
         {
           "outcome": 23,
-          "probability": 0.0016749999999999998
+          "probability": 0.001675
         },
         {
           "outcome": 24,
-          "probability": 0.0012451388888888887
+          "probability": 0.001245138888888889
         },
         {
           "outcome": 25,
@@ -106,31 +106,31 @@
         },
         {
           "outcome": 26,
-          "probability": 0.0006326388888888887
+          "probability": 0.000632638888888889
         },
         {
           "outcome": 27,
-          "probability": 0.00042777777777777774
+          "probability": 0.0004277777777777778
         },
         {
           "outcome": 28,
-          "probability": 0.00026736111111111107
+          "probability": 0.0002673611111111111
         },
         {
           "outcome": 29,
-          "probability": 0.00015277777777777777
+          "probability": 0.0001527777777777778
         },
         {
           "outcome": 30,
-          "probability": 7.638888888888889e-05
+          "probability": 7.63888888888889e-05
         },
         {
           "outcome": 31,
-          "probability": 3.0555555555555554e-05
+          "probability": 3.055555555555556e-05
         },
         {
           "outcome": 32,
-          "probability": 7.638888888888888e-06
+          "probability": 7.63888888888889e-06
         }
       ]
     }

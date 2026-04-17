@@ -93,7 +93,7 @@ def example_cases() -> list[JsonRegressionCase]:
         ("keep_high", "3d20h1"),
         ("named_sweep", "d20 >= [AC:10:12]"),
         ("match_shared_roll", "split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||"),
-        ("stdlib_import", 'import "std:dnd/weapons"; crit_longsword(16, 7, 4)'),
+        ("stdlib_import", 'import "std:dnd/weapons"; longsword_attack(16, 7, 4)'),
     ]
     cases = []
     for name, source in examples:

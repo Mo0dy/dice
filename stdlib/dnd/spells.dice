@@ -1,36 +1,85 @@
 # Exact 2014 5e spell helpers.
 import "std:dnd/core.dice"
 
-eldritch_blast(ac, bonus): attack_damage(ac, bonus, d10, 2 d 10)
-eldritch_blast_action(beams, ac, bonus): repeat_sum(beams, eldritch_blast(ac, bonus))
-eldritch_blast_by_level(level, ac, bonus): eldritch_blast_action(eldritch_blast_beams(level), ac, bonus)
+eldritch_blast(ac, attack_bonus, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, d10, roll=roll, hit_bonus=hit_bonus)
 
-agonizing_eldritch_blast(ac, bonus, cha): attack_damage(ac, bonus, d10 + cha, 2 d 10 + cha)
-agonizing_eldritch_blast_action(beams, ac, bonus, cha): repeat_sum(beams, agonizing_eldritch_blast(ac, bonus, cha))
-agonizing_eldritch_blast_by_level(level, ac, bonus, cha): agonizing_eldritch_blast_action(eldritch_blast_beams(level), ac, bonus, cha)
-hex_eldritch_blast(ac, bonus, cha): attack_damage(ac, bonus, d10 + cha + d6, 2 d 10 + cha + 2 d 6)
-hex_eldritch_blast_action(beams, ac, bonus, cha): repeat_sum(beams, hex_eldritch_blast(ac, bonus, cha))
+eldritch_blast_action(beams, ac, attack_bonus, roll=d20, hit_bonus=0):
+    repeat_sum(beams, eldritch_blast(ac, attack_bonus, roll=roll, hit_bonus=hit_bonus))
 
-fire_bolt(level, ac, bonus): attack_damage(ac, bonus, cantrip_dice(level, 10), repeat_sum(2, cantrip_dice(level, 10)))
-ray_of_frost(level, ac, bonus): attack_damage(ac, bonus, cantrip_dice(level, 8), repeat_sum(2, cantrip_dice(level, 8)))
-guiding_bolt(slot_level, ac, bonus): attack_damage(ac, bonus, repeat_sum(slot_level + 3, d6), repeat_sum(2, repeat_sum(slot_level + 3, d6)))
-inflict_wounds(slot_level, ac, bonus): attack_damage(ac, bonus, repeat_sum(slot_level + 2, d10), repeat_sum(2, repeat_sum(slot_level + 2, d10)))
-chromatic_orb(slot_level, ac, bonus): attack_damage(ac, bonus, repeat_sum(slot_level + 2, d8), repeat_sum(2, repeat_sum(slot_level + 2, d8)))
-scorching_ray(slot_level, ac, bonus): repeat_sum(slot_level + 1, attack_damage(ac, bonus, 2 d 6, 4 d 6))
-ice_knife(slot_level, ac, bonus, save_bonus, dc): attack_damage(ac, bonus, d10, 2 d 10) + save_half(dc, save_bonus, repeat_sum(slot_level + 1, d6))
+eldritch_blast_by_level(ac, attack_bonus, level=1, roll=d20, hit_bonus=0):
+    eldritch_blast_action(eldritch_blast_beams(level), ac, attack_bonus, roll=roll, hit_bonus=hit_bonus)
 
-magic_missile(slot_level): repeat_sum(slot_level + 2, d4 + 1)
+agonizing_eldritch_blast(ac, attack_bonus, cha_mod, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, d10, cha_mod, roll=roll, hit_bonus=hit_bonus)
+
+agonizing_eldritch_blast_action(beams, ac, attack_bonus, cha_mod, roll=d20, hit_bonus=0):
+    repeat_sum(beams, agonizing_eldritch_blast(ac, attack_bonus, cha_mod, roll=roll, hit_bonus=hit_bonus))
+
+agonizing_eldritch_blast_by_level(ac, attack_bonus, cha_mod, level=1, roll=d20, hit_bonus=0):
+    agonizing_eldritch_blast_action(eldritch_blast_beams(level), ac, attack_bonus, cha_mod, roll=roll, hit_bonus=hit_bonus)
+
+hex_eldritch_blast(ac, attack_bonus, cha_mod, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, d10 + d6, cha_mod, roll=roll, hit_bonus=hit_bonus)
+
+hex_eldritch_blast_action(beams, ac, attack_bonus, cha_mod, roll=d20, hit_bonus=0):
+    repeat_sum(beams, hex_eldritch_blast(ac, attack_bonus, cha_mod, roll=roll, hit_bonus=hit_bonus))
+
+fire_bolt(ac, attack_bonus, level=1, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, cantrip_dice(level, 10), roll=roll, hit_bonus=hit_bonus)
+
+ray_of_frost(ac, attack_bonus, level=1, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, cantrip_dice(level, 8), roll=roll, hit_bonus=hit_bonus)
+
+guiding_bolt(ac, attack_bonus, slot_level=1, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, repeat_sum(slot_level + 3, d6), roll=roll, hit_bonus=hit_bonus)
+
+inflict_wounds(ac, attack_bonus, slot_level=1, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, repeat_sum(slot_level + 2, d10), roll=roll, hit_bonus=hit_bonus)
+
+chromatic_orb(ac, attack_bonus, slot_level=1, roll=d20, hit_bonus=0):
+    attack(ac, attack_bonus, repeat_sum(slot_level + 2, d8), roll=roll, hit_bonus=hit_bonus)
+
+scorching_ray(ac, attack_bonus, slot_level=2, roll=d20, hit_bonus=0):
+    repeat_sum(slot_level + 1, attack(ac, attack_bonus, 2 d 6, roll=roll, hit_bonus=hit_bonus))
+
+ice_knife(ac, attack_bonus, save_bonus, dc, slot_level=1, roll=d20, hit_bonus=0, save_roll=d20, save_extra=0):
+    splash_damage = repeat_sum(slot_level + 1, d6)
+    attack(ac, attack_bonus, d10, roll=roll, hit_bonus=hit_bonus) + save_half(dc, save_bonus, splash_damage, roll=save_roll, save_extra=save_extra)
+
+magic_missile(slot_level=1): repeat_sum(slot_level + 2, d4 + 1)
 magic_missile_darts(darts): repeat_sum(darts, d4 + 1)
 
-burning_hands(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level + 2, d6))
-shatter(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level + 1, d8))
-fireball(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6))
-lightning_bolt(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6))
-spirit_guardians(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level, d8))
-moonbeam(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level, d10))
-cone_of_cold(slot_level, dc, save_bonus): save_half(dc, save_bonus, repeat_sum(slot_level + 3, d8))
-disintegrate(slot_level, dc, save_bonus): save_none(dc, save_bonus, repeat_sum(slot_level + slot_level + slot_level - 8, d6) + 40)
+burning_hands(dc, save_bonus, slot_level=1, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level + 2, d6), roll=roll, save_extra=save_extra)
 
-sacred_flame(level, dc, save_bonus): save_none(dc, save_bonus, cantrip_dice(level, 8))
-toll_the_dead(level, dc, save_bonus): save_none(dc, save_bonus, cantrip_dice(level, 8))
-toll_the_dead_wounded(level, dc, save_bonus): save_none(dc, save_bonus, cantrip_dice(level, 12))
+shatter(dc, save_bonus, slot_level=2, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level + 1, d8), roll=roll, save_extra=save_extra)
+
+fireball(dc, save_bonus, slot_level=3, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6), roll=roll, save_extra=save_extra)
+
+lightning_bolt(dc, save_bonus, slot_level=3, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level + 5, d6), roll=roll, save_extra=save_extra)
+
+spirit_guardians(dc, save_bonus, slot_level=3, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level, d8), roll=roll, save_extra=save_extra)
+
+moonbeam(dc, save_bonus, slot_level=2, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level, d10), roll=roll, save_extra=save_extra)
+
+cone_of_cold(dc, save_bonus, slot_level=5, roll=d20, save_extra=0):
+    save_half(dc, save_bonus, repeat_sum(slot_level + 3, d8), roll=roll, save_extra=save_extra)
+
+disintegrate(dc, save_bonus, slot_level=6, roll=d20, save_extra=0):
+    damage = repeat_sum(slot_level + slot_level + slot_level - 8, d6) + 40
+    save_none(dc, save_bonus, damage, roll=roll, save_extra=save_extra)
+
+sacred_flame(dc, save_bonus, level=1, roll=d20, save_extra=0):
+    save_none(dc, save_bonus, cantrip_dice(level, 8), roll=roll, save_extra=save_extra)
+
+toll_the_dead(dc, save_bonus, level=1, roll=d20, save_extra=0):
+    save_none(dc, save_bonus, cantrip_dice(level, 8), roll=roll, save_extra=save_extra)
+
+toll_the_dead_wounded(dc, save_bonus, level=1, roll=d20, save_extra=0):
+    save_none(dc, save_bonus, cantrip_dice(level, 12), roll=roll, save_extra=save_extra)

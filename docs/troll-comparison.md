@@ -30,7 +30,7 @@ Example commands:
 ## D&D Library Porting Notes
 
 - `damage_on_hit(...)` ports naturally to Troll using `if hit then dmg else 0`.
-- `crit_hit(...)` also ports well, but needs an explicit local binding so one `d20` roll is reused across the crit and hit branches.
+- `attack_damage_with_roll(...)` also ports well, but needs an explicit local binding so one `d20` roll is reused across the crit and hit branches.
 - `repeat_sum(n, expr)` maps cleanly to `sum (n # expr)`.
 - Attack-roll helpers like advantage are straightforward because Troll has strong collection operators like `max`, `largest`, and `count`.
 - `save_half(...)` now maps cleanly: the D&D helper uses `| // 2` on our side, and Troll's integer arithmetic already rounds `dmg / 2` down.
@@ -39,11 +39,11 @@ Example commands:
 
 These examples currently match between our DSL and the Troll implementation to the displayed precision:
 
-- `crit_longsword(16, 7, 4)`:
+- `longsword_attack(16, 7, 4)`:
   our DSL `5.32`, Troll `5.325`
-- `paladin_smite(17, 8, 4, 3)`:
+- `paladin_smite(17, 8, 4, slot_level=3)`:
   our DSL `14.10`, Troll `14.1`
-- `fireball(15, 2)`:
+- `fireball(15, 2, slot_level=3)`:
   our DSL `22.30`, Troll `22.3`
 - `magic_missile(3)`:
   our DSL `10.50`, Troll `10.5`
@@ -51,7 +51,7 @@ These examples currently match between our DSL and the Troll implementation to t
 For an AC sweep, our DSL can express the whole study in one program:
 
 ```text
-import "std:dnd/weapons.dice"; ~crit_longsword([AC:10, 12, 14, 16, 18, 20], 7, 4)
+import "std:dnd/weapons.dice"; ~longsword_attack([AC:10, 12, 14, 16, 18, 20], 7, 4)
 ```
 
 which yields:

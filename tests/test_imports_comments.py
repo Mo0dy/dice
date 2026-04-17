@@ -115,7 +115,7 @@ class ImportAndCommentTest(unittest.TestCase):
 
     def test_import_loads_stdlib_file(self):
         helper_result = interpret_file(
-            'import "std:dnd/weapons.dice"\ncrit_longsword(16, 7, 4)',
+            'import "std:dnd/weapons.dice"\nlongsword_attack(16, 7, 4)',
             current_dir=Path(tempfile.gettempdir()),
         )
         inline_result = interpret_statement(
@@ -125,7 +125,7 @@ class ImportAndCommentTest(unittest.TestCase):
 
     def test_import_loads_stdlib_file_without_extension(self):
         helper_result = interpret_file(
-            'import "std:dnd/weapons"\ncrit_longsword(16, 7, 4)',
+            'import "std:dnd/weapons"\nlongsword_attack(16, 7, 4)',
             current_dir=Path(tempfile.gettempdir()),
         )
         inline_result = interpret_statement(

@@ -53,9 +53,9 @@ class DndSampleLibraryTest(unittest.TestCase):
                 result = interpret_file(case.source, current_dir=ROOT, source_name=case.name)
                 self.assertIsNotNone(result)
 
-    def test_crit_longsword_matches_inline_split_logic(self):
+    def test_longsword_attack_matches_inline_split_logic(self):
         helper_result = interpret_file(
-            'import "std:dnd/weapons.dice"\ncrit_longsword(16, 7, 4)',
+            'import "std:dnd/weapons.dice"\nlongsword_attack(16, 7, 4)',
             current_dir=ROOT,
         )
         inline_result = interpret_statement(
@@ -65,7 +65,7 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_paladin_smite_matches_inline_split_logic(self):
         helper_result = interpret_file(
-            'import "std:dnd/weapons.dice"\npaladin_smite(17, 8, 4, 3)',
+            'import "std:dnd/weapons.dice"\npaladin_smite(17, 8, 4, slot_level=3)',
             current_dir=ROOT,
         )
         inline_result = interpret_statement(
@@ -93,7 +93,7 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_sacred_flame_uses_level_scaling(self):
         helper_result = interpret_file(
-            'import "std:dnd/spells.dice"\nsacred_flame(11, 15, 2)',
+            'import "std:dnd/spells.dice"\nsacred_flame(15, 2, level=11)',
             current_dir=ROOT,
         )
         inline_result = interpret_statement("d20 + 2 < 15 -> 3 d 8 | 0")
@@ -101,18 +101,18 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_agonizing_blast_is_distinct_from_plain_eldritch_blast(self):
         plain = interpret_file(
-            'import "std:dnd/spells.dice"\neldritch_blast_by_level(11, 15, 7)',
+            'import "std:dnd/spells.dice"\neldritch_blast_by_level(15, 7, level=11)',
             current_dir=ROOT,
         )
         agonizing = interpret_file(
-            'import "std:dnd/spells.dice"\nagonizing_eldritch_blast_by_level(11, 15, 7, 4)',
+            'import "std:dnd/spells.dice"\nagonizing_eldritch_blast_by_level(15, 7, 4, level=11)',
             current_dir=ROOT,
         )
         self.assertNotEqual(str(plain), str(agonizing))
 
-    def test_crit_helper_preserves_ac_sweep_shape(self):
+    def test_keyword_attack_call_preserves_ac_sweep_shape(self):
         result = interpret_file(
-            'import "std:dnd/weapons.dice"\n~crit_longsword([10:22], 7, 4)',
+            'import "std:dnd/weapons.dice"\n~longsword_attack([10:22], 7, 4, hit_bonus=d4)',
             current_dir=ROOT,
         )
         self.assertEqual(len(result.axes), 1)

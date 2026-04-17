@@ -35,7 +35,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        bless_longsword(16, 7, 4)
+        longsword_attack(16, 7, 4, hit_bonus=d4)
         """,
     ),
     _case(
@@ -44,7 +44,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        burning_hands(1, 14, 2)
+        burning_hands(14, 2, slot_level=1)
         """,
     ),
     _case(
@@ -53,7 +53,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        chromatic_orb(2, 15, 7)
+        chromatic_orb(15, 7, slot_level=2)
         """,
     ),
     _case(
@@ -62,7 +62,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        crit_longsword(16, 7, 4)
+        longsword_attack(16, 7, 4)
         """,
     ),
     _case(
@@ -80,7 +80,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        eldritch_blast_by_level(11, 15, 7)
+        eldritch_blast_by_level(15, 7, level=11)
         """,
     ),
     _case(
@@ -89,7 +89,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        agonizing_eldritch_blast_by_level(11, 15, 7, 4)
+        agonizing_eldritch_blast_by_level(15, 7, 4, level=11)
         """,
     ),
     _case(
@@ -107,7 +107,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        fire_bolt(11, 15, 8)
+        fire_bolt(15, 8, level=11)
         """,
     ),
     _case(
@@ -116,7 +116,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        fireball(3, 15, 2)
+        fireball(15, 2, slot_level=3)
         """,
     ),
     _case(
@@ -143,7 +143,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        guiding_bolt(1, 15, 7)
+        guiding_bolt(15, 7, slot_level=1)
         """,
     ),
     _case(
@@ -161,7 +161,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ice_knife(1, 15, 7, 2, 14)
+        ice_knife(15, 7, 2, 14, slot_level=1)
         """,
     ),
     _case(
@@ -170,7 +170,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        inflict_wounds(1, 15, 7)
+        inflict_wounds(15, 7, slot_level=1)
         """,
     ),
     _case(
@@ -179,7 +179,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        lightning_bolt(3, 15, 2)
+        lightning_bolt(15, 2, slot_level=3)
         """,
     ),
     _case(
@@ -215,7 +215,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        paladin_smite(17, 8, 4, 3)
+        paladin_smite(17, 8, 4, slot_level=3)
         """,
     ),
     _case(
@@ -224,7 +224,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        paladin_smite_vs_fiend(17, 8, 4, 5)
+        paladin_smite_vs_fiend(17, 8, 4, slot_level=5)
         """,
     ),
     _case(
@@ -242,7 +242,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        sacred_flame(5, 15, 2)
+        sacred_flame(15, 2, level=5)
         """,
     ),
     _case(
@@ -251,7 +251,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        scorching_ray(2, 15, 7)
+        scorching_ray(15, 7, slot_level=2)
         """,
     ),
     _case(
@@ -260,7 +260,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        shatter(2, 15, 1)
+        shatter(15, 1, slot_level=2)
         """,
     ),
     _case(
@@ -269,7 +269,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        spirit_guardians(3, 15, 2)
+        spirit_guardians(15, 2, slot_level=3)
         """,
     ),
     _case(
@@ -278,7 +278,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        toll_the_dead_wounded(11, 15, 2)
+        toll_the_dead_wounded(15, 2, level=11)
         """,
     ),
     _case(
@@ -308,7 +308,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~agonizing_eldritch_blast_by_level(11, [10:22], 7, 4)
+        ~agonizing_eldritch_blast_by_level([10:22], 7, 4, level=11)
         """,
     ),
     _case(
@@ -317,7 +317,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~bless_longsword([10:22], 7, 4)
+        ~longsword_attack([10:22], 7, 4, hit_bonus=d4)
         """,
     ),
     _case(
@@ -326,7 +326,8 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        cantrip_damage(plan, level): split plan as name | name == "fire_bolt" -> fire_bolt(level, 15, 8) $ mean | name == "sacred_flame" -> sacred_flame(level, 15, 2) $ mean | name == "toll_the_dead" -> toll_the_dead_wounded(level, 15, 2) $ mean | otherwise -> agonizing_eldritch_blast_by_level(level, 15, 7, 4) $ mean
+        cantrip_damage(plan, level):
+            split plan as name | name == "fire_bolt" -> fire_bolt(15, 8, level=level) $ mean | name == "sacred_flame" -> sacred_flame(15, 2, level=level) $ mean | name == "toll_the_dead" -> toll_the_dead_wounded(15, 2, level=level) $ mean | otherwise -> agonizing_eldritch_blast_by_level(15, 7, 4, level=level) $ mean
 
         cantrip_damage([PLAN:"fire_bolt", "sacred_flame", "toll_the_dead", "agonizing_eldritch_blast"], [LEVEL:1, 5, 11, 17])
         """,
@@ -337,7 +338,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~crit_longsword([10:22], 7, 4)
+        ~longsword_attack([10:22], 7, 4)
         """,
     ),
     _case(
@@ -346,7 +347,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~eldritch_blast_by_level(11, [10:22], 7)
+        ~eldritch_blast_by_level([10:22], 7, level=11)
         """,
     ),
     _case(
@@ -382,7 +383,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        sumover("party", ~fireball(3, 15, [party:0, 2, 5, 7]))
+        sumover("party", ~fireball(15, [party:0, 2, 5, 7], slot_level=3))
         """,
     ),
     _case(
@@ -391,7 +392,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~fireball(3, 15, [0:9])
+        ~fireball(15, [0:9], slot_level=3)
         """,
     ),
     _case(
@@ -409,7 +410,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~guiding_bolt(1, [10:22], 7)
+        ~guiding_bolt([10:22], 7, slot_level=1)
         """,
     ),
     _case(
@@ -436,7 +437,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~inflict_wounds(1, [10:22], 7)
+        ~inflict_wounds([10:22], 7, slot_level=1)
         """,
     ),
     _case(
@@ -454,7 +455,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~paladin_smite([10:22], 8, 4, 3)
+        ~paladin_smite([10:22], 8, 4, slot_level=3)
         """,
     ),
     _case(
@@ -463,7 +464,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~reckless_great_weapon_master([10:22], 8, 4)
+        ~great_weapon_master([10:22], 8, 4, roll=d+20)
         """,
     ),
     _case(
@@ -472,7 +473,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~sacred_flame(11, 15, [0:9])
+        ~sacred_flame(15, [0:9], level=11)
         """,
     ),
     _case(
@@ -481,7 +482,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~scorching_ray([2:9], 15, 7)
+        ~scorching_ray(15, 7, slot_level=[2:9])
         """,
     ),
     _case(
@@ -499,7 +500,8 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        slot_damage(plan, slot_level): split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
+        slot_damage(plan, slot_level):
+            split plan as name | name == "chromatic_orb" -> chromatic_orb(15, 7, slot_level=slot_level) $ mean | name == "guiding_bolt" -> guiding_bolt(15, 7, slot_level=slot_level) $ mean | name == "scorching_ray" -> scorching_ray(15, 7, slot_level=slot_level) $ mean | name == "magic_missile" -> magic_missile(slot_level=slot_level) $ mean | otherwise -> fireball(15, 2, slot_level=slot_level) $ mean
 
         slot_damage([PLAN:"chromatic_orb", "guiding_bolt", "scorching_ray", "magic_missile", "fireball"], [SLOT:3, 4, 5])
         """,

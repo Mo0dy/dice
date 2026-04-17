@@ -50,15 +50,15 @@
         },
         {
           "outcome": 11,
-          "probability": 0.005000000000000001
+          "probability": 0.005000000000000002
         },
         {
           "outcome": 12,
-          "probability": 0.0045
+          "probability": 0.004500000000000001
         },
         {
           "outcome": 13,
-          "probability": 0.004
+          "probability": 0.004000000000000001
         },
         {
           "outcome": 14,
@@ -66,7 +66,7 @@
         },
         {
           "outcome": 15,
-          "probability": 0.003
+          "probability": 0.003000000000000001
         },
         {
           "outcome": 16,
@@ -74,19 +74,19 @@
         },
         {
           "outcome": 17,
-          "probability": 0.002
+          "probability": 0.0020000000000000005
         },
         {
           "outcome": 18,
-          "probability": 0.0015
+          "probability": 0.0015000000000000005
         },
         {
           "outcome": 19,
-          "probability": 0.001
+          "probability": 0.0010000000000000002
         },
         {
           "outcome": 20,
-          "probability": 0.0005
+          "probability": 0.0005000000000000001
         }
       ]
     }

@@ -20,48 +20,48 @@ reroll_1_or_2(die_size): split d die_size | <= 2 -> d die_size | otherwise -> @
 
 great_weapon_fighting_dice(dice_count, die_size): repeat_sum(dice_count, reroll_1_or_2(die_size))
 
-hit_with_roll(roll, ac, total_bonus): split roll as attack_roll | attack_roll == 1 -> 0 | attack_roll == 20 -> 1 | attack_roll + total_bonus >= ac -> 1 ||
+hit_with_roll(roll, ac, attack_bonus, hit_bonus=0):
+    total_bonus = attack_bonus + hit_bonus
+    split roll as attack_roll | attack_roll == 1 -> 0 | attack_roll == 20 -> 1 | attack_roll + total_bonus >= ac -> 1 ||
+
+hit(ac, attack_bonus, roll=d20, hit_bonus=0):
+    hit_with_roll(roll, ac, attack_bonus, hit_bonus=hit_bonus)
+
+damage_on_hit(ac, attack_bonus, damage, roll=d20, hit_bonus=0):
+    hit(ac, attack_bonus, roll=roll, hit_bonus=hit_bonus) -> damage | 0
 
 attack_damage_with_roll(roll, ac, total_bonus, hit_damage, crit_damage): split roll as attack_roll | attack_roll == 1 -> 0 | attack_roll == 20 -> crit_damage | attack_roll + total_bonus >= ac -> hit_damage ||
 
-hit(ac, bonus): hit_with_roll(d20, ac, bonus)
-hit_adv(ac, bonus): hit_with_roll(d+20, ac, bonus)
-hit_dis(ac, bonus): hit_with_roll(d-20, ac, bonus)
-hit_bless(ac, bonus): hit_with_roll(d20, ac, bonus + d4)
-hit_adv_bless(ac, bonus): hit_with_roll(d+20, ac, bonus + d4)
+attack_with_damage(ac, attack_bonus, hit_damage, crit_damage, roll=d20, hit_bonus=0):
+    total_bonus = attack_bonus + hit_bonus
+    attack_damage_with_roll(roll, ac, total_bonus, hit_damage, crit_damage)
 
-damage_on_hit(ac, bonus, dmg): hit(ac, bonus) -> dmg | 0
-damage_on_hit_adv(ac, bonus, dmg): hit_adv(ac, bonus) -> dmg | 0
+attack_damage(ac, attack_bonus, hit_damage, crit_damage, roll=d20, hit_bonus=0):
+    attack_with_damage(ac, attack_bonus, hit_damage, crit_damage, roll=roll, hit_bonus=hit_bonus)
 
-attack_damage(ac, bonus, hit_damage, crit_damage): attack_damage_with_roll(d20, ac, bonus, hit_damage, crit_damage)
-attack_damage_adv(ac, bonus, hit_damage, crit_damage): attack_damage_with_roll(d+20, ac, bonus, hit_damage, crit_damage)
-attack_damage_dis(ac, bonus, hit_damage, crit_damage): attack_damage_with_roll(d-20, ac, bonus, hit_damage, crit_damage)
-attack_damage_bless(ac, bonus, hit_damage, crit_damage): attack_damage_with_roll(d20, ac, bonus + d4, hit_damage, crit_damage)
-attack_damage_adv_bless(ac, bonus, hit_damage, crit_damage): attack_damage_with_roll(d+20, ac, bonus + d4, hit_damage, crit_damage)
+attack(ac, attack_bonus, damage_rolls, damage_mod=0, roll=d20, hit_bonus=0, crit_extra_rolls=0):
+    hit_damage = damage_rolls + damage_mod
+    crit_damage = repeat_sum(2, damage_rolls) + crit_extra_rolls + damage_mod
+    attack_with_damage(ac, attack_bonus, hit_damage, crit_damage, roll=roll, hit_bonus=hit_bonus)
 
-crit_hit(ac, bonus, hit_damage, crit_damage): attack_damage(ac, bonus, hit_damage, crit_damage)
+save_success_with_roll(roll, dc, save_bonus, save_extra=0): roll + save_bonus + save_extra >= dc
+save_fail_with_roll(roll, dc, save_bonus, save_extra=0): roll + save_bonus + save_extra < dc
 
-save_success_with_roll(roll, dc, total_bonus): roll + total_bonus >= dc
-save_fail_with_roll(roll, dc, total_bonus): roll + total_bonus < dc
+save_success(dc, save_bonus, roll=d20, save_extra=0):
+    save_success_with_roll(roll, dc, save_bonus, save_extra=save_extra)
 
-save_success(dc, save_bonus): save_success_with_roll(d20, dc, save_bonus)
-save_success_adv(dc, save_bonus): save_success_with_roll(d+20, dc, save_bonus)
-save_success_dis(dc, save_bonus): save_success_with_roll(d-20, dc, save_bonus)
-save_fail(dc, save_bonus): save_fail_with_roll(d20, dc, save_bonus)
-save_fail_adv(dc, save_bonus): save_fail_with_roll(d+20, dc, save_bonus)
-save_fail_dis(dc, save_bonus): save_fail_with_roll(d-20, dc, save_bonus)
+save_fail(dc, save_bonus, roll=d20, save_extra=0):
+    save_fail_with_roll(roll, dc, save_bonus, save_extra=save_extra)
 
-save_half_with_roll(roll, dc, total_bonus, dmg): save_success_with_roll(roll, dc, total_bonus) -> dmg // 2 | dmg
-save_none_with_roll(roll, dc, total_bonus, dmg): save_fail_with_roll(roll, dc, total_bonus) -> dmg | 0
-save_evasion_with_roll(roll, dc, total_bonus, dmg): save_success_with_roll(roll, dc, total_bonus) -> 0 | dmg // 2
+save_half_with_roll(roll, dc, save_bonus, damage, save_extra=0): save_success_with_roll(roll, dc, save_bonus, save_extra=save_extra) -> damage // 2 | damage
+save_none_with_roll(roll, dc, save_bonus, damage, save_extra=0): save_fail_with_roll(roll, dc, save_bonus, save_extra=save_extra) -> damage | 0
+save_evasion_with_roll(roll, dc, save_bonus, damage, save_extra=0): save_success_with_roll(roll, dc, save_bonus, save_extra=save_extra) -> 0 | damage // 2
 
-save_half(dc, save_bonus, dmg): save_half_with_roll(d20, dc, save_bonus, dmg)
-save_half_adv(dc, save_bonus, dmg): save_half_with_roll(d+20, dc, save_bonus, dmg)
-save_half_dis(dc, save_bonus, dmg): save_half_with_roll(d-20, dc, save_bonus, dmg)
-save_none(dc, save_bonus, dmg): save_none_with_roll(d20, dc, save_bonus, dmg)
-save_none_adv(dc, save_bonus, dmg): save_none_with_roll(d+20, dc, save_bonus, dmg)
-save_none_dis(dc, save_bonus, dmg): save_none_with_roll(d-20, dc, save_bonus, dmg)
-save_evasion(dc, save_bonus, dmg): save_evasion_with_roll(d20, dc, save_bonus, dmg)
+save_half(dc, save_bonus, damage, roll=d20, save_extra=0):
+    save_half_with_roll(roll, dc, save_bonus, damage, save_extra=save_extra)
 
-bless_save_half(dc, save_bonus, dmg): save_half_with_roll(d20, dc, save_bonus + d4, dmg)
-bless_save_none(dc, save_bonus, dmg): save_none_with_roll(d20, dc, save_bonus + d4, dmg)
+save_none(dc, save_bonus, damage, roll=d20, save_extra=0):
+    save_none_with_roll(roll, dc, save_bonus, damage, save_extra=save_extra)
+
+save_evasion(dc, save_bonus, damage, roll=d20, save_extra=0):
+    save_evasion_with_roll(roll, dc, save_bonus, damage, save_extra=save_extra)
