@@ -33,7 +33,7 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `[name:a, b, c]` creates a named sweep over explicit values.
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
-- `match expr as name | guard = expr | ... | otherwise = expr` binds one shared outcome of `expr`, checks clauses top-to-bottom, and sends only the still-unmatched cases to later clauses.
+- `split expr | guard -> expr | ...` binds one shared outcome of `expr`, checks clauses top-to-bottom, and sends only the still-unmatched cases to later clauses.
 - `repeat_sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
 - `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
@@ -158,27 +158,29 @@ Examples:
 hit(ac) = d20 >= ac
 damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
-match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
+split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
 renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 ```
 
-## Match
+## Split
 
-Use `match` when you want to roll once and make several decisions from that same roll.
+Use `split` when you want to roll once and make several decisions from that same roll.
 
 Straightforward:
 
-- `match expr as name` means “take one outcome from `expr` and call it `name`”.
+- `split expr as name` means “take one outcome from `expr` and call it `name`”.
+- `split expr` binds the shared outcome to `@`.
 - Clauses are checked from top to bottom.
 - Later clauses only see cases that earlier clauses did not already take.
-- `otherwise` catches whatever is left.
+- `otherwise -> ...` catches whatever is left.
+- `||` means “otherwise, return `0`”.
 
 Example:
 
-`match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0`
+`split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||`
 
 This is easiest to read as:
 
@@ -186,7 +188,7 @@ This is easiest to read as:
 - otherwise, if the roll is `10` through `19`, return `5`
 - otherwise, return `0`
 
-So the second clause is effectively “`roll + 5 >= 15`, but only for rolls that were not already matched by `roll == 20`”.
+So the second clause is effectively “`@ + 5 >= 15`, but only for rolls that were not already matched by `@ == 20`”.
 
 Exact:
 
@@ -195,8 +197,8 @@ Exact:
 - Each guard must be a Bernoulli result with outcomes only in `0` and `1`.
 - A guarded clause takes the probability mass where its guard is `1`.
 - The remaining probability mass, where the guard is `0`, continues to the next clause.
-- `otherwise` takes all remaining mass.
-- If no clause covers some remaining mass, `match` raises an error instead of silently dropping cases.
+- `otherwise -> ...` takes all remaining mass.
+- If the final fallback is omitted, `split` defaults the remaining mass to `0` and emits a warning.
 
 ## Whitespace
 
@@ -278,7 +280,7 @@ crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
 import "std:dnd/weapons"; crit_longsword(16, 7, 4)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
-match d20 as roll | roll == 20 = 10 | roll + 5 >= 15 = 5 | otherwise = 0
+split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])

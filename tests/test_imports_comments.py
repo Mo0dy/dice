@@ -119,7 +119,7 @@ class ImportAndCommentTest(unittest.TestCase):
             current_dir=Path(tempfile.gettempdir()),
         )
         inline_result = interpret_statement(
-            "match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0"
+            "split d20 | == 20 -> 2 d 8 + 4 | + 7 >= 16 -> 1 d 8 + 4 ||"
         )
         self.assertEqual(str(helper_result), str(inline_result))
 
@@ -129,7 +129,7 @@ class ImportAndCommentTest(unittest.TestCase):
             current_dir=Path(tempfile.gettempdir()),
         )
         inline_result = interpret_statement(
-            "match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0"
+            "split d20 | == 20 -> 2 d 8 + 4 | + 7 >= 16 -> 1 d 8 + 4 ||"
         )
         self.assertEqual(str(helper_result), str(inline_result))
 

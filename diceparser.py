@@ -14,8 +14,8 @@ from syntaxtree import (
     Op,
     FunctionDef,
     Call,
-    Match,
-    MatchClause,
+    Split,
+    SplitClause,
     Import,
     Named,
     RangeLiteral,
@@ -69,9 +69,11 @@ from lexer import (
     PRINT,
     STRING,
     MATCH,
+    SPLIT,
     AS,
     OTHERWISE,
     IMPORT,
+    SPLITZERO,
 )
 
 TOKEN_LABELS = {
@@ -115,9 +117,11 @@ TOKEN_LABELS = {
     PRINT: "'print'",
     STRING: "string",
     MATCH: "'match'",
+    SPLIT: "'split'",
     AS: "'as'",
     OTHERWISE: "'otherwise'",
     IMPORT: "'import'",
+    SPLITZERO: "'||'",
     EOF: "end of input",
 }
 
@@ -213,13 +217,13 @@ class DiceParser(Parser):
         side      :  term ((PLUS | MINUS) term)*
         term      :  roll ((MUL | DIV | FLOORDIV) roll)*
         roll      :  factor (ROLL factor ((HIGH | LOW) factor)?)?
-        factor    :  INTEGER | FLOAT | STRING | ID | LPAREN expr RPAREN | sweep | measure | match | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr | MINUS factor
+        factor    :  INTEGER | FLOAT | STRING | ID | LPAREN expr RPAREN | sweep | measure | split | ROLL factor | DIS factor | ADV factor | AVG expr | PROP expr | MINUS factor
         sweep     :  LBRACK (ID COLON)? sweep_values RBRACK
         sweep_values : range_expr | expr (COMMA expr)*
         measure   :  LBRACE measure_entry (COMMA measure_entry)* RBRACE
         measure_entry : range_expr_or_expr (AT expr)?
-        match     :  MATCH expr AS ID (SEMI)* match_clause ((SEMI)* match_clause)*
-        match_clause : ELSE (OTHERWISE | expr) ASSIGN expr
+        split     :  SPLIT expr (AS ID)? (SEMI)* split_clause ((SEMI)* split_clause)* SPLITZERO?
+        split_clause : ELSE (OTHERWISE RES expr | split_guard RES expr)
         pipeline_target : ID | ID LPAREN expr (COMMA expr)* RPAREN
     """
 
@@ -277,48 +281,115 @@ class DiceParser(Parser):
         self.eat(RBRACE)
         return MeasureLiteral(entries, token)
 
-    def match_expr(self):
+    def _anonymous_name(self, token):
+        return Val(Token(ID, "@", span=token.span))
+
+    def _continue_term(self, node):
+        while self.current_token.type in [MUL, DIV, FLOORDIV]:
+            token = self.current_token
+            self.eat(token.type)
+            node = BinOp(node, token, self.roll())
+        return node
+
+    def _continue_side(self, node):
+        node = self._continue_term(node)
+        while self.current_token.type in [PLUS, MINUS]:
+            token = self.current_token
+            self.eat(token.type)
+            node = BinOp(node, token, self.term())
+        return node
+
+    def _continue_comp(self, node):
+        node = self._continue_side(node)
+        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL, IN]:
+            token = self.current_token
+            self.eat(token.type)
+            node = BinOp(node, token, self.side())
+        return node
+
+    def _split_guard(self, name, *, allow_anonymous_sugar):
+        if not allow_anonymous_sugar:
+            if self.current_token.type in [AT, GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL, IN, PLUS, MINUS, MUL, DIV, FLOORDIV]:
+                self.exception(
+                    "explicit split bindings cannot use '@' or relative guards",
+                    token=self.current_token,
+                    hint="Use the bound name in each guard, for example: split d20 as roll | roll == 20 -> 10",
+                )
+            return self.comp()
+        if self.current_token.type == AT:
+            return self.comp()
+        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL, IN, PLUS, MINUS, MUL, DIV, FLOORDIV]:
+            return self._continue_comp(self._anonymous_name(name.token))
+        return self.comp()
+
+    def split_expr(self):
         token = self.current_token
-        self.eat(MATCH)
+        self.eat(SPLIT)
         value = self.expr()
-        self.eat(AS)
-        if self.current_token.type != ID:
-            self.exception(
-                "expected an identifier after 'as'",
-                token=self.current_token,
-                hint="Write a binding name like: match d20 as roll | roll == 20 = 10",
-            )
-        name = Val(self.current_token)
-        self.eat(ID)
+        explicit_binding = False
+        name = self._anonymous_name(token)
+        if self.current_token.type == AS:
+            explicit_binding = True
+            self.eat(AS)
+            if self.current_token.type != ID:
+                self.exception(
+                    "expected an identifier after 'as'",
+                    token=self.current_token,
+                    hint="Write a binding name like: split d20 as roll | roll == 20 -> 10",
+                )
+            name = Val(self.current_token)
+            self.eat(ID)
         self.eat_match_separators()
         clauses = []
+        saw_otherwise = False
         while self.current_token.type == ELSE:
             self.eat(ELSE)
             if self.current_token.type == OTHERWISE:
                 self.eat(OTHERWISE)
                 condition = None
                 otherwise = True
+                saw_otherwise = True
             else:
-                condition = self.expr()
+                condition = self._split_guard(name, allow_anonymous_sugar=not explicit_binding)
                 otherwise = False
-            self.eat(ASSIGN)
-            clauses.append(MatchClause(condition, self.expr(), otherwise=otherwise))
+            self.eat(RES)
+            clauses.append(SplitClause(condition, self.expr(), otherwise=otherwise))
             self.eat_match_separators()
         if not clauses:
             self.exception(
-                "expected at least one match clause",
+                "expected at least one split clause",
                 token=self.current_token,
-                hint="Add a clause like '| otherwise = ...' or '| condition = ...'.",
+                hint="Add a clause like '| otherwise -> 0' or '| == 20 -> 10'.",
             )
-        return Match(value, name, clauses, token)
+        zero_node = Val(Token(INTEGER, 0, span=token.span))
+        if self.current_token.type == SPLITZERO:
+            if saw_otherwise:
+                self.exception(
+                    "'||' cannot appear after an explicit otherwise branch",
+                    token=self.current_token,
+                    hint="Remove '||' or remove the explicit '| otherwise -> 0' branch.",
+                )
+            self.eat(SPLITZERO)
+            clauses.append(SplitClause(None, zero_node, otherwise=True))
+            return Split(value, name, clauses, token)
+        if not saw_otherwise:
+            clauses.append(SplitClause(None, zero_node, otherwise=True))
+            return Split(value, name, clauses, token, implicit_zero_warning=True)
+        return Split(value, name, clauses, token)
 
     def factor(self):
         if self.current_token.type == LBRACK:
             return self.sweep_literal()
         elif self.current_token.type == LBRACE:
             return self.measure_literal()
+        elif self.current_token.type == SPLIT:
+            return self.split_expr()
         elif self.current_token.type == MATCH:
-            return self.match_expr()
+            self.exception(
+                "'match' was replaced by 'split'",
+                token=self.current_token,
+                hint="Rewrite this as 'split ... | guard -> result'.",
+            )
         elif self.current_token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()
@@ -348,6 +419,10 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(MINUS)
             return UnOp(self.factor(), token)
+        elif self.current_token.type == AT:
+            token = self.current_token
+            self.eat(AT)
+            return Val(Token(ID, "@", span=token.span))
         elif self.current_token.type == ID:
             token = self.current_token
             self.eat(ID)

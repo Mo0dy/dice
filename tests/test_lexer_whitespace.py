@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, PIPE, ROLL, SEMI, STRING, Lexer
+from lexer import AS, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, PIPE, RES, ROLL, SEMI, SPLIT, SPLITZERO, STRING, AT, Lexer
 
 
 def tokens(text):
@@ -60,11 +60,17 @@ class LexerWhitespaceTest(unittest.TestCase):
     def test_comments_are_skipped_and_newlines_still_split_statements(self):
         self.assertEqual(tokens('x = 1 # keep this\n y = 2'), [(ID, "x"), ("ASSIGN", "="), (INTEGER, 1), (SEMI, "\n"), (ID, "y"), ("ASSIGN", "="), (INTEGER, 2)])
 
-    def test_match_keywords_tokenize(self):
+    def test_split_keywords_tokenize(self):
         self.assertEqual(
-            tokens("match d20 as roll | otherwise = 0"),
-            [(MATCH, "match"), (ROLL, "d"), (INTEGER, 20), (AS, "as"), (ID, "roll"), ("ELSE", "|"), (OTHERWISE, "otherwise"), ("ASSIGN", "="), (INTEGER, 0)],
+            tokens("split d20 as roll | otherwise -> 0 ||"),
+            [(SPLIT, "split"), (ROLL, "d"), (INTEGER, 20), (AS, "as"), (ID, "roll"), ("ELSE", "|"), (OTHERWISE, "otherwise"), (RES, "->"), (INTEGER, 0), (SPLITZERO, "||")],
         )
+
+    def test_match_keyword_stays_reserved_for_migration_hint(self):
+        self.assertEqual(tokens("match"), [(MATCH, "match")])
+
+    def test_at_tokenizes_for_anonymous_split_binding(self):
+        self.assertEqual(tokens("@"), [(AT, "@")])
 
     def test_import_keyword_tokenizes(self):
         self.assertEqual(tokens('import "spells/base.dice"'), [(IMPORT, "import"), (STRING, "spells/base.dice")])

@@ -49,12 +49,12 @@
 
 - In the real sample programs under `samples/`, postfix `expr[...]` is not used.
   - Bracket syntax there is used for sweeps, named axes, plotting, and reductions.
-  - Branching logic in the samples is handled by `match` and `-> |`, not postfix filtering.
+  - Branching logic in the samples is handled by `split` and `-> |`, not postfix filtering.
   - That suggests `[...]` as sweep syntax is valuable, while postfix selection is currently marginal in real usage.
 
 - Without postfix `[]`, the language is missing a direct "event membership" form over one shared sample.
   - The question "what is the probability that a `d20` is `10` or `15`?" can be expressed correctly with:
-    - `match d20 as roll | roll == 10 = 1 | roll == 15 = 1 | otherwise = 0`
+    - `split d20 as roll | roll == 10 -> 1 | roll == 15 -> 1 | otherwise -> 0`
   - `((d20 == 10) + (d20 == 15)) $ mean` happens to give the same numeric answer for this disjoint case, but for the wrong semantic reason: it adds expectations of separate Bernoulli expressions rather than expressing one shared-roll event.
 
 - `==` against a sweep is close to event membership syntactically, but not semantically.

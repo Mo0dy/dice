@@ -43,7 +43,7 @@ DND_CASES = (
         "at_table",
         "crit_longsword_attack",
         """
-        # Shared-roll crit logic using match.
+        # Shared-roll crit logic using split.
         import "std:dnd/weapons.dice"
 
         crit_longsword(16, 7, 4)

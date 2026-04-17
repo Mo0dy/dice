@@ -175,6 +175,16 @@ class CliInteractiveTest(unittest.TestCase):
         self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(stdout.getvalue(), "probability_mode = raw\n  0: 0.50\n  1: 0.50\n(E): 0.50\n")
 
+    def test_repl_prints_split_implicit_zero_warning(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["split d20 | == 20 -> 10", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("warning: split omitted a final branch and will default remaining cases to 0", stderr.getvalue())
+        self.assertEqual(stdout.getvalue(), "  0: 95%\n 10: 5%\n(E): 0.50\n")
+
     def test_repl_history_uses_persistent_file(self):
         fake_readline = mock.Mock()
         with tempfile.TemporaryDirectory() as tmpdir:

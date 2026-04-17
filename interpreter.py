@@ -10,7 +10,7 @@ import os
 import re
 from itertools import product
 
-from diagnostics import DiagnosticError, RuntimeError as DiceRuntimeError
+from diagnostics import DiagnosticError, DiagnosticWarning, RuntimeError as DiceRuntimeError
 from diceparser import DiceParser
 from lexer import (
     Lexer,
@@ -69,7 +69,7 @@ from executor import ExactExecutor
 STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
 IMPORT_COMPLETION_PATTERN = re.compile(r'(?:^|[;\n])\s*import\s+"$')
 IDENTIFIER_COMPLETION_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
-COMPLETION_KEYWORDS = ("as", "import", "in", "match", "otherwise")
+COMPLETION_KEYWORDS = ("as", "import", "in", "otherwise", "split")
 
 
 class CallableEntry(object):
@@ -109,6 +109,7 @@ class Interpreter:
         self.import_stack = import_stack if import_stack is not None else []
         self._sweep_cache = {}
         self.output_callback = output_callback
+        self.warnings = []
 
     def visit(self, node):
         method_name = "visit_" + type(node).__name__
@@ -295,6 +296,9 @@ class Interpreter:
     def exception(self, message="", node=None, hint=None):
         raise DiceRuntimeError(message, span=self._node_span(node), hint=hint)
 
+    def warn(self, message="", node=None, hint=None):
+        self.warnings.append(DiagnosticWarning(message, span=self._node_span(node), hint=hint))
+
     def _import_path_variants(self, path):
         variants = [os.path.abspath(path)]
         if not os.path.splitext(path)[1]:
@@ -428,7 +432,7 @@ class Interpreter:
         invalid = [outcome for outcome in condition.keys() if outcome not in (TRUE, FALSE)]
         if invalid:
             self.exception(
-                "match guards must evaluate to Bernoulli outcomes 0 or 1, got {}".format(invalid),
+                "split guards must evaluate to Bernoulli outcomes 0 or 1, got {}".format(invalid),
                 node=node,
                 hint="Use a comparison like 'roll >= 15' or convert each guard to 0 or 1.",
             )
@@ -631,7 +635,13 @@ class Interpreter:
         values = [self.visit(arg) for arg in node.args]
         return self._with_runtime_context(node, lambda: self._call_host_function(entry, values))
 
-    def visit_Match(self, node):
+    def visit_Split(self, node):
+        if node.implicit_zero_warning:
+            self.warn(
+                "split omitted a final branch and will default remaining cases to 0",
+                node=node,
+                hint="Add '| otherwise -> 0' explicitly if this is intentional, or use '||' to terminate with zero.",
+            )
         matched_value = _coerce_to_distributions(self.visit(node.value))
         contributions = []
         for matched_coordinates, matched_distrib in matched_value.items():
@@ -693,9 +703,9 @@ class Interpreter:
 
                     if any(mass for mass in remaining_cells.values()):
                         self.exception(
-                            "match expression left unmatched cases for {}".format(node.name.value),
+                            "split expression left unmatched cases for {}".format(node.name.value),
                             node=node,
-                            hint="Add an 'otherwise' clause to cover the remaining cases.",
+                            hint="Add an 'otherwise -> ...' clause to cover the remaining cases.",
                         )
                 finally:
                     self.local_scopes.pop()

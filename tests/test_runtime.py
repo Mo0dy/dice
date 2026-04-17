@@ -300,11 +300,11 @@ class RuntimeTest(unittest.TestCase):
             interpret_statement("3 d 6 h 4")
         self.assertIn("<input>:1:3", str(error.exception))
 
-    def test_match_guard_type_error_points_at_guard(self):
+    def test_split_guard_type_error_points_at_guard(self):
         with self.assertRaises(Exception) as error:
-            interpret_statement("match d20 as roll | roll = 10 | otherwise = 0")
-        self.assertIn("<input>:1:21", str(error.exception))
-        self.assertIn("match guards must evaluate to Bernoulli outcomes 0 or 1", str(error.exception))
+            interpret_statement("split d20 as roll | roll + 1 -> 0 | otherwise -> 0")
+        self.assertIn("<input>:1:26", str(error.exception))
+        self.assertIn("split guards must evaluate to Bernoulli outcomes 0 or 1", str(error.exception))
 
     def test_add_function_matches_operator(self):
         self.assertEqual(str(interpret_statement("1 + 2")), str(interpret_statement("add(1, 2)")))

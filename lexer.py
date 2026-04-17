@@ -54,9 +54,11 @@ PRINT = "PRINT"                          # "print"
 STRING = "STRING"                        # anything inside ""
 
 MATCH = "MATCH"                          # "match"
+SPLIT = "SPLIT"                          # "split"
 AS = "AS"                                # "as"
 OTHERWISE = "OTHERWISE"                  # "otherwise"
 IMPORT = "IMPORT"                        # "import"
+SPLITZERO = "SPLITZERO"                  # "||"
 
 
 
@@ -172,6 +174,7 @@ class Lexer(object):
             [r'".*?"', lambda x: Token(STRING, x[1:-1])],
             [r"print\b", lambda x: Token(PRINT, x)],
             [r"match\b", lambda x: Token(MATCH, x)],
+            [r"split\b", lambda x: Token(SPLIT, x)],
             [r"as\b", lambda x: Token(AS, x)],
             [r"otherwise\b", lambda x: Token(OTHERWISE, x)],
             [r"import\b", lambda x: Token(IMPORT, x)],
@@ -181,6 +184,7 @@ class Lexer(object):
             [r"\;",    lambda x: Token(SEMI, x)],
             [r"h(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(HIGH, x)],
             [r"l(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(LOW, x)],
+            [r"\|\|", lambda x: Token(SPLITZERO, x)],
             [r"\|//", lambda x: Token(ELSEFLOORDIV, x)],
             [r"\|\/", lambda x: Token(ELSEDIV, x)],
             [r"\(",   lambda x: Token(LPAREN, x)],

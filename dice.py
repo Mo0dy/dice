@@ -456,8 +456,14 @@ def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_d
         interpreter.ast = ast
         if current_dir is not None:
             interpreter.current_dir = os.path.abspath(current_dir)
+    interpreter.warnings = []
     result = interpreter.interpret()
     return result
+
+
+def _print_warnings(interpreter):
+    for warning in getattr(interpreter, "warnings", []):
+        sys.stderr.write(format_diagnostic(warning) + "\n")
 
 
 @timeout_decorator.timeout(timeout_seconds)
@@ -614,6 +620,7 @@ def runinteractive(args):
             except Exception as error:
                 print_interactive_error(error)
                 continue
+            _print_warnings(interpreter)
             if result is not None:
                 print_result(
                     result,
@@ -717,6 +724,7 @@ def main():
             except DiagnosticError as error:
                 sys.stderr.write(format_diagnostic(error) + "\n")
                 return 1
+        _print_warnings(interpreter)
         if result is not None:
             print_result(
                 result,
@@ -756,6 +764,7 @@ def main():
     except DiagnosticError as error:
         sys.stderr.write(format_diagnostic(error) + "\n")
         return 1
+    _print_warnings(interpreter)
     if result is not None:
         print_result(
             result,

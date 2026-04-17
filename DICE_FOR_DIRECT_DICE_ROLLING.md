@@ -47,15 +47,15 @@ This is the Bless-style case. The player usually wants to see the raw d20, the b
 ## 5. Shared attack-roll logic already needs one stable sampled die
 
 ```dice
-match d20 as roll | roll == 20 = 2 d 8 + 4 | roll + 7 >= 16 = 1 d 8 + 4 | otherwise = 0
+split d20 | == 20 -> 2 d 8 + 4 | + 7 >= 16 -> 1 d 8 + 4 ||
 ```
 
-This is the classic crit / hit / miss pattern. `match` helps because `roll` names one shared d20 sample, but a direct backend still needs that sampled roll to stay stable across multiple reads and still remember that it came from a visible d20 roll.
+This is the classic crit / hit / miss pattern. `split` helps because it keeps one shared d20 sample stable across multiple guarded reads while still reflecting a visible roll.
 
 ## 6. Generic crit helpers run into eager function arguments
 
 ```dice
-attack(ac, bonus, dmg) = match d20 as roll | roll == 20 = dmg + dmg | roll + bonus >= ac = dmg | otherwise = 0
+attack(ac, bonus, dmg) = split d20 | == 20 -> dmg + dmg | + bonus >= ac -> dmg ||
 attack(16, 7, 1 d 8 + 4)
 ```
 
@@ -97,7 +97,7 @@ This is fine as an aggregate damage distribution, but at the table the player us
 ## 11. Natural-roll side effects reuse the same die in more than one way
 
 ```dice
-match d20 as roll | roll == 1 = 2 | roll == 20 = -1 | roll >= 10 = 0 | otherwise = 1
+split d20 as roll | roll == 1 -> 2 | roll == 20 -> -1 | roll >= 10 -> 0 | otherwise -> 1
 ```
 
 This is a death-save style example. One d20 sample controls natural-1 logic, natural-20 logic, and the usual threshold check, so direct rolling needs stable shared access to one die result plus a clear way to report which branch fired.
