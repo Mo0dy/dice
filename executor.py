@@ -7,19 +7,55 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
-from typing import Any, get_args, get_origin, get_type_hints
+from typing import Any, get_origin, get_type_hints
 
 import diceengine
+from diceparser import DiceParser
+from lexer import Lexer, ASSIGN, SEMI, PRINT
+
+
+MISSING = object()
+
+
+@dataclass(frozen=True)
+class DiceDefault:
+    source: str
+    ast: object
+
+
+def D(source):
+    if not isinstance(source, str) or not source.strip():
+        raise Exception("D(...) expects a non-empty dice expression string")
+    ast = DiceParser(Lexer(source)).parse()
+    if type(ast).__name__ in {"FunctionDef", "Import"}:
+        raise Exception("D(...) defaults must be expressions, not top-level statements")
+    if type(ast).__name__ == "VarOp" and getattr(ast.op, "type", None) == SEMI:
+        raise Exception("D(...) defaults must be a single expression")
+    if type(ast).__name__ == "BinOp" and getattr(ast.op, "type", None) == ASSIGN:
+        raise Exception("D(...) defaults must be expressions, not assignments")
+    if type(ast).__name__ == "UnOp" and getattr(ast.op, "type", None) == PRINT:
+        raise Exception("D(...) defaults must be expressions, not print statements")
+    return DiceDefault(source, ast)
+
+
+@dataclass(frozen=True)
+class ParameterSpec:
+    name: str
+    default_value: object = MISSING
+    annotation: object = None
+
+    @property
+    def has_default(self):
+        return self.default_value is not MISSING
 
 
 @dataclass
 class HostFunction:
     name: str
     function: object
-    arity: int | None = None
+    parameters: tuple[ParameterSpec, ...] = ()
     variadic: bool = False
     sweep_mode: bool = False
-    parameter_annotations: tuple[object, ...] = ()
 
 
 class Executor(ABC):
@@ -30,16 +66,49 @@ class Executor(ABC):
         self.render_config = render_config if render_config is not None else diceengine.RenderConfig()
         self._register_builtin_functions()
 
-    def _callable_arity(self, function):
+    def _identifier_names(self, node):
+        names = set()
+        if node is None:
+            return names
+        node_type = type(node).__name__
+        if node_type == "Val" and getattr(getattr(node, "token", None), "type", None) == "ID":
+            names.add(node.value)
+        for value in getattr(node, "__dict__", {}).values():
+            if isinstance(value, list):
+                for item in value:
+                    names.update(self._identifier_names(item))
+            else:
+                names.update(self._identifier_names(value))
+        return names
+
+    def _callable_parameters(self, function, variadic=False):
+        if variadic:
+            return ()
         signature = inspect.signature(function)
-        arity = 0
-        for parameter in signature.parameters.values():
-            if parameter.kind not in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
-                raise Exception("Python functions only support fixed positional arguments")
+        parameters = list(signature.parameters.values())
+        names = [parameter.name for parameter in parameters]
+        specs = []
+        for parameter in parameters:
+            if parameter.kind != inspect.Parameter.POSITIONAL_OR_KEYWORD:
+                raise Exception("Python functions only support POSITIONAL_OR_KEYWORD parameters")
+            default_value = MISSING
             if parameter.default is not inspect._empty:
-                raise Exception("Python functions only support fixed positional arguments")
-            arity += 1
-        return arity
+                default_value = parameter.default
+                if isinstance(default_value, DiceDefault):
+                    referenced = self._identifier_names(default_value.ast)
+                    forbidden = sorted(name for name in names if name in referenced)
+                    if forbidden:
+                        raise Exception(
+                            "D(...) defaults may only reference globals, not parameters: {}".format(", ".join(forbidden))
+                        )
+            specs.append(
+                ParameterSpec(
+                    name=parameter.name,
+                    default_value=default_value,
+                    annotation=self._type_hints(function).get(parameter.name),
+                )
+            )
+        return tuple(specs)
 
     def _type_hints(self, function):
         try:
@@ -54,29 +123,19 @@ class Executor(ABC):
                 return True
         return False
 
-    def _parameter_annotations(self, function):
-        hints = self._type_hints(function)
-        signature = inspect.signature(function)
-        annotations = []
-        for parameter in signature.parameters.values():
-            if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
-                annotations.append(hints.get(parameter.name))
-        return tuple(annotations)
-
     def _register_host_function(self, function, name=None, variadic=False, sweep_mode=None):
         callable_name = name if name is not None else function.__name__
         if not callable_name:
             raise Exception("Python functions must have a name")
         if callable_name in self.functions:
             raise Exception("Duplicate function definition for {}".format(callable_name))
-        arity = None if variadic else self._callable_arity(function)
+        parameters = self._callable_parameters(function, variadic=variadic)
         entry = HostFunction(
             callable_name,
             function=function,
-            arity=arity,
+            parameters=parameters,
             variadic=variadic,
             sweep_mode=self._annotation_requests_sweep(function) if sweep_mode is None else sweep_mode,
-            parameter_annotations=self._parameter_annotations(function),
         )
         self.functions[callable_name] = entry
         return function

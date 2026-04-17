@@ -110,11 +110,11 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(probability, 1)
 
     def test_pipeline_inserts_value_as_first_argument(self):
-        result = only_distribution(interpret_file("plus(x, y) = x + y\n1 $ plus(2)"))
+        result = only_distribution(interpret_file("plus(x, y): x + y\n1 $ plus(2)"))
         self.assertEqual(result[3], 1)
 
     def test_pipeline_chains_functions(self):
-        result = only_distribution(interpret_file("double(x) = x * 2\ninc(x) = x + 1\n3 $ double $ inc"))
+        result = only_distribution(interpret_file("double(x): x * 2\ninc(x): x + 1\n3 $ double $ inc"))
         self.assertEqual(result[7], 1)
 
     def test_var_and_std_functions_return_scalar_summaries(self):

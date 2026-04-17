@@ -326,7 +326,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        cantrip_damage(plan, level) = split plan as name | name == "fire_bolt" -> fire_bolt(level, 15, 8) $ mean | name == "sacred_flame" -> sacred_flame(level, 15, 2) $ mean | name == "toll_the_dead" -> toll_the_dead_wounded(level, 15, 2) $ mean | otherwise -> agonizing_eldritch_blast_by_level(level, 15, 7, 4) $ mean
+        cantrip_damage(plan, level): split plan as name | name == "fire_bolt" -> fire_bolt(level, 15, 8) $ mean | name == "sacred_flame" -> sacred_flame(level, 15, 2) $ mean | name == "toll_the_dead" -> toll_the_dead_wounded(level, 15, 2) $ mean | otherwise -> agonizing_eldritch_blast_by_level(level, 15, 7, 4) $ mean
 
         cantrip_damage([PLAN:"fire_bolt", "sacred_flame", "toll_the_dead", "agonizing_eldritch_blast"], [LEVEL:1, 5, 11, 17])
         """,
@@ -499,7 +499,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        slot_damage(plan, slot_level) = split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
+        slot_damage(plan, slot_level): split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
 
         slot_damage([PLAN:"chromatic_orb", "guiding_bolt", "scorching_ray", "magic_missile", "fireball"], [SLOT:3, 4, 5])
         """,
@@ -508,7 +508,7 @@ DND_CASES = (
         "analysis",
         "stat_roll_4d6h3",
         """
-        stat_roll() = 4 d 6 h 3
+        stat_roll(): 4 d 6 h 3
 
         stat_roll()
         """,

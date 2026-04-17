@@ -22,6 +22,10 @@ from syntaxtree import (
     MeasureEntry,
     MeasureLiteral,
     SweepLiteral,
+    Param,
+    CallArg,
+    LocalAssign,
+    BlockBody,
 )
 from lexer import (
     Token,
@@ -58,6 +62,8 @@ from lexer import (
     ADV,
     LPAREN,
     RPAREN,
+    INDENT,
+    DEDENT,
     HIGH,
     LOW,
     AVG,
@@ -111,6 +117,8 @@ TOKEN_LABELS = {
     PROP: "'!'",
     ASSIGN: "'='",
     SEMI: "statement separator",
+    INDENT: "indent",
+    DEDENT: "dedent",
     ID: "identifier",
     PRINT: "'print'",
     STRING: "string",
@@ -472,16 +480,101 @@ class DiceParser(Parser):
                 hint="Try a number, identifier, function call, parenthesized expression, or dice expression.",
             )
 
-    def call(self, name):
+    def call_arg(self):
+        if self.current_token.type == ID and self.peek_token.type == ASSIGN:
+            name = Val(self.current_token)
+            self.eat(ID)
+            self.eat(ASSIGN)
+            return CallArg(self.expr(), name=name)
+        return CallArg(self.expr())
+
+    def call(self, name, prefixed_args=None):
         self.eat(LPAREN)
-        args = []
+        args = [] if prefixed_args is None else list(prefixed_args)
         if self.current_token.type != RPAREN:
-            args.append(self.expr())
+            args.append(self.call_arg())
             while self.current_token.type == COMMA:
                 self.eat(COMMA)
-                args.append(self.expr())
+                args.append(self.call_arg())
         self.eat(RPAREN)
         return Call(name, args)
+
+    def parameter(self):
+        if self.current_token.type != ID:
+            self.exception(
+                "expected a parameter name",
+                token=self.current_token,
+                hint="Use an identifier like 'x' or 'slot_level'.",
+            )
+        name = Val(self.current_token)
+        self.eat(ID)
+        default = None
+        if self.current_token.type == ASSIGN:
+            self.eat(ASSIGN)
+            default = self.expr()
+        return Param(name, default=default)
+
+    def parameter_list(self):
+        params = []
+        saw_default = False
+        if self.current_token.type != RPAREN:
+            while True:
+                parameter = self.parameter()
+                if parameter.default is None and saw_default:
+                    self.exception(
+                        "required parameters cannot follow parameters with defaults",
+                        token=parameter.token,
+                        hint="Move required parameters before optional ones.",
+                    )
+                if parameter.default is not None:
+                    saw_default = True
+                params.append(parameter)
+                if self.current_token.type != COMMA:
+                    break
+                self.eat(COMMA)
+        return params
+
+    def function_body(self, token):
+        if self.current_token.type != SEMI:
+            return self.expr()
+
+        self.eat_one_or_more(SEMI)
+        self.eat(INDENT)
+        self.eat_zero_or_more(SEMI)
+        items = []
+        while self.current_token.type != DEDENT:
+            if self.current_token.type == ID and self.peek_token.type == ASSIGN:
+                name = Val(self.current_token)
+                self.eat(ID)
+                assign_token = self.current_token
+                self.eat(ASSIGN)
+                items.append(LocalAssign(name, self.expr(), assign_token))
+            else:
+                items.append(self.expr())
+            if self.current_token.type == DEDENT:
+                break
+            self.eat_one_or_more(SEMI)
+            self.eat_zero_or_more(SEMI)
+        self.eat(DEDENT)
+        if not items:
+            self.exception(
+                "expected a function body",
+                token=token,
+                hint="Add at least one indented expression line after the function header.",
+            )
+        if any(type(item).__name__ != "LocalAssign" for item in items[:-1]):
+            self.exception(
+                "only assignments may appear before the final expression in a function body",
+                token=getattr(items[-2], "token", token),
+                hint="Use local assignments first, then end the function with one final expression line.",
+            )
+        if type(items[-1]).__name__ == "LocalAssign":
+            self.exception(
+                "function bodies must end with an expression",
+                token=items[-1].token,
+                hint="Add a final expression line after the local assignments.",
+            )
+        return BlockBody(items[:-1], items[-1], token)
 
     def try_function_definition(self):
         if self.current_token.type != ID or self.peek_token.type != LPAREN:
@@ -492,26 +585,13 @@ class DiceParser(Parser):
             name_token = self.current_token
             self.eat(ID)
             self.eat(LPAREN)
-            params = []
-            if self.current_token.type != RPAREN:
-                if self.current_token.type != ID:
-                    self.restore(state)
-                    return None
-                params.append(Val(self.current_token))
-                self.eat(ID)
-                while self.current_token.type == COMMA:
-                    self.eat(COMMA)
-                    if self.current_token.type != ID:
-                        self.restore(state)
-                        return None
-                    params.append(Val(self.current_token))
-                    self.eat(ID)
+            params = self.parameter_list()
             self.eat(RPAREN)
-            if self.current_token.type != ASSIGN:
+            if self.current_token.type != COLON:
                 self.restore(state)
                 return None
-            self.eat(ASSIGN)
-            return FunctionDef(Val(name_token), params, self.expr())
+            self.eat(COLON)
+            return FunctionDef(Val(name_token), params, self.function_body(name_token))
         except ParserError:
             self.restore(state)
             return None
@@ -576,15 +656,9 @@ class DiceParser(Parser):
 
         name = Val(self.current_token)
         self.eat(ID)
-        args = [value]
+        args = [CallArg(value)]
         if self.current_token.type == LPAREN:
-            self.eat(LPAREN)
-            if self.current_token.type != RPAREN:
-                args.append(self.expr())
-                while self.current_token.type == COMMA:
-                    self.eat(COMMA)
-                    args.append(self.expr())
-            self.eat(RPAREN)
+            return self.call(name, prefixed_args=args)
         return Call(name, args)
 
     def expr(self):
@@ -628,11 +702,21 @@ class DiceParser(Parser):
         nodes = []
         self.eat_zero_or_more(SEMI)
         while self.current_token.type != EOF:
-            nodes.append(self.statement())
+            statement = self.statement()
+            nodes.append(statement)
             if self.current_token.type == EOF:
                 break
-            self.eat_one_or_more(SEMI)
-            self.eat_zero_or_more(SEMI)
+            if self.current_token.type == SEMI:
+                self.eat_one_or_more(SEMI)
+                self.eat_zero_or_more(SEMI)
+                continue
+            if type(statement).__name__ == "FunctionDef" and type(statement.body).__name__ == "BlockBody":
+                continue
+            self.exception(
+                "expected a statement separator",
+                token=self.current_token,
+                hint="Separate top-level statements with a newline or ';'.",
+            )
         if not nodes:
             self.exception(
                 "expected a statement",

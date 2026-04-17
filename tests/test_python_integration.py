@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from dice import dice_interpreter
+from dice import D, dice_interpreter
 from diceengine import Distribution, Distributions, TRUE, FALSE
 from executor import ExactExecutor
 
@@ -43,11 +43,12 @@ class PythonIntegrationTest(unittest.TestCase):
     def test_registers_raw_python_function(self):
         session = dice_interpreter()
 
-        def add_bonus(value):
-            return value + 2
+        def add_bonus(value, bonus=2):
+            return value + bonus
 
         session.register_function(add_bonus)
         self.assertEqual(session("add_bonus(3)"), 5)
+        self.assertEqual(session("add_bonus(bonus=4, value=3)"), 7)
 
     def test_registers_lifted_python_function(self):
         session = dice_interpreter()
@@ -81,6 +82,37 @@ class PythonIntegrationTest(unittest.TestCase):
         session.register_function(bad)
         with self.assertRaisesRegex(Exception, "Unsupported host value type"):
             session("bad()")
+
+    def test_registered_function_supports_dice_expression_defaults(self):
+        session = dice_interpreter()
+        session.assign("default_bonus", 3)
+
+        def add_default_bonus(value, bonus=D("default_bonus")):
+            return value + bonus
+
+        session.register_function(add_default_bonus)
+        self.assertEqual(session("add_default_bonus(4)"), 7)
+
+    def test_registered_function_rejects_d_defaults_that_reference_parameters(self):
+        session = dice_interpreter()
+
+        def define():
+            def bad(value, bonus=D("value + 1")):
+                return value + bonus
+
+            session.register_function(bad)
+
+        with self.assertRaisesRegex(Exception, "D\\(\\.\\.\\.\\) defaults may only reference globals, not parameters"):
+            define()
+
+    def test_registered_function_rejects_keyword_only_parameters(self):
+        session = dice_interpreter()
+
+        def keyword_only(value, *, bonus=1):
+            return value + bonus
+
+        with self.assertRaisesRegex(Exception, "POSITIONAL_OR_KEYWORD"):
+            session.register_function(keyword_only)
 
 
 if __name__ == "__main__":

@@ -242,7 +242,7 @@ class InterpreterCompletionTest(unittest.TestCase):
     def test_identifier_completion_includes_builtins_and_user_symbols(self):
         interpreter = Interpreter(None)
         interpreter.global_scope["bonus"] = 2
-        interpret_statement("hit(ac) = d20 >= ac", interpreter=interpreter)
+        interpret_statement("hit(ac): d20 >= ac", interpreter=interpreter)
 
         self.assertEqual(interpreter.complete("bo", line_buffer="bo", begidx=0, endidx=2), ["bonus"])
         self.assertEqual(interpreter.complete("hi", line_buffer="hi", begidx=0, endidx=2), ["hit"])
@@ -251,9 +251,9 @@ class InterpreterCompletionTest(unittest.TestCase):
     def test_import_completion_omits_dice_extension(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
-            (root / "combat.dice").write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            (root / "combat.dice").write_text("hit(ac): d20 >= ac\n", encoding="utf-8")
             (root / "lib").mkdir()
-            (root / "lib" / "damage.dice").write_text("damage(ac) = ac\n", encoding="utf-8")
+            (root / "lib" / "damage.dice").write_text("damage(ac): ac\n", encoding="utf-8")
             interpreter = Interpreter(None, current_dir=root)
 
             self.assertEqual(interpreter.complete("co", line_buffer='import "co', begidx=8, endidx=10), ["combat"])

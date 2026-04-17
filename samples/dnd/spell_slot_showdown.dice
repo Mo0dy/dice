@@ -2,6 +2,6 @@
 
 import "std:dnd/spells.dice"
 
-slot_damage(plan, slot_level) = split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
+slot_damage(plan, slot_level=3): split plan as name | name == "chromatic_orb" -> chromatic_orb(slot_level, 15, 7) $ mean | name == "guiding_bolt" -> guiding_bolt(slot_level, 15, 7) $ mean | name == "scorching_ray" -> scorching_ray(slot_level, 15, 7) $ mean | name == "magic_missile" -> magic_missile(slot_level) $ mean | otherwise -> fireball(slot_level, 15, 2) $ mean
 
-render(slot_damage([PLAN:"chromatic_orb", "guiding_bolt", "scorching_ray", "magic_missile", "fireball"], [SLOT:3, 4, 5]), "Spell slot", "Expected damage by spell slot")
+render(slot_damage([PLAN:"chromatic_orb", "guiding_bolt", "scorching_ray", "magic_missile", "fireball"], slot_level=[SLOT:3, 4, 5]), "Spell slot", "Expected damage by spell slot")

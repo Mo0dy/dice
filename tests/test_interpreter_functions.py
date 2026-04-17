@@ -36,45 +36,63 @@ def only_distribution(result):
 class InterpreterFunctionScopeTest(unittest.TestCase):
     def test_function_scope_is_collected_before_execution(self):
         result = only_distribution(
-            interpret("damage(ac) = hit(ac) -> 5 | 0\nhit(ac) = d20 >= ac\ndamage(11)")
+            interpret("damage(ac): hit(ac) -> 5 | 0\nhit(ac): d20 >= ac\ndamage(11)")
         )
         self.assertAlmostEqual(result[5], 0.5)
         self.assertAlmostEqual(result[0], 0.5)
 
     def test_parameter_scope_shadows_global_scope(self):
-        result = interpret("x = 100\nid(x) = x\nid(3)")
+        result = interpret("x = 100\nid(x): x\nid(3)")
         self.assertEqual(result, 3)
 
     def test_function_body_reads_globals_at_call_time(self):
-        result = only_distribution(interpret("bonus = 2\nadd_bonus(x) = x + bonus\nadd_bonus(3)"))
+        result = only_distribution(interpret("bonus = 2\nadd_bonus(x): x + bonus\nadd_bonus(3)"))
         self.assertEqual(result[5], 1)
 
     def test_variable_and_function_namespaces_stay_separate(self):
-        result = only_distribution(interpret("damage = 3\ndamage(x) = x + 1\ndamage(damage)"))
+        result = only_distribution(interpret("damage = 3\ndamage(x): x + 1\ndamage(damage)"))
         self.assertEqual(result[4], 1)
 
     def test_function_can_return_swept_distribution(self):
-        result = interpret("hit(ac) = d20 >= ac\nhit([10:12])")
+        result = interpret("hit(ac): d20 >= ac\nhit([10:12])")
         self.assertEqual(result.axes[0].values, (10, 11, 12))
         self.assertAlmostEqual(result.cells[(10,)][TRUE], 0.55)
         self.assertAlmostEqual(result.cells[(12,)][FALSE], 0.55)
 
     def test_zero_argument_function_works_through_interpreter(self):
-        result = interpret("always() = 5\nalways()")
+        result = interpret("always(): 5\nalways()")
         self.assertEqual(result, 5)
+
+    def test_multiline_function_bodies_support_local_assignments(self):
+        result = only_distribution(interpret("double_inc(x):\n    y = x + 1\n    y * 2\ndouble_inc(3)"))
+        self.assertEqual(result[8], 1)
+
+    def test_dsl_keyword_arguments_bind_by_name(self):
+        result = only_distribution(interpret("sum2(a, b): a + b\nsum2(b=4, a=3)"))
+        self.assertEqual(result[7], 1)
+
+    def test_builtin_keyword_arguments_bind_by_name(self):
+        result = only_distribution(interpret("repeat_sum(value=d2, count=2)"))
+        self.assertAlmostEqual(result[2], 0.25)
+        self.assertAlmostEqual(result[3], 0.5)
+        self.assertAlmostEqual(result[4], 0.25)
 
     def test_wrong_arity_raises_from_interpreter(self):
         with self.assertRaises(Exception) as error:
-            interpret("sum2(a, b) = a + b\nsum2(1)")
-        self.assertIn("expected 2 arguments but got 1", str(error.exception))
+            interpret("sum2(a, b): a + b\nsum2(1)")
+        self.assertIn("missing required argument b", str(error.exception))
         self.assertIn("<input>:2:1", str(error.exception))
         self.assertIn("hint:", str(error.exception))
 
     def test_builtin_wrong_arity_uses_clean_hint(self):
         with self.assertRaises(Exception) as error:
             interpret("repeat_sum()")
-        self.assertIn("function repeat_sum expected 2 arguments but got 0", str(error.exception))
+        self.assertIn("function repeat_sum missing required argument count", str(error.exception))
         self.assertIn("Call it like repeat_sum(count, value).", str(error.exception))
+
+    def test_render_remains_positional_variadic(self):
+        with self.assertRaisesRegex(Exception, "does not accept keyword arguments"):
+            interpret('render(expr=d20)')
 
     def test_unknown_function_raises_from_interpreter(self):
         with self.assertRaisesRegex(Exception, "Unknown function"):
@@ -82,7 +100,7 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
 
     def test_recursion_is_rejected_from_interpreter(self):
         with self.assertRaisesRegex(Exception, "Recursion not supported"):
-            interpret("a(x) = b(x)\nb(x) = a(x)\na(1)")
+            interpret("a(x): b(x)\nb(x): a(x)\na(1)")
 
     def test_plain_identifier_still_uses_variable_scope(self):
         result = only_distribution(interpret("attack = d20 >= 11\nattack"))

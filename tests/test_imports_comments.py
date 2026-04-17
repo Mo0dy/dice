@@ -37,7 +37,7 @@ class ImportAndCommentTest(unittest.TestCase):
     def test_import_loads_relative_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
-            (root / "combat.dice").write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            (root / "combat.dice").write_text("hit(ac): d20 >= ac\n", encoding="utf-8")
             result = interpret_file(
                 'import "combat.dice"\nhit(11)',
                 current_dir=root,
@@ -49,7 +49,7 @@ class ImportAndCommentTest(unittest.TestCase):
     def test_import_loads_relative_file_without_extension(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
-            (root / "combat.dice").write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            (root / "combat.dice").write_text("hit(ac): d20 >= ac\n", encoding="utf-8")
             result = interpret_file(
                 'import "combat"\nhit(11)',
                 current_dir=root,
@@ -62,7 +62,7 @@ class ImportAndCommentTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
             helper = root / "combat.dice"
-            helper.write_text("hit(ac) = d20 >= ac\n", encoding="utf-8")
+            helper.write_text("hit(ac): d20 >= ac\n", encoding="utf-8")
             result = interpret_file(
                 f'import "{helper}"\nhit(11)',
                 current_dir=root / "somewhere" / "else",
@@ -75,8 +75,8 @@ class ImportAndCommentTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
             (root / "lib").mkdir()
-            (root / "lib" / "damage.dice").write_text("damage(ac) = hit(ac) -> 5 | 0\n", encoding="utf-8")
-            (root / "combat.dice").write_text('import "lib/damage.dice"\nhit(ac) = d20 >= ac\n', encoding="utf-8")
+            (root / "lib" / "damage.dice").write_text("damage(ac): hit(ac) -> 5 | 0\n", encoding="utf-8")
+            (root / "combat.dice").write_text('import "lib/damage.dice"\nhit(ac): d20 >= ac\n', encoding="utf-8")
             result = interpret_file(
                 'import "combat.dice"\ndamage(11)',
                 current_dir=root,
@@ -88,7 +88,7 @@ class ImportAndCommentTest(unittest.TestCase):
     def test_import_is_only_processed_once(self):
         with tempfile.TemporaryDirectory() as tempdir:
             root = Path(tempdir)
-            (root / "helpers.dice").write_text("bonus = 2\nadd_bonus(x) = x + bonus\n", encoding="utf-8")
+            (root / "helpers.dice").write_text("bonus = 2\nadd_bonus(x): x + bonus\n", encoding="utf-8")
             result = interpret_file(
                 'import "helpers.dice"\nimport "helpers.dice"\nadd_bonus(3)',
                 current_dir=root,

@@ -2,6 +2,6 @@
 
 import "std:dnd/weapons.dice"
 
-martial_damage(plan, ac) = split plan as name | name == "longsword" -> longsword_attack(ac, 7, 4) $ mean | name == "bless_longsword" -> bless_longsword(ac, 7, 4) $ mean | name == "greatsword_gwf" -> greatsword_attack_gwf(ac, 7, 4) $ mean | name == "great_weapon_master" -> great_weapon_master(ac, 8, 4) $ mean | name == "reckless_gwm" -> reckless_great_weapon_master(ac, 8, 4) $ mean | otherwise -> hunters_mark_longbow(ac, 9, 4) $ mean
+martial_damage(plan, ac): split plan as name | name == "longsword" -> longsword_attack(ac, 7, 4) $ mean | name == "bless_longsword" -> bless_longsword(ac, 7, 4) $ mean | name == "greatsword_gwf" -> greatsword_attack_gwf(ac, 7, 4) $ mean | name == "great_weapon_master" -> great_weapon_master(ac, 8, 4) $ mean | name == "reckless_gwm" -> reckless_great_weapon_master(ac, 8, 4) $ mean | otherwise -> hunters_mark_longbow(ac, 9, 4) $ mean
 
 render(martial_damage([PLAN:"longsword", "bless_longsword", "greatsword_gwf", "great_weapon_master", "reckless_gwm", "hunters_mark_longbow"], [AC:10:22]), "Armor class", "Martial tradeoffs by armor class")

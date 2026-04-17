@@ -35,6 +35,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - Minimal first-class comments and file imports now belong to the active language surface: `# ...` and `import "path.dice"`.
 - `README.md` examples are part of the executable contract through the test suite.
 - The current ongoing task is the semantic rewrite described in `DICE_REWRITE_PLAN.md`.
+- The language is explicitly still in development; undocumented breaking syntax/runtime changes are allowed without compatibility warnings while the rewrite is in flight.
 
 ## Where To Read Next
 

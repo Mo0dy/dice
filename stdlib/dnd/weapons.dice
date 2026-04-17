@@ -1,51 +1,56 @@
 # Exact weapon, feat, and martial helpers built on the shared combat rules.
 import "std:dnd/core.dice"
 
-longsword_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
-longsword_attack_versatile(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
-bless_longsword(ac, bonus, mod) = attack_damage_bless(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
-crit_longsword(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
+longsword_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
+longsword_attack_versatile(ac, bonus, mod): attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
+bless_longsword(ac, bonus, mod): attack_damage_bless(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
+crit_longsword(ac, bonus, mod): attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
 
-greatsword_attack(ac, bonus, mod) = attack_damage(ac, bonus, 2 d 6 + mod, 4 d 6 + mod)
-greatsword_attack_gwf(ac, bonus, mod) = attack_damage(ac, bonus, great_weapon_fighting_dice(2, 6) + mod, repeat_sum(2, great_weapon_fighting_dice(2, 6)) + mod)
-greataxe_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 12 + mod, 2 d 12 + mod)
-greataxe_attack_gwf(ac, bonus, mod) = attack_damage(ac, bonus, great_weapon_fighting_dice(1, 12) + mod, repeat_sum(2, great_weapon_fighting_dice(1, 12)) + mod)
-maul_attack(ac, bonus, mod) = attack_damage(ac, bonus, 2 d 6 + mod, 4 d 6 + mod)
-maul_attack_gwf(ac, bonus, mod) = attack_damage(ac, bonus, great_weapon_fighting_dice(2, 6) + mod, repeat_sum(2, great_weapon_fighting_dice(2, 6)) + mod)
-glaive_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
-halberd_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
+greatsword_attack(ac, bonus, mod): attack_damage(ac, bonus, 2 d 6 + mod, 4 d 6 + mod)
+greatsword_attack_gwf(ac, bonus, mod): attack_damage(ac, bonus, great_weapon_fighting_dice(2, 6) + mod, repeat_sum(2, great_weapon_fighting_dice(2, 6)) + mod)
+greataxe_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 12 + mod, 2 d 12 + mod)
+greataxe_attack_gwf(ac, bonus, mod): attack_damage(ac, bonus, great_weapon_fighting_dice(1, 12) + mod, repeat_sum(2, great_weapon_fighting_dice(1, 12)) + mod)
+maul_attack(ac, bonus, mod): attack_damage(ac, bonus, 2 d 6 + mod, 4 d 6 + mod)
+maul_attack_gwf(ac, bonus, mod): attack_damage(ac, bonus, great_weapon_fighting_dice(2, 6) + mod, repeat_sum(2, great_weapon_fighting_dice(2, 6)) + mod)
+glaive_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
+halberd_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
 
-rapier_attack(ac, bonus, dex) = attack_damage(ac, bonus, 1 d 8 + dex, 2 d 8 + dex)
-rapier_sneak_attack(ac, bonus, dex, sneak_dice) = attack_damage(ac, bonus, 1 d 8 + dex + repeat_sum(sneak_dice, d6), 2 d 8 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
-rapier_sneak_attack_adv(ac, bonus, dex, sneak_dice) = attack_damage_adv(ac, bonus, 1 d 8 + dex + repeat_sum(sneak_dice, d6), 2 d 8 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
-dagger_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 4 + mod, 2 d 4 + mod)
-scimitar_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
-quarterstaff_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
-quarterstaff_attack_versatile(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
+rapier_attack(ac, bonus, dex): attack_damage(ac, bonus, 1 d 8 + dex, 2 d 8 + dex)
+rapier_sneak_attack(ac, bonus, dex, sneak_dice): attack_damage(ac, bonus, 1 d 8 + dex + repeat_sum(sneak_dice, d6), 2 d 8 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
+rapier_sneak_attack_adv(ac, bonus, dex, sneak_dice): attack_damage_adv(ac, bonus, 1 d 8 + dex + repeat_sum(sneak_dice, d6), 2 d 8 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
+dagger_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 4 + mod, 2 d 4 + mod)
+scimitar_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
+quarterstaff_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
+quarterstaff_attack_versatile(ac, bonus, mod): attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
 
-shortbow_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
-shortbow_sneak_attack(ac, bonus, dex, sneak_dice) = attack_damage(ac, bonus, 1 d 6 + dex + repeat_sum(sneak_dice, d6), 2 d 6 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
-longbow_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
-heavy_crossbow_attack(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
+shortbow_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 6 + mod, 2 d 6 + mod)
+shortbow_sneak_attack(ac, bonus, dex, sneak_dice): attack_damage(ac, bonus, 1 d 6 + dex + repeat_sum(sneak_dice, d6), 2 d 6 + dex + repeat_sum(2, repeat_sum(sneak_dice, d6)))
+longbow_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 8 + mod, 2 d 8 + mod)
+heavy_crossbow_attack(ac, bonus, mod): attack_damage(ac, bonus, 1 d 10 + mod, 2 d 10 + mod)
 
-longbow_sharpshooter(ac, bonus, mod) = attack_damage(ac, bonus - 5, 1 d 8 + mod + 10, 2 d 8 + mod + 10)
-sharpshooter(ac, bonus, mod) = longbow_sharpshooter(ac, bonus, mod)
-great_weapon_master(ac, bonus, mod) = attack_damage(ac, bonus - 5, 2 d 6 + mod + 10, 4 d 6 + mod + 10)
-reckless_great_weapon_master(ac, bonus, mod) = attack_damage_adv(ac, bonus - 5, 2 d 6 + mod + 10, 4 d 6 + mod + 10)
+longbow_sharpshooter(ac, bonus, mod): attack_damage(ac, bonus - 5, 1 d 8 + mod + 10, 2 d 8 + mod + 10)
+sharpshooter(ac, bonus, mod): longbow_sharpshooter(ac, bonus, mod)
+great_weapon_master(ac, bonus, mod): attack_damage(ac, bonus - 5, 2 d 6 + mod + 10, 4 d 6 + mod + 10)
+reckless_great_weapon_master(ac, bonus, mod): attack_damage_adv(ac, bonus - 5, 2 d 6 + mod + 10, 4 d 6 + mod + 10)
 
-hunters_mark_longbow(ac, bonus, mod) = attack_damage(ac, bonus, 1 d 8 + mod + 1 d 6, 2 d 8 + mod + 2 d 6)
-hunters_mark_greatsword(ac, bonus, mod) = attack_damage(ac, bonus, 2 d 6 + mod + 1 d 6, 4 d 6 + mod + 2 d 6)
+hunters_mark_longbow(ac, bonus, mod): attack_damage(ac, bonus, 1 d 8 + mod + 1 d 6, 2 d 8 + mod + 2 d 6)
+hunters_mark_greatsword(ac, bonus, mod): attack_damage(ac, bonus, 2 d 6 + mod + 1 d 6, 4 d 6 + mod + 2 d 6)
 
-divine_smite_dice(slot_level) = split slot_level | >= 5 -> 5 | >= 1 -> @ + 1 | otherwise -> 0
+divine_smite_dice(slot_level): split slot_level | >= 5 -> 5 | >= 1 -> @ + 1 | otherwise -> 0
 
-divine_smite_dice_vs_fiend(slot_level) = split divine_smite_dice(slot_level) + 1 | >= 6 -> 6 | otherwise -> @
+divine_smite_dice_vs_fiend(slot_level): split divine_smite_dice(slot_level) + 1 | >= 6 -> 6 | otherwise -> @
 
-divine_smite_damage(slot_level) = repeat_sum(divine_smite_dice(slot_level), d8)
-divine_smite_damage_vs_fiend(slot_level) = repeat_sum(divine_smite_dice_vs_fiend(slot_level), d8)
+divine_smite_damage(slot_level): repeat_sum(divine_smite_dice(slot_level), d8)
+divine_smite_damage_vs_fiend(slot_level): repeat_sum(divine_smite_dice_vs_fiend(slot_level), d8)
 
-paladin_smite(ac, bonus, mod, slot_level) = attack_damage(ac, bonus, 1 d 8 + mod + divine_smite_damage(slot_level), 2 d 8 + mod + repeat_sum(2, divine_smite_damage(slot_level)))
-paladin_smite_vs_fiend(ac, bonus, mod, slot_level) = attack_damage(ac, bonus, 1 d 8 + mod + divine_smite_damage_vs_fiend(slot_level), 2 d 8 + mod + repeat_sum(2, divine_smite_damage_vs_fiend(slot_level)))
+paladin_smite(ac, bonus, mod, slot_level=1):
+    smite = divine_smite_damage(slot_level)
+    attack_damage(ac, bonus, 1 d 8 + mod + smite, 2 d 8 + mod + repeat_sum(2, smite))
 
-fighter_attack_action(attacks, ac, bonus, mod) = repeat_sum(attacks, longsword_attack(ac, bonus, mod))
-greatsword_attack_action(attacks, ac, bonus, mod) = repeat_sum(attacks, greatsword_attack(ac, bonus, mod))
-longbow_attack_action(attacks, ac, bonus, mod) = repeat_sum(attacks, longbow_attack(ac, bonus, mod))
+paladin_smite_vs_fiend(ac, bonus, mod, slot_level=1):
+    smite = divine_smite_damage_vs_fiend(slot_level)
+    attack_damage(ac, bonus, 1 d 8 + mod + smite, 2 d 8 + mod + repeat_sum(2, smite))
+
+fighter_attack_action(attacks, ac, bonus, mod): repeat_sum(attacks, longsword_attack(ac, bonus, mod))
+greatsword_attack_action(attacks, ac, bonus, mod): repeat_sum(attacks, greatsword_attack(ac, bonus, mod))
+longbow_attack_action(attacks, ac, bonus, mod): repeat_sum(attacks, longbow_attack(ac, bonus, mod))

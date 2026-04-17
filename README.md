@@ -31,7 +31,10 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `[name:a..b]` creates a named sweep over an inclusive integer range.
 - `[name:a..<b]` creates a named sweep whose upper bound is excluded.
 - `[name:a, b, c]` creates a named sweep over explicit values.
-- `f(x) = expr` defines a top-level one-line function.
+- `f(x): expr` defines a top-level one-line function.
+- `f(x):` followed by an indented body defines a multiline function with local assignments and one final expression line.
+- `f(a, b=1)` defines defaults, and `f(b=2, a=1)` calls by keyword.
+- Function defaults are evaluated against dice globals only.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `split expr | guard -> expr | ...` binds one shared outcome of `expr`, checks clauses top-to-bottom, and sends only the still-unmatched cases to later clauses.
 - `expr ^ n` evaluates `expr` independently `n` times and adds the results.
@@ -147,9 +150,16 @@ renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
 
 ## Functions
 
-User-defined functions are one-line top-level definitions.
+User-defined functions use Python-like `:` headers.
 
 - Parameters shadow globals.
+- One-line definitions use `name(args): expr`.
+- Multiline definitions use indentation, local assignments, and one final expression line.
+- Function-local assignments never mutate globals.
+- Rebinding a local name is allowed inside the function body.
+- A local assignment that shadows a global emits a warning.
+- Parameters may have defaults, and calls may use keyword arguments.
+- Default expressions are evaluated against globals only.
 - Functions may call other functions.
 - Forward references work across a program.
 - Recursion is not supported.
@@ -157,9 +167,12 @@ User-defined functions are one-line top-level definitions.
 Examples:
 
 ```text
-hit(ac) = d20 >= ac
-damage(ac) = hit(ac) -> 5 | 0
-crit(ac, dmg) = d20 == 20 -> dmg | 0
+hit(ac): d20 >= ac
+damage(ac): hit(ac) -> 5 | 0
+crit(ac, dmg): d20 == 20 -> dmg | 0
+paladin_smite(ac, bonus=8):
+    hit_damage = 1 d 8 + 4
+    attack_damage(ac, bonus, hit_damage, 2 d 8 + 4)
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3
@@ -262,6 +275,9 @@ Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backe
 - Untyped Python functions receive projected cell values, not whole sweeps.
 - Parameters typed as `Distribution` or `FiniteMeasure` are auto-lifted cellwise.
 - Parameters typed as `Sweep[...]` receive the full sweep container.
+- Python host functions may use ordinary Python defaults and keyword arguments.
+- `from dice import D` allows dice-expression defaults for Python functions, for example `def fireball(dc, save_bonus=D("default_save_bonus")): ...`.
+- `D("...")` defaults are evaluated against dice globals only, not function parameters or caller locals.
 - Registered functions may return scalars, `FiniteMeasure`, `Distribution`, `Sweep[FiniteMeasure]`, or `Sweep[Distribution]`.
 
 User-facing extension samples live under [samples/python_extensions](/home/felix/_Documents/Projects/dice/samples/python_extensions).
@@ -277,13 +293,13 @@ User-facing extension samples live under [samples/python_extensions](/home/felix
 ## Examples
 
 ```dice
-hit(ac) = d20 >= ac; hit(11)
-hit(ac) = d20 >= ac; damage(ac) = hit(ac) -> 5 | 0; damage([10..15])
-hit(ac) = d20 >= ac; hit([AC:10..15])
-crit(ac, dmg) = d20 == 20 -> dmg | 0; crit(15, 8)
+hit(ac): d20 >= ac; hit(11)
+hit(ac): d20 >= ac; damage(ac): hit(ac) -> 5 | 0; damage([10..15])
+hit(ac): d20 >= ac; hit([AC:10..15])
+crit(ac, dmg): d20 == 20 -> dmg | 0; crit(15, 8)
 import "std:dnd/weapons"; crit_longsword(16, 7, 4)
-always() = 5; always()
-rolln(a, b) = a d b; rolln(2, 2)
+always(): 5; always()
+rolln(a, b): a d b; rolln(2, 2)
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3

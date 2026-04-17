@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from lexer import AS, CARET, EOF, HIGH, ID, IMPORT, INTEGER, LOW, MATCH, OTHERWISE, PIPE, RES, ROLL, SEMI, SPLIT, SPLITZERO, STRING, AT, Lexer
+from lexer import AS, CARET, DEDENT, EOF, HIGH, ID, IMPORT, INDENT, INTEGER, LOW, MATCH, OTHERWISE, PIPE, RES, ROLL, SEMI, SPLIT, SPLITZERO, STRING, AT, Lexer
 
 
 def tokens(text):
@@ -89,6 +89,34 @@ class LexerWhitespaceTest(unittest.TestCase):
 
     def test_repeat_sum_operator_tokenizes_with_spaces(self):
         self.assertEqual(tokens("d6 ^ 3"), [(ROLL, "d"), (INTEGER, 6), (CARET, "^"), (INTEGER, 3)])
+
+    def test_indented_function_body_emits_indent_and_dedent_tokens(self):
+        self.assertEqual(
+            tokens("f(x):\n    y = x + 1\n    y"),
+            [
+                (ID, "f"),
+                ("LPAREN", "("),
+                (ID, "x"),
+                ("RPAREN", ")"),
+                ("COLON", ":"),
+                (SEMI, "\n"),
+                (INDENT, None),
+                (ID, "y"),
+                ("ASSIGN", "="),
+                (ID, "x"),
+                ("PLUS", "+"),
+                (INTEGER, 1),
+                (SEMI, "\n"),
+                (ID, "y"),
+                (DEDENT, None),
+            ],
+        )
+
+    def test_keyword_argument_tokenizes_as_identifier_assign_expression(self):
+        self.assertEqual(
+            tokens("spell(slot_level=3)"),
+            [(ID, "spell"), ("LPAREN", "("), (ID, "slot_level"), ("ASSIGN", "="), (INTEGER, 3), ("RPAREN", ")")],
+        )
 
 
 if __name__ == "__main__":

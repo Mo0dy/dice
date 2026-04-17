@@ -47,6 +47,8 @@ HIGH = "HIGH"                            # "h"
 LOW = "LOW"                              # "l"
 EOF = "EOF"                              # end of file
 SEMI = "SEMI"                            # "SEMI"
+INDENT = "INDENT"                        # increased indentation
+DEDENT = "DEDENT"                        # decreased indentation
 ID = "ID"                                # any valid variable defenition
 ASSIGN = "ASSIGN"                        # "="
 PRINT = "PRINT"                          # "print"
@@ -85,6 +87,10 @@ class Lexer(object):
         self.location = 0
         self.line = 1
         self.column = 1
+        self.pending_tokens = []
+        self.indent_stack = [0]
+        self.at_line_start = True
+        self.expect_indent = False
 
     def exception(self, message="", hint=None, span=None):
         """Raises a lexer exception"""
@@ -142,16 +148,97 @@ class Lexer(object):
             self.column,
         )
 
+    def _indent_width(self, text):
+        width = 0
+        for char in text:
+            if char == "\t":
+                width += 4 - (width % 4)
+            else:
+                width += 1
+        return width
+
+    def _emit_pending_dedent(self):
+        self.indent_stack.pop()
+        return Token(DEDENT, None, span=self.current_span())
+
+    def _consume_line_comment(self):
+        comment_end = 0
+        while comment_end < len(self.string_input) and self.string_input[comment_end] != "\n":
+            comment_end += 1
+        self._consume(comment_end)
+
+    def _consume_indentation(self):
+        indentation = 0
+        while indentation < len(self.string_input) and self.string_input[indentation] in [" ", "\t"]:
+            indentation += 1
+        return self.string_input[:indentation], indentation
+
+    def _handle_line_start(self):
+        while True:
+            if not self.string_input:
+                if len(self.indent_stack) > 1:
+                    return self._emit_pending_dedent()
+                return None
+
+            indentation_text, indentation_count = self._consume_indentation()
+            next_char = self.string_input[indentation_count:indentation_count + 1]
+
+            if next_char == "#":
+                if indentation_count:
+                    self._consume(indentation_count)
+                self._consume_line_comment()
+                continue
+
+            if next_char == "\n":
+                if indentation_count:
+                    self._consume(indentation_count)
+                start_index = self.location
+                start_line = self.line
+                start_column = self.column
+                consumed = self._consume(1)
+                self.at_line_start = True
+                return Token(SEMI, consumed, span=self._span_from_consumed(start_index, start_line, start_column, consumed))
+
+            indentation_width = self._indent_width(indentation_text)
+            if indentation_count:
+                self._consume(indentation_count)
+            current_indent = self.indent_stack[-1]
+            if indentation_width > current_indent:
+                if not self.expect_indent:
+                    if current_indent == 0:
+                        self.at_line_start = False
+                        return None
+                    self.exception("unexpected indentation", hint="Only function bodies introduce indentation blocks.")
+                self.indent_stack.append(indentation_width)
+                self.expect_indent = False
+                self.at_line_start = False
+                return Token(INDENT, None, span=self.current_span())
+            if indentation_width < current_indent:
+                while len(self.indent_stack) > 1 and indentation_width < self.indent_stack[-1]:
+                    self.pending_tokens.append(self._emit_pending_dedent())
+                if indentation_width != self.indent_stack[-1]:
+                    self.exception("inconsistent indentation", hint="Align the block indentation with an earlier line.")
+                self.at_line_start = False
+                if self.pending_tokens:
+                    return self.pending_tokens.pop(0)
+            self.at_line_start = False
+            return None
+
     def next_token(self):
         """Returns next token in tokenstream"""
+        if self.pending_tokens:
+            return self.pending_tokens.pop(0)
+
+        if self.at_line_start:
+            token = self._handle_line_start()
+            if token is not None:
+                return token
+
         while self.string_input and self.string_input[0] in [" ", "\t"]:
             self._consume(1)
 
         if self.string_input.startswith("#"):
-            comment_end = 1
-            while comment_end < len(self.string_input) and self.string_input[comment_end] != "\n":
-                comment_end += 1
-            self._consume(comment_end)
+            self._consume_line_comment()
             return self.next_token()
 
         if self.string_input.startswith('"'):
@@ -234,6 +321,14 @@ class Lexer(object):
                 # generate token from generating function
                 token = token_gen(match.group(0))
                 token.span = span
+                if token.type == SEMI:
+                    self.at_line_start = True
+                elif token.type == COLON:
+                    self.at_line_start = False
+                    self.expect_indent = True
+                else:
+                    self.at_line_start = False
+                    self.expect_indent = False
                 return token
 
         # can't find anything anymore but still input string
@@ -245,4 +340,6 @@ class Lexer(object):
             )
 
         # end of token stream
+        if len(self.indent_stack) > 1:
+            return self._emit_pending_dedent()
         return Token(EOF, "EOF", span=self.current_span())

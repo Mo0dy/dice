@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from difflib import get_close_matches
-import inspect
 import os
 import re
 from itertools import product
@@ -63,6 +62,7 @@ from diceengine import (
     _union_axes,
 )
 from executor import ExactExecutor
+from executor import DiceDefault, MISSING, ParameterSpec
 
 
 STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
@@ -72,10 +72,10 @@ COMPLETION_KEYWORDS = ("as", "import", "in", "otherwise", "split")
 
 
 class CallableEntry(object):
-    def __init__(self, name, kind, arity=None, variadic=False, function=None, node=None, sweep_mode=False):
+    def __init__(self, name, kind, parameters=(), variadic=False, function=None, node=None, sweep_mode=False):
         self.name = name
         self.kind = kind
-        self.arity = arity
+        self.parameters = tuple(parameters)
         self.variadic = variadic
         self.function = function
         self.node = node
@@ -153,8 +153,57 @@ class Interpreter:
             )
         self.callable_scope[entry.name] = entry
 
+    def _identifier_names(self, node):
+        names = set()
+        if node is None:
+            return names
+        if type(node).__name__ == "Val" and getattr(getattr(node, "token", None), "type", None) == ID:
+            names.add(node.value)
+        for value in getattr(node, "__dict__", {}).values():
+            if isinstance(value, list):
+                for item in value:
+                    names.update(self._identifier_names(item))
+            else:
+                names.update(self._identifier_names(value))
+        return names
+
+    def _dsl_parameter_specs(self, node):
+        seen = set()
+        param_names = [param.name.value for param in node.params]
+        parameters = []
+        for param in node.params:
+            name = param.name.value
+            if name in seen:
+                self.exception(
+                    "Duplicate parameter name {}".format(name),
+                    node=param,
+                    hint="Rename one of the parameters so each parameter name is unique.",
+                )
+            seen.add(name)
+            if param.default is not None:
+                forbidden = sorted(name for name in param_names if name in self._identifier_names(param.default))
+                if forbidden:
+                    self.exception(
+                        "parameter defaults may only reference globals, not parameters: {}".format(", ".join(forbidden)),
+                        node=param.default,
+                    )
+            parameters.append(
+                ParameterSpec(
+                    name=name,
+                    default_value=param.default if param.default is not None else MISSING,
+                )
+            )
+        return tuple(parameters)
+
     def register_function_definition(self, node):
-        self._register_callable(CallableEntry(node.name.value, "dsl", arity=len(node.params), node=node))
+        self._register_callable(
+            CallableEntry(
+                node.name.value,
+                "dsl",
+                parameters=self._dsl_parameter_specs(node),
+                node=node,
+            )
+        )
 
     def register_function(self, function, name=None):
         callable_name = name if name is not None else function.__name__
@@ -228,20 +277,14 @@ class Interpreter:
     def _call_hint(self, entry):
         if entry.variadic:
             return None
-        if getattr(entry, "kind", None) == "dsl":
-            params = [param.value for param in entry.node.params]
-        else:
-            try:
-                signature = inspect.signature(entry.function)
-                params = [
-                    parameter.name
-                    for parameter in signature.parameters.values()
-                    if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-                ]
-            except (TypeError, ValueError):
-                params = []
-            if not params:
-                params = ["arg{}".format(index + 1) for index in range(entry.arity)]
+        params = []
+        for parameter in getattr(entry, "parameters", ()):
+            if parameter.has_default:
+                params.append("{}=...".format(parameter.name))
+            else:
+                params.append(parameter.name)
+        if not params:
+            params = ["arg{}".format(index + 1) for index in range(len(getattr(entry, "parameters", ())))]
         return "Call it like {}({}).".format(entry.name, ", ".join(params))
 
     def _literal_scalar_from_node(self, node):
@@ -437,15 +480,90 @@ class Interpreter:
             )
         return condition[TRUE], condition[FALSE]
 
-    def _check_call_arity(self, entry, call_arity, node=None):
+    def _evaluate_in_global_scope(self, node):
+        saved_scopes = self.local_scopes
+        self.local_scopes = []
+        try:
+            return self.visit(node)
+        finally:
+            self.local_scopes = saved_scopes
+
+    def _resolve_default_argument(self, entry, parameter):
+        default = parameter.default_value
+        if getattr(entry, "kind", None) == "dsl":
+            return self._evaluate_in_global_scope(default)
+        if isinstance(default, DiceDefault):
+            return self._evaluate_in_global_scope(default.ast)
+        return default
+
+    def _bind_call_arguments(self, entry, args, node=None):
         if entry.variadic:
-            return
-        if call_arity != entry.arity:
+            for arg in args:
+                if arg.name is not None:
+                    self.exception(
+                        "function {} does not accept keyword arguments".format(entry.name),
+                        node=arg,
+                        hint=self._call_hint(entry),
+                    )
+            return [self.visit(arg.value) for arg in args]
+
+        parameters = getattr(entry, "parameters", ())
+        bound = [MISSING] * len(parameters)
+        parameter_indexes = {parameter.name: index for index, parameter in enumerate(parameters)}
+        positional_index = 0
+        saw_keyword = False
+
+        for arg in args:
+            if arg.name is None:
+                if saw_keyword:
+                    self.exception(
+                        "positional arguments cannot follow keyword arguments",
+                        node=arg,
+                        hint=self._call_hint(entry),
+                    )
+                if positional_index >= len(parameters):
+                    self.exception(
+                        "function {} expected at most {} arguments but got {}".format(
+                            entry.name,
+                            len(parameters),
+                            len(args),
+                        ),
+                        node=node,
+                        hint=self._call_hint(entry),
+                    )
+                bound[positional_index] = self.visit(arg.value)
+                positional_index += 1
+                continue
+
+            saw_keyword = True
+            keyword = arg.name.value
+            if keyword not in parameter_indexes:
+                self.exception(
+                    "function {} got an unknown keyword argument {}".format(entry.name, keyword),
+                    node=arg,
+                    hint=self._call_hint(entry),
+                )
+            parameter_index = parameter_indexes[keyword]
+            if bound[parameter_index] is not MISSING:
+                self.exception(
+                    "function {} got multiple values for argument {}".format(entry.name, keyword),
+                    node=arg,
+                    hint=self._call_hint(entry),
+                )
+            bound[parameter_index] = self.visit(arg.value)
+
+        for index, parameter in enumerate(parameters):
+            if bound[index] is not MISSING:
+                continue
+            if parameter.has_default:
+                bound[index] = self._resolve_default_argument(entry, parameter)
+                continue
             self.exception(
-                "function {} expected {} arguments but got {}".format(entry.name, entry.arity, call_arity),
+                "function {} missing required argument {}".format(entry.name, parameter.name),
                 node=node,
                 hint=self._call_hint(entry),
             )
+        return bound
 
     def _call_dsl_function(self, entry, values):
         function = entry.node
@@ -455,7 +573,7 @@ class Interpreter:
                 node=function,
                 hint="Rewrite the function using a closed-form expression or a builtin helper.",
             )
-        local_scope = {param.value: value for param, value in zip(function.params, values)}
+        local_scope = {parameter.name: value for parameter, value in zip(entry.parameters, values)}
         self.call_stack.append(entry.name)
         self.local_scopes.append(local_scope)
         try:
@@ -478,7 +596,7 @@ class Interpreter:
         combined_axes = _union_axes(sweeps)
         if not combined_axes:
             projected = [
-                convert_argument(sweep.only_value(), entry.parameter_annotations[index] if index < len(entry.parameter_annotations) else None)
+                convert_argument(sweep.only_value(), entry.parameters[index].annotation if index < len(entry.parameters) else None)
                 for index, sweep in enumerate(sweeps)
             ]
             return self._validate_runtime_value(entry.function(*projected))
@@ -487,7 +605,7 @@ class Interpreter:
             projected = [
                 convert_argument(
                     sweep.lookup(combined_axes, coordinates),
-                    entry.parameter_annotations[index] if index < len(entry.parameter_annotations) else None,
+                    entry.parameters[index].annotation if index < len(entry.parameters) else None,
                 )
                 for index, sweep in enumerate(sweeps)
             ]
@@ -510,6 +628,24 @@ class Interpreter:
         self.exception("{} not implemented".format(node), node=node)
 
     def visit_FunctionDef(self, node):
+        return None
+
+    def visit_BlockBody(self, node):
+        for statement in node.statements:
+            self.visit(statement)
+        return self.visit(node.result)
+
+    def visit_LocalAssign(self, node):
+        if not self.local_scopes:
+            self.exception("local assignments are only valid inside function bodies", node=node)
+        local_scope = self.local_scopes[-1]
+        if node.name.value not in local_scope and node.name.value in self.global_scope:
+            self.warn(
+                "local assignment shadows global {}".format(node.name.value),
+                node=node,
+                hint="This assignment only updates the function-local binding, not the global value.",
+            )
+        local_scope[node.name.value] = self.visit(node.value)
         return None
 
     def visit_Import(self, node):
@@ -620,8 +756,7 @@ class Interpreter:
         function_name = node.name.value
         if function_name in self.callable_scope:
             entry = self.callable_scope[function_name]
-            self._check_call_arity(entry, len(node.args), node=node)
-            values = [self.visit(arg) for arg in node.args]
+            values = self._bind_call_arguments(entry, node.args, node=node)
             return self._with_runtime_context(node, lambda: self._call_dsl_function(entry, values))
         if function_name not in self.executor.functions:
             self.exception(
@@ -630,8 +765,7 @@ class Interpreter:
                 hint=self._identifier_hint(function_name, prefer_call=True),
             )
         entry = self.executor.functions[function_name]
-        self._check_call_arity(entry, len(node.args), node=node)
-        values = [self.visit(arg) for arg in node.args]
+        values = self._bind_call_arguments(entry, node.args, node=node)
         return self._with_runtime_context(node, lambda: self._call_host_function(entry, values))
 
     def visit_Split(self, node):

@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
+from executor import D
 from diceengine import Distributions, Distribution, FiniteMeasure, RenderConfig, wait_for_rendered_figures
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
