@@ -26,6 +26,7 @@ from lexer import (
     PLUS,
     MINUS,
     MUL,
+    CARET,
     DIV,
     FLOORDIV,
     RES,
@@ -736,6 +737,8 @@ class Interpreter:
             return self._with_runtime_context(node, lambda: self.executor.sub(self.visit(node.left), self.visit(node.right)))
         if node.op.type == MUL:
             return self._with_runtime_context(node, lambda: self.executor.mul(self.visit(node.left), self.visit(node.right)))
+        if node.op.type == CARET:
+            return self._with_runtime_context(node, lambda: self.executor.repeat_sum(self.visit(node.right), self.visit(node.left)))
         if node.op.type == DIV:
             return self._with_runtime_context(node, lambda: self.executor.div(self.visit(node.left), self.visit(node.right)))
         if node.op.type == FLOORDIV:

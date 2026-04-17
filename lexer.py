@@ -22,6 +22,7 @@ IN = "IN"                                # "in"
 PLUS = "PLUS"                            # "+"
 MINUS = "MINUS"                          # "-"
 MUL = "MUL"                              # "*"
+CARET = "CARET"                          # "^"
 DIV = "DIV"                              # "/"
 FLOORDIV = "FLOORDIV"                    # "//"
 RES = "RES"                              # "->"
@@ -215,6 +216,7 @@ class Lexer(object):
             [r"\+",   lambda x: Token(PLUS, x)],
             [r"\-",   lambda x: Token(MINUS, x)],
             [r"\*",   lambda x: Token(MUL, x)],
+            [r"\^",   lambda x: Token(CARET, x)],
             [r"/",    lambda x: Token(DIV, x)],
             [r"\=",   lambda x: Token(ASSIGN, x)],
             # try to match anything else to a variable or number

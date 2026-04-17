@@ -228,6 +228,21 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[5], 0.375)
         self.assertAlmostEqual(result[6], 0.125)
 
+    def test_repeat_sum_operator_matches_repeat_sum(self):
+        direct = only_distribution(interpret_statement("d2 ^ 3"))
+        explicit = only_distribution(interpret_statement("repeat_sum(3, d2)"))
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_operator_supports_parenthesized_left_expression(self):
+        direct = only_distribution(interpret_statement("(d6 + 1) ^ 2"))
+        explicit = only_distribution(interpret_statement("repeat_sum(2, d6 + 1)"))
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_operator_supports_parenthesized_count_expression(self):
+        direct = only_distribution(interpret_statement("d2 ^ (1 + 2)"))
+        explicit = only_distribution(interpret_statement("repeat_sum(1 + 2, d2)"))
+        self.assertEqual(str(direct), str(explicit))
+
     def test_repeat_sum_preserves_sweeps_from_inner_expression(self):
         result = interpret_statement("repeat_sum(2, d20 >= [10:11] -> 1 | 0)")
         self.assertEqual(result.axes[0].values, (10, 11))
@@ -248,10 +263,30 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result.cells[(1,)][1], 0.5)
         self.assertAlmostEqual(result.cells[(3,)][6], 0.125)
 
+    def test_repeat_sum_operator_accepts_swept_counts(self):
+        direct = interpret_statement("d2 ^ [1:3]")
+        explicit = interpret_statement("repeat_sum([1:3], d2)")
+        self.assertEqual(str(direct), str(explicit))
+
     def test_repeat_sum_preserves_named_sweep_axes(self):
         result = interpret_statement("repeat_sum(2, d20 >= [AC:10:11] -> 1 | 0)")
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (10, 11))
+
+    def test_repeat_sum_operator_preserves_sweeps_from_inner_expression(self):
+        direct = interpret_statement("(d20 >= [AC:10:11]) ^ 2")
+        explicit = interpret_statement("repeat_sum(2, d20 >= [AC:10:11])")
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_operator_binds_tighter_than_addition(self):
+        direct = only_distribution(interpret_statement("d2 ^ 3 + 1"))
+        explicit = only_distribution(interpret_statement("(d2 ^ 3) + 1"))
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_operator_uses_binary_roll_result_as_left_operand(self):
+        direct = only_distribution(interpret_statement("2d2 ^ 3"))
+        explicit = only_distribution(interpret_statement("repeat_sum(3, 2d2)"))
+        self.assertEqual(str(direct), str(explicit))
 
     def test_sumover_reduces_named_axis(self):
         result = only_distribution(interpret_statement('sumover("party", [party:1, 2, 3])'))
@@ -289,6 +324,14 @@ class RuntimeTest(unittest.TestCase):
     def test_repeat_sum_rejects_non_deterministic_count(self):
         with self.assertRaisesRegex(Exception, "deterministic scalar"):
             interpret_statement("repeat_sum(d2, d6)")
+
+    def test_repeat_sum_operator_rejects_non_deterministic_count(self):
+        with self.assertRaisesRegex(Exception, "deterministic scalar"):
+            interpret_statement("d6 ^ d2")
+
+    def test_repeat_sum_operator_rejects_negative_count(self):
+        with self.assertRaisesRegex(Exception, "non-negative integer count"):
+            interpret_statement("d6 ^ -1")
 
     def test_divide_by_zero_points_at_divisor(self):
         with self.assertRaises(Exception) as error:

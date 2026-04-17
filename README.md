@@ -34,7 +34,9 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `f(x) = expr` defines a top-level one-line function.
 - `f(a, b)` calls a user-defined function inside an expression.
 - `split expr | guard -> expr | ...` binds one shared outcome of `expr`, checks clauses top-to-bottom, and sends only the still-unmatched cases to later clauses.
+- `expr ^ n` evaluates `expr` independently `n` times and adds the results.
 - `repeat_sum(n, expr)` evaluates `expr` independently `n` times and adds the results.
+  `repeat_sum(n, expr)` remains supported as an explicit alias for `expr ^ n`.
 - `sumover("axis", expr)` adds results across one named sweep axis and preserves the others.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
 - `render(expr)` renders one result with smart defaults.
@@ -159,6 +161,8 @@ hit(ac) = d20 >= ac
 damage(ac) = hit(ac) -> 5 | 0
 crit(ac, dmg) = d20 == 20 -> dmg | 0
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
+d6 ^ 3
+(d6 + 1) ^ 3
 repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
@@ -281,6 +285,8 @@ import "std:dnd/weapons"; crit_longsword(16, 7, 4)
 always() = 5; always()
 rolln(a, b) = a d b; rolln(2, 2)
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
+d6 ^ 3
+(d6 + 1) ^ 3
 repeat_sum(3, d2)
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])

@@ -40,6 +40,7 @@ from lexer import (
     PLUS,
     MINUS,
     MUL,
+    CARET,
     DIV,
     FLOORDIV,
     ELSE,
@@ -91,6 +92,7 @@ TOKEN_LABELS = {
     PLUS: "'+'",
     MINUS: "'-'",
     MUL: "'*'",
+    CARET: "'^'",
     DIV: "'/'",
     FLOORDIV: "'//'",
     ELSE: "'|'",
@@ -288,7 +290,7 @@ class DiceParser(Parser):
         while self.current_token.type in [MUL, DIV, FLOORDIV]:
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.roll())
+            node = BinOp(node, token, self.repeated())
         return node
 
     def _continue_side(self, node):
@@ -505,13 +507,21 @@ class DiceParser(Parser):
             node = BinOp(node, token, node2)
         return node
 
-    def term(self):
+    def repeated(self):
         node = self.roll()
+        if self.current_token.type == CARET:
+            token = self.current_token
+            self.eat(CARET)
+            node = BinOp(node, token, self.factor())
+        return node
+
+    def term(self):
+        node = self.repeated()
         while self.current_token.type in [MUL, DIV, FLOORDIV]:
             # MUL and DIV are both binary operators so they can be created by the same commands
             token = self.current_token
             self.eat(token.type)
-            node = BinOp(node, token, self.roll())
+            node = BinOp(node, token, self.repeated())
         return node
 
     def side(self):

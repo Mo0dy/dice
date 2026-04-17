@@ -85,6 +85,7 @@ def example_cases() -> list[JsonRegressionCase]:
         ("scalar_addition", "1 + 1"),
         ("simple_die", "d20"),
         ("repeat_sum", "repeat_sum(3, d2)"),
+        ("repeat_power", "d2 ^ 3"),
         ("branch_else_zero", "d20 >= 11 -> 5 | 0"),
         ("branch_half_damage", "d20 < 14 -> 2d10 |/"),
         ("branch_half_damage_floor", "d20 < 14 -> 2d10 |//"),
