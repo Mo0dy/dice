@@ -144,3 +144,6 @@ static
 
 # Local Troll / Moscow ML installs used only for internal comparison tests
 .tools/
+
+# dnd sources
+/dnd-sources/
