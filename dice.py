@@ -444,12 +444,6 @@ def _handle_repl_command(text, state, interpreter):
     raise InteractiveCommandError("Unknown interpreter command {}".format(parts[0]))
 
 
-def _round_result(result, roundlevel=0):
-    if roundlevel and isinstance(result, Distributions):
-        return result.round_probabilities(roundlevel)
-    return result
-
-
 def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_dir=None, render_config=None):
     if interpreter is None:
         interpreter = Interpreter(
@@ -463,7 +457,7 @@ def _interpret_ast(ast, roundlevel=0, executor=None, interpreter=None, current_d
         if current_dir is not None:
             interpreter.current_dir = os.path.abspath(current_dir)
     result = interpreter.interpret()
-    return _round_result(result, roundlevel)
+    return result
 
 
 @timeout_decorator.timeout(timeout_seconds)

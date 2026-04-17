@@ -25,6 +25,18 @@ from interpreter import Interpreter
 
 
 class CliFormattingTest(unittest.TestCase):
+    def test_roundlevel_only_affects_rendering_not_runtime_distribution(self):
+        result = interpret_statement("d3", roundlevel=2)
+        distrib = result.only_distribution()
+        self.assertAlmostEqual(distrib[1], 1 / 3)
+        self.assertAlmostEqual(distrib[2], 1 / 3)
+        self.assertAlmostEqual(distrib[3], 1 / 3)
+
+    def test_rounded_rendering_handles_wide_distribution_without_runtime_error(self):
+        rendered = dice._format_result_text(interpret_statement("2d6 + 2d6", roundlevel=2), roundlevel=2)
+        self.assertIn(" 14: 11.27%", rendered)
+        self.assertIn("(E): 14", rendered)
+
     def test_unswept_distribution_uses_pretty_lines(self):
         rendered = dice._format_result_text(interpret_statement("d20 >= 11", roundlevel=2), roundlevel=2)
         self.assertEqual(rendered, "  0: 50%\n  1: 50%\n(E): 0.50")
@@ -66,7 +78,7 @@ class CliFormattingTest(unittest.TestCase):
         rendered = dice._format_result_text(interpret_statement("d20 + 6 >= [AC:10:12] -> 2d6 + 4", roundlevel=2), roundlevel=2)
         self.assertEqual(
             rendered,
-            "/AC    10    11    12\n  0   16%   21%   28%\n  6    2%    2%    2%\n  7    5%    4%    4%\n  8    7%    7%    6%\n  9    9%    9%    8%\n 10   12%   11%   10%\n 11   14%   13%   12%\n 12   12%   11%   10%\n 13    9%    9%    8%\n 14    7%    7%    6%\n 15    5%    4%    4%\n 16    2%    2%    2%\n(E)  9.24  8.69  7.92",
+            "/AC      10      11      12\n  0     15%     20%     25%\n  6   2.36%   2.22%   2.08%\n  7   4.72%   4.44%   4.17%\n  8   7.08%   6.67%   6.25%\n  9   9.44%   8.89%   8.33%\n 10  11.81%  11.11%  10.42%\n 11  14.17%  13.33%  12.50%\n 12  11.81%  11.11%  10.42%\n 13   9.44%   8.89%   8.33%\n 14   7.08%   6.67%   6.25%\n 15   4.72%   4.44%   4.17%\n 16   2.36%   2.22%   2.08%\n(E)    9.35    8.80    8.25",
         )
 
     def test_named_scalar_sweep_uses_single_axis_header(self):
@@ -348,7 +360,7 @@ class CliMainIntegrationTest(unittest.TestCase):
             [
                 {"outcome": 1, "probability": 0.33},
                 {"outcome": 2, "probability": 0.33},
-                {"outcome": 3, "probability": 0.34},
+                {"outcome": 3, "probability": 0.33},
             ],
         )
 
