@@ -18,7 +18,7 @@ eldritch_blast_beams(level): split level | >= 17 -> 4 | >= 11 -> 3 | >= 5 -> 2 |
 
 reroll_1_or_2(die_size): split d die_size | <= 2 -> d die_size | otherwise -> @
 
-great_weapon_fighting_dice(dice_count, die_size): repeat_sum(dice_count, reroll_1_or_2(die_size))
+great_weapon_fighting_dice(dice_count, die_size): reroll_1_or_2(die_size) ^ dice_count
 
 hit_with_roll(roll, ac, attack_bonus, hit_bonus=0):
     total_bonus = attack_bonus + hit_bonus
@@ -41,7 +41,7 @@ attack_damage(ac, attack_bonus, hit_damage, crit_damage, roll=d20, hit_bonus=0):
 
 attack(ac, attack_bonus, damage_rolls, damage_mod=0, roll=d20, hit_bonus=0, crit_extra_rolls=0):
     hit_damage = damage_rolls + damage_mod
-    crit_damage = repeat_sum(2, damage_rolls) + crit_extra_rolls + damage_mod
+    crit_damage = damage_rolls ^ 2 + crit_extra_rolls + damage_mod
     attack_with_damage(ac, attack_bonus, hit_damage, crit_damage, roll=roll, hit_bonus=hit_bonus)
 
 save_success_with_roll(roll, dc, save_bonus, save_extra=0): roll + save_bonus + save_extra >= dc

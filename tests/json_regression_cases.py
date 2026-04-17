@@ -84,14 +84,14 @@ def example_cases() -> list[JsonRegressionCase]:
     examples = [
         ("scalar_addition", "1 + 1"),
         ("simple_die", "d20"),
-        ("repeat_sum", "repeat_sum(3, d2)"),
+        ("repeat_sum", "d2 ^ 3"),
         ("repeat_power", "d2 ^ 3"),
         ("branch_else_zero", "d20 >= 11 -> 5 | 0"),
         ("branch_half_damage", "d20 < 14 -> 2d10 | / 2"),
         ("branch_half_damage_floor", "d20 < 14 -> 2d10 | // 2"),
         ("advantage", "d+20"),
         ("keep_high", "3d20h1"),
-        ("named_sweep", "d20 >= [AC:10:12]"),
+        ("named_sweep", "d20 >= [AC:10..12]"),
         ("match_shared_roll", "split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||"),
         ("stdlib_import", 'import "std:dnd/weapons"; longsword_attack(16, 7, 4)'),
     ]

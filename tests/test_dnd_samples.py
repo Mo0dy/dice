@@ -69,7 +69,7 @@ class DndSampleLibraryTest(unittest.TestCase):
             current_dir=ROOT,
         )
         inline_result = interpret_statement(
-            "split d20 | == 20 -> 2 d 8 + 4 + repeat_sum(2, repeat_sum(4, d8)) | + 8 >= 17 -> 1 d 8 + 4 + repeat_sum(4, d8) ||"
+            "split d20 | == 20 -> 2 d 8 + 4 + ((d8 ^ 4) ^ 2) | + 8 >= 17 -> 1 d 8 + 4 + (d8 ^ 4) ||"
         )
         self.assertEqual(str(helper_result), str(inline_result))
 
@@ -88,7 +88,7 @@ class DndSampleLibraryTest(unittest.TestCase):
             'import "std:dnd/spells.dice"\nmagic_missile(3)',
             current_dir=ROOT,
         )
-        inline_result = interpret_statement("repeat_sum(5, d4 + 1)")
+        inline_result = interpret_statement("(d4 + 1) ^ 5")
         self.assertEqual(str(helper_result), str(inline_result))
 
     def test_sacred_flame_uses_level_scaling(self):
@@ -112,15 +112,15 @@ class DndSampleLibraryTest(unittest.TestCase):
 
     def test_keyword_attack_call_preserves_ac_sweep_shape(self):
         result = interpret_file(
-            'import "std:dnd/weapons.dice"\n~longsword_attack([10:22], 7, 4, hit_bonus=d4)',
+            'import "std:dnd/weapons.dice"\n~longsword_attack([10..22], 7, 4, hit_bonus=d4)',
             current_dir=ROOT,
         )
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].values, tuple(range(10, 23)))
 
     def test_ability_score_target_counting_works_without_manual_indicator_branch(self):
-        direct = interpret_statement("((repeat_sum(3, d20 >= [TARGET:10:12])) >= 1) $ mean")
-        explicit = interpret_statement("((repeat_sum(3, d20 >= [TARGET:10:12] -> 1 | 0)) >= 1) $ mean")
+        direct = interpret_statement("(((d20 >= [TARGET:10..12]) ^ 3) >= 1) $ mean")
+        explicit = interpret_statement("(((d20 >= [TARGET:10..12] -> 1 | 0) ^ 3) >= 1) $ mean")
         self.assertEqual(len(direct.axes), len(explicit.axes))
         for direct_axis, explicit_axis in zip(direct.axes, explicit.axes):
             self.assertEqual(direct_axis.name, explicit_axis.name)

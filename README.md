@@ -145,7 +145,7 @@ python3 dice.py --file path/to/plot.dice
 ```
 
 ```text
-renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
+renderp(d20 >= [AC:10..20] -> 5 | 0 $ mean)
 ```
 
 ## Functions
@@ -176,10 +176,10 @@ paladin_smite(ac, bonus=8):
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3
-repeat_sum(3, d2)
+d2 ^ 3
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
-renderp(d20 >= [AC:10:20] -> 5 | 0 $ mean)
+renderp(d20 >= [AC:10..20] -> 5 | 0 $ mean)
 ```
 
 ## Split
@@ -263,7 +263,7 @@ from dice import dice_interpreter
 from diceengine import Distribution, FiniteMeasure, Sweep, greaterorequal, rollsingle
 
 session = dice_interpreter()
-result = session("d20 >= [AC:10:12] -> 5 | 0")
+result = session("d20 >= [AC:10..12] -> 5 | 0")
 session.assign("cached", result)
 session("render(cached)")
 
@@ -303,7 +303,7 @@ rolln(a, b): a d b; rolln(2, 2)
 split d20 | == 20 -> 10 | + 5 >= 15 -> 5 ||
 d6 ^ 3
 (d6 + 1) ^ 3
-repeat_sum(3, d2)
+d2 ^ 3
 sumover("party", [party:1, 2, 3])
 total([party:1, 2, 3])
 render(d20)

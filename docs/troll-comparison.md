@@ -22,7 +22,7 @@ Example commands:
 - Troll does not have boolean values. It uses empty vs non-empty collections as truthiness.
 - Our DSL has imports and a standard-library surface such as `import "std:dnd/weapons.dice"`.
 - Troll has functions, but no comparable module/import mechanism in the language, so shared helpers are duplicated across files.
-- Our DSL has named sweeps like `[AC:10:20]` and sweep-aware evaluation.
+- Our DSL has named sweeps like `[AC:10..20]` and sweep-aware evaluation.
 - Troll has no direct equivalent to named parameter sweeps; batch comparison is usually driven outside the language.
 - Our DSL distinguishes exact distributions from summary operators such as `~expr`.
 - Troll prints distributions directly and reports summary statistics such as average and spread in the CLI.

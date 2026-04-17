@@ -290,10 +290,10 @@ DND_CASES = (
         score = 4 d 6 h 3
 
         one_score_exact = score
-        any_score_at_least_target = ((repeat_sum(6, score >= [TARGET:3:18])) >= 1) $ mean
-        total_modifier_sum = repeat_sum(6, ability_mod(score))
-        at_least_one_exact_target = ((repeat_sum(6, score == [TARGET:3:18])) >= 1) $ mean
-        one_score_greater_than_x = (score > [X:3:18]) $ mean
+        any_score_at_least_target = (((score >= [TARGET:3..18]) ^ 6) >= 1) $ mean
+        total_modifier_sum = ability_mod(score) ^ 6
+        at_least_one_exact_target = (((score == [TARGET:3..18]) ^ 6) >= 1) $ mean
+        one_score_greater_than_x = (score > [X:3..18]) $ mean
 
         render(one_score_exact, "Ability score", "Single ability score distribution")
         renderp(any_score_at_least_target, "Target score", "Chance any of 6 scores reaches target")
@@ -308,7 +308,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~agonizing_eldritch_blast_by_level([10:22], 7, 4, level=11)
+        ~agonizing_eldritch_blast_by_level([10..22], 7, 4, level=11)
         """,
     ),
     _case(
@@ -317,7 +317,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~longsword_attack([10:22], 7, 4, hit_bonus=d4)
+        ~longsword_attack([10..22], 7, 4, hit_bonus=d4)
         """,
     ),
     _case(
@@ -338,7 +338,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~longsword_attack([10:22], 7, 4)
+        ~longsword_attack([10..22], 7, 4)
         """,
     ),
     _case(
@@ -347,7 +347,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~eldritch_blast_by_level([10:22], 7, level=11)
+        ~eldritch_blast_by_level([10..22], 7, level=11)
         """,
     ),
     _case(
@@ -356,7 +356,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~eldritch_blast([10:22], 7)
+        ~eldritch_blast([10..22], 7)
         """,
     ),
     _case(
@@ -365,7 +365,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~longsword_attack([10:22], 7, 4)
+        ~longsword_attack([10..22], 7, 4)
         """,
     ),
     _case(
@@ -374,7 +374,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~fighter_attack_action(2, [10:22], 7, 4)
+        ~fighter_attack_action(2, [10..22], 7, 4)
         """,
     ),
     _case(
@@ -392,7 +392,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~fireball(15, [0:9], slot_level=3)
+        ~fireball(15, [0..9], slot_level=3)
         """,
     ),
     _case(
@@ -401,7 +401,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~greatsword_attack_gwf([10:22], 7, 4)
+        ~greatsword_attack_gwf([10..22], 7, 4)
         """,
     ),
     _case(
@@ -410,7 +410,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~guiding_bolt([10:22], 7, slot_level=1)
+        ~guiding_bolt([10..22], 7, slot_level=1)
         """,
     ),
     _case(
@@ -419,7 +419,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~great_weapon_master([10:22], 8, 4)
+        ~great_weapon_master([10..22], 8, 4)
         """,
     ),
     _case(
@@ -428,7 +428,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~hunters_mark_longbow([10:22], 9, 4)
+        ~hunters_mark_longbow([10..22], 9, 4)
         """,
     ),
     _case(
@@ -437,7 +437,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~inflict_wounds([10:22], 7, slot_level=1)
+        ~inflict_wounds([10..22], 7, slot_level=1)
         """,
     ),
     _case(
@@ -446,7 +446,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~magic_missile([1:9])
+        ~magic_missile([1..9])
         """,
     ),
     _case(
@@ -455,7 +455,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~paladin_smite([10:22], 8, 4, slot_level=3)
+        ~paladin_smite([10..22], 8, 4, slot_level=3)
         """,
     ),
     _case(
@@ -464,7 +464,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~great_weapon_master([10:22], 8, 4, roll=d+20)
+        ~great_weapon_master([10..22], 8, 4, roll=d+20)
         """,
     ),
     _case(
@@ -473,7 +473,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~sacred_flame(15, [0:9], level=11)
+        ~sacred_flame(15, [0..9], level=11)
         """,
     ),
     _case(
@@ -482,7 +482,7 @@ DND_CASES = (
         """
         import "std:dnd/spells.dice"
 
-        ~scorching_ray(15, 7, slot_level=[2:9])
+        ~scorching_ray(15, 7, slot_level=[2..9])
         """,
     ),
     _case(
@@ -491,7 +491,7 @@ DND_CASES = (
         """
         import "std:dnd/weapons.dice"
 
-        ~sharpshooter([10:22], 8, 4)
+        ~sharpshooter([10..22], 8, 4)
         """,
     ),
     _case(

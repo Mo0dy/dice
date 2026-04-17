@@ -252,10 +252,6 @@ class DiceParser(Parser):
             self.eat(ID)
             self.eat(COLON)
         value1 = self.maybe_range(self.expr())
-        if self.current_token.type == COLON:
-            legacy_token = self.current_token
-            self.eat(COLON)
-            value1 = RangeLiteral(value1, self.expr(), True, legacy_token)
         if isinstance(value1, RangeLiteral):
             self.eat(RBRACK)
             return SweepLiteral(value1, token, name=sweep_name)

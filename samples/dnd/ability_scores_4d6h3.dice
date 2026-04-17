@@ -12,10 +12,10 @@ import "std:dnd/core.dice"
 score = 4 d 6 h 3
 
 one_score_exact = score
-any_score_at_least_target = ((repeat_sum(6, score >= [TARGET:3:18])) >= 1) $ mean
-total_modifier_sum = repeat_sum(6, ability_mod(score))
-at_least_one_exact_target = ((repeat_sum(6, score == [TARGET:3:18])) >= 1) $ mean
-one_score_greater_than_x = (score > [X:3:18]) $ mean
+any_score_at_least_target = (((score >= [TARGET:3..18]) ^ 6) >= 1) $ mean
+total_modifier_sum = ability_mod(score) ^ 6
+at_least_one_exact_target = (((score == [TARGET:3..18]) ^ 6) >= 1) $ mean
+one_score_greater_than_x = (score > [X:3..18]) $ mean
 
 render(one_score_exact, "Ability score", "Single ability score distribution")
 renderp(any_score_at_least_target, "Target score", "Chance any of 6 scores reaches target")

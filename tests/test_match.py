@@ -60,7 +60,7 @@ class SplitExpressionTest(unittest.TestCase):
 
     def test_split_preserves_sweeps_in_guards(self):
         result = interpret_file(
-            "attack(ac, bonus): split d20 | == 20 -> 10 | + bonus >= ac -> 5 ||\n~attack([15:17], 5)"
+            "attack(ac, bonus): split d20 | == 20 -> 10 | + bonus >= ac -> 5 ||\n~attack([15..17], 5)"
         )
         self.assertEqual(result.axes[0].values, (15, 16, 17))
         for coordinates, expected in [((15,), 3.0), ((16,), 2.75), ((17,), 2.5)]:

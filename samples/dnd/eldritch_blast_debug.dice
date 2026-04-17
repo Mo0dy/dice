@@ -18,7 +18,7 @@ beams = eldritch_blast_beams(level)
 plain_beam = eldritch_blast(ac, bonus)
 agonizing_beam = agonizing_eldritch_blast(ac, bonus, cha)
 hexed_beam = hex_eldritch_blast(ac, bonus, cha)
-hit_count = repeat_sum(beams, hit(ac, bonus))
+hit_count = hit(ac, bonus) ^ beams
 plain_action = eldritch_blast_by_level(ac, bonus, level=level)
 agonizing_action = agonizing_eldritch_blast_by_level(ac, bonus, cha, level=level)
 hexed_action = hex_eldritch_blast_action(beams, ac, bonus, cha)

@@ -75,7 +75,7 @@ class FunctionTest(unittest.TestCase):
         self.assertEqual(result[4], 1)
 
     def test_functions_accept_swept_arguments(self):
-        result = interpret_file("hit(ac): d20 >= ac\nhit([10:12])")
+        result = interpret_file("hit(ac): d20 >= ac\nhit([10..12])")
         self.assertEqual(result.axes[0].values, (10, 11, 12))
         self.assertAlmostEqual(result.cells[(10,)][TRUE], 0.55)
         self.assertAlmostEqual(result.cells[(12,)][FALSE], 0.55)

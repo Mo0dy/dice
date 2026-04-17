@@ -11,4 +11,4 @@ import "std:dnd/spells.dice"
 plan_damage(plan, ac):
     split plan as name | name == "fighter_two_attacks" -> fighter_attack_action(2, ac, 7, 4) $ mean | name == "great_weapon_master" -> great_weapon_master(ac, 8, 4) $ mean | name == "paladin_smite" -> paladin_smite(ac, 8, 4, slot_level=3) $ mean | name == "hunters_mark_longbow" -> hunters_mark_longbow(ac, 9, 4) $ mean | otherwise -> agonizing_eldritch_blast_by_level(ac, 7, 4, level=11) $ mean
 
-plan_damage([PLAN:"fighter_two_attacks", "great_weapon_master", "paladin_smite", "hunters_mark_longbow", "agonizing_eldritch_blast"], [AC:10:22])
+plan_damage([PLAN:"fighter_two_attacks", "great_weapon_master", "paladin_smite", "hunters_mark_longbow", "agonizing_eldritch_blast"], [AC:10..22])

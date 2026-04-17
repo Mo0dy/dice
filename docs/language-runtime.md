@@ -7,7 +7,7 @@ The language is built around tabletop dice math:
 - rolling dice distributions such as `d20` or `2d6`
 - comparisons such as `d20 >= 15`
 - branching weighted outcome distributions such as `d20 >= 15 -> 2d6 + 3 | 0`
-- sweep-driven calculations such as `[14:20]`
+- sweep-driven calculations such as `[14..20]`
 - advantage/disadvantage and pick-high/pick-low forms
 - optional plotting commands for graph output
 

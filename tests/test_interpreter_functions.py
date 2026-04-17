@@ -54,7 +54,7 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
         self.assertEqual(result[4], 1)
 
     def test_function_can_return_swept_distribution(self):
-        result = interpret("hit(ac): d20 >= ac\nhit([10:12])")
+        result = interpret("hit(ac): d20 >= ac\nhit([10..12])")
         self.assertEqual(result.axes[0].values, (10, 11, 12))
         self.assertAlmostEqual(result.cells[(10,)][TRUE], 0.55)
         self.assertAlmostEqual(result.cells[(12,)][FALSE], 0.55)

@@ -2,4 +2,4 @@
 
 import "std:dnd/spells.dice"
 
-render(~magic_missile([SLOT:1:9]), "Spell slot", "Magic missile expected damage by slot")
+render(~magic_missile([SLOT:1..9]), "Spell slot", "Magic missile expected damage by slot")

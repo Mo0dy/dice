@@ -65,13 +65,13 @@ class RenderStatementTest(unittest.TestCase):
     def test_renderp_passes_probability_override_for_single_expression(self):
         mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("line", "AC", "Probability"), None)
         with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            result = interpret_statement('renderp((d20 >= [AC:10:12]) $ mean, "AC", "Hit chance")')
+            result = interpret_statement('renderp((d20 >= [AC:10..12]) $ mean, "AC", "Hit chance")')
         self.assertIsNone(result)
         render_result.assert_called_once()
         self.assertTrue(render_result.call_args.kwargs["assume_probability"])
 
     def test_renderp_passes_probability_override_for_comparison(self):
-        program = 'a = (d20 >= [AC:10:12]) $ mean\nb = (d20 >= [AC:10:12]) $ mean\nrenderp(a, "a", b, "b", "AC", "Hit chance")'
+        program = 'a = (d20 >= [AC:10..12]) $ mean\nb = (d20 >= [AC:10..12]) $ mean\nrenderp(a, "a", b, "b", "AC", "Hit chance")'
         mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_line", "AC", "Probability", ("a", "b")), None)
         with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
             result = interpret_file(program)
@@ -135,14 +135,14 @@ class ViewerSpecTest(unittest.TestCase):
         self.assertEqual(spec.kind, "bar")
 
     def test_one_sweep_scalar_uses_line_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("~(d20 >= [AC:10:12] -> 5 | 0)"))
+        spec = viewer.build_render_spec(interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)"))
         self.assertEqual(spec.kind, "line")
         self.assertEqual(spec.x_label, "AC")
         self.assertFalse(spec.probability_values)
 
     def test_renderp_one_sweep_scalar_uses_probability_bar_spec(self):
         spec = viewer.build_render_spec(
-            interpret_statement("(d20 >= [AC:10:12]) $ mean"),
+            interpret_statement("(d20 >= [AC:10..12]) $ mean"),
             assume_probability=True,
         )
         self.assertEqual(spec.kind, "bar_scalar")
@@ -151,19 +151,19 @@ class ViewerSpecTest(unittest.TestCase):
         self.assertEqual(spec.y_label, "Probability")
 
     def test_one_sweep_distribution_uses_heatmap_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("d20 >= [AC:10:12]"))
+        spec = viewer.build_render_spec(interpret_statement("d20 >= [AC:10..12]"))
         self.assertEqual(spec.kind, "heatmap_distribution")
         self.assertEqual(spec.x_label, "AC")
 
     def test_two_sweep_scalar_uses_heatmap_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("~([AC:10:11] + [BONUS:1:2])"))
+        spec = viewer.build_render_spec(interpret_statement("~([AC:10..11] + [BONUS:1..2])"))
         self.assertEqual(spec.kind, "heatmap_scalar")
         self.assertEqual(spec.x_label, "BONUS")
         self.assertEqual(spec.y_label, "AC")
 
     def test_renderp_two_sweep_scalar_uses_probability_heatmap_spec(self):
         spec = viewer.build_render_spec(
-            interpret_statement("([AC:10:11] + [BONUS:1:2]) * 0.01"),
+            interpret_statement("([AC:10..11] + [BONUS:1..2]) * 0.01"),
             assume_probability=True,
         )
         self.assertEqual(spec.kind, "heatmap_scalar")
@@ -178,16 +178,16 @@ class ViewerSpecTest(unittest.TestCase):
 
     def test_comparison_of_scalar_sweeps_uses_line_overlay_spec(self):
         spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("~(d20 >= [AC:10:12] -> 5 | 0)")),
-            ("b", interpret_statement("~(d20 >= [AC:10:12] -> 7 | 0)")),
+            ("a", interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)")),
+            ("b", interpret_statement("~(d20 >= [AC:10..12] -> 7 | 0)")),
         ])
         self.assertEqual(spec.kind, "compare_line")
         self.assertEqual(spec.x_label, "AC")
 
     def test_renderp_comparison_of_scalar_sweeps_uses_probability_overlay(self):
         spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("(d20 >= [AC:10:12]) $ mean")),
-            ("b", interpret_statement("(d20 >= [AC:10:12]) $ mean")),
+            ("a", interpret_statement("(d20 >= [AC:10..12]) $ mean")),
+            ("b", interpret_statement("(d20 >= [AC:10..12]) $ mean")),
         ], assume_probability=True)
         self.assertEqual(spec.kind, "compare_line")
         self.assertEqual(spec.x_label, "AC")
@@ -195,16 +195,16 @@ class ViewerSpecTest(unittest.TestCase):
 
     def test_comparison_of_bernoulli_sweeps_uses_probability_overlay_spec(self):
         spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("d20 >= [AC:10:12]")),
-            ("b", interpret_statement("d20 >= [AC:10:12]")),
+            ("a", interpret_statement("d20 >= [AC:10..12]")),
+            ("b", interpret_statement("d20 >= [AC:10..12]")),
         ])
         self.assertEqual(spec.kind, "compare_probability_line")
         self.assertEqual(spec.x_label, "AC")
 
     def test_comparison_of_distribution_sweeps_allows_unnamed_axes(self):
         spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("d2 + [10:12]")),
-            ("b", interpret_statement("d2 + [10:12]")),
+            ("a", interpret_statement("d2 + [10..12]")),
+            ("b", interpret_statement("d2 + [10..12]")),
         ])
         self.assertEqual(spec.kind, "compare_distribution_line")
         self.assertEqual(spec.x_label, "Sweep 1")
@@ -212,20 +212,20 @@ class ViewerSpecTest(unittest.TestCase):
     def test_comparison_rejects_incompatible_sweep_values(self):
         with self.assertRaisesRegex(Exception, "matching sweep axis values"):
             viewer.build_comparison_spec([
-                ("a", interpret_statement("~(d20 >= [AC:10:12] -> 5 | 0)")),
-                ("b", interpret_statement("~(d20 >= [AC:11:13] -> 7 | 0)")),
+                ("a", interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)")),
+                ("b", interpret_statement("~(d20 >= [AC:11..13] -> 7 | 0)")),
             ])
 
     def test_comparison_rejects_two_sweep_distribution_shapes(self):
         with self.assertRaisesRegex(Exception, "one-sweep distribution results"):
             viewer.build_comparison_spec([
-                ("a", interpret_statement("d20 + [AC:10:11] + [BONUS:1:2]")),
-                ("b", interpret_statement("d20 + [AC:10:11] + [BONUS:1:2]")),
+                ("a", interpret_statement("d20 + [AC:10..11] + [BONUS:1..2]")),
+                ("b", interpret_statement("d20 + [AC:10..11] + [BONUS:1..2]")),
             ])
 
     def test_render_rejects_unsupported_shape(self):
         with self.assertRaisesRegex(Exception, "does not support this result shape yet"):
-            viewer.build_render_spec(interpret_statement("~([AC:10:11] + [BONUS:1:2] + [LEVEL:1:2])"))
+            viewer.build_render_spec(interpret_statement("~([AC:10..11] + [BONUS:1..2] + [LEVEL:1..2])"))
 
 
 class ViewerBackendTest(unittest.TestCase):
@@ -254,7 +254,7 @@ class ViewerBackendTest(unittest.TestCase):
             viewer.plt.close(figure)
 
     def test_probability_scalar_bar_scales_values_to_percent(self):
-        result = interpret_statement("(d20 >= [AC:10:12]) $ mean")
+        result = interpret_statement("(d20 >= [AC:10..12]) $ mean")
         figure, ax = viewer.plt.subplots()
         try:
             viewer._plot_scalar_bar(
@@ -269,7 +269,7 @@ class ViewerBackendTest(unittest.TestCase):
             viewer.plt.close(figure)
 
     def test_probability_heatmap_scales_scalar_values_to_percent(self):
-        result = interpret_statement("([AC:10:11] + [BONUS:1:2]) * 0.01")
+        result = interpret_statement("([AC:10..11] + [BONUS:1..2]) * 0.01")
         figure, ax = viewer.plt.subplots()
         try:
             image = viewer._plot_scalar_heatmap(

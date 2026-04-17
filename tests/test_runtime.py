@@ -36,14 +36,18 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[FALSE], 0.5)
 
     def test_sweep_creates_multiple_distributions(self):
-        result = interpret_statement("d20 >= [5:7]")
+        result = interpret_statement("d20 >= [5..7]")
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].values, (5, 6, 7))
         self.assertAlmostEqual(result.cells[(5,)][TRUE], 0.8)
         self.assertAlmostEqual(result.cells[(7,)][FALSE], 0.3)
 
+    def test_legacy_colon_range_syntax_is_rejected(self):
+        with self.assertRaises(Exception):
+            interpret_statement("d20 >= [5:7]")
+
     def test_named_range_sweep_carries_axis_name(self):
-        result = interpret_statement("d20 >= [AC:5:7]")
+        result = interpret_statement("d20 >= [AC:5..7]")
         self.assertEqual(len(result.axes), 1)
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (5, 6, 7))
@@ -150,7 +154,7 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(result, "[]")
 
     def test_shape_reports_named_sweep_axes_and_values(self):
-        result = interpret_statement("shape(d20 >= [AC:10:12])")
+        result = interpret_statement("shape(d20 >= [AC:10..12])")
         self.assertEqual(result, "[AC: (10, 11, 12)]")
 
     def test_shape_reports_sweep_literal_axes_and_values(self):
@@ -257,38 +261,38 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(str(direct), str(explicit))
 
     def test_repeat_sum_preserves_sweeps_from_inner_expression(self):
-        result = interpret_statement("repeat_sum(2, d20 >= [10:11] -> 1 | 0)")
+        result = interpret_statement("repeat_sum(2, d20 >= [10..11] -> 1 | 0)")
         self.assertEqual(result.axes[0].values, (10, 11))
         self.assertAlmostEqual(result.cells[(10,)][0], 0.2025)
         self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
         self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
 
     def test_repeat_sum_accepts_comparison_results_directly(self):
-        result = interpret_statement("repeat_sum(2, d20 >= [10:11])")
+        result = interpret_statement("repeat_sum(2, d20 >= [10..11])")
         self.assertEqual(result.axes[0].values, (10, 11))
         self.assertAlmostEqual(result.cells[(10,)][0], 0.2025)
         self.assertAlmostEqual(result.cells[(10,)][1], 0.495)
         self.assertAlmostEqual(result.cells[(10,)][2], 0.3025)
 
     def test_repeat_sum_accepts_swept_counts(self):
-        result = interpret_statement("repeat_sum([1:3], d2)")
+        result = interpret_statement("repeat_sum([1..3], d2)")
         self.assertEqual(result.axes[0].values, (1, 2, 3))
         self.assertAlmostEqual(result.cells[(1,)][1], 0.5)
         self.assertAlmostEqual(result.cells[(3,)][6], 0.125)
 
     def test_repeat_sum_operator_accepts_swept_counts(self):
-        direct = interpret_statement("d2 ^ [1:3]")
-        explicit = interpret_statement("repeat_sum([1:3], d2)")
+        direct = interpret_statement("d2 ^ [1..3]")
+        explicit = interpret_statement("repeat_sum([1..3], d2)")
         self.assertEqual(str(direct), str(explicit))
 
     def test_repeat_sum_preserves_named_sweep_axes(self):
-        result = interpret_statement("repeat_sum(2, d20 >= [AC:10:11] -> 1 | 0)")
+        result = interpret_statement("repeat_sum(2, d20 >= [AC:10..11] -> 1 | 0)")
         self.assertEqual(result.axes[0].name, "AC")
         self.assertEqual(result.axes[0].values, (10, 11))
 
     def test_repeat_sum_operator_preserves_sweeps_from_inner_expression(self):
-        direct = interpret_statement("(d20 >= [AC:10:11]) ^ 2")
-        explicit = interpret_statement("repeat_sum(2, d20 >= [AC:10:11])")
+        direct = interpret_statement("(d20 >= [AC:10..11]) ^ 2")
+        explicit = interpret_statement("repeat_sum(2, d20 >= [AC:10..11])")
         self.assertEqual(str(direct), str(explicit))
 
     def test_repeat_sum_operator_binds_tighter_than_addition(self):
@@ -318,11 +322,11 @@ class RuntimeTest(unittest.TestCase):
 
     def test_sumover_rejects_missing_named_axis(self):
         with self.assertRaisesRegex(Exception, "could not find named axis"):
-            interpret_statement('sumover("party", [1:3])')
+            interpret_statement('sumover("party", [1..3])')
 
     def test_total_rejects_unnamed_axis(self):
         with self.assertRaisesRegex(Exception, "exactly one named axis"):
-            interpret_statement("total([1:3])")
+            interpret_statement("total([1..3])")
 
     def test_total_rejects_multiple_axes(self):
         with self.assertRaisesRegex(Exception, "exactly one named axis"):

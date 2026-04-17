@@ -35,7 +35,7 @@ rapier_attack(ac, attack_bonus, dex_mod, roll=d20, hit_bonus=0):
     attack(ac, attack_bonus, 1 d 8, dex_mod, roll=roll, hit_bonus=hit_bonus)
 
 rapier_sneak_attack(ac, attack_bonus, dex_mod, sneak_dice, roll=d20, hit_bonus=0):
-    sneak_rolls = repeat_sum(sneak_dice, d6)
+    sneak_rolls = d6 ^ sneak_dice
     attack(ac, attack_bonus, 1 d 8 + sneak_rolls, dex_mod, roll=roll, hit_bonus=hit_bonus)
 
 dagger_attack(ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
@@ -54,7 +54,7 @@ shortbow_attack(ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
     attack(ac, attack_bonus, 1 d 6, damage_mod, roll=roll, hit_bonus=hit_bonus)
 
 shortbow_sneak_attack(ac, attack_bonus, dex_mod, sneak_dice, roll=d20, hit_bonus=0):
-    sneak_rolls = repeat_sum(sneak_dice, d6)
+    sneak_rolls = d6 ^ sneak_dice
     attack(ac, attack_bonus, 1 d 6 + sneak_rolls, dex_mod, roll=roll, hit_bonus=hit_bonus)
 
 longbow_attack(ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
@@ -82,8 +82,8 @@ divine_smite_dice(slot_level): split slot_level | >= 5 -> 5 | >= 1 -> @ + 1 | ot
 
 divine_smite_dice_vs_fiend(slot_level): split divine_smite_dice(slot_level) + 1 | >= 6 -> 6 | otherwise -> @
 
-divine_smite_damage(slot_level): repeat_sum(divine_smite_dice(slot_level), d8)
-divine_smite_damage_vs_fiend(slot_level): repeat_sum(divine_smite_dice_vs_fiend(slot_level), d8)
+divine_smite_damage(slot_level): d8 ^ divine_smite_dice(slot_level)
+divine_smite_damage_vs_fiend(slot_level): d8 ^ divine_smite_dice_vs_fiend(slot_level)
 
 paladin_smite(ac, attack_bonus, damage_mod, slot_level=1, roll=d20, hit_bonus=0):
     smite_rolls = divine_smite_damage(slot_level)
@@ -94,10 +94,10 @@ paladin_smite_vs_fiend(ac, attack_bonus, damage_mod, slot_level=1, roll=d20, hit
     attack(ac, attack_bonus, 1 d 8 + smite_rolls, damage_mod, roll=roll, hit_bonus=hit_bonus)
 
 fighter_attack_action(attacks, ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
-    repeat_sum(attacks, longsword_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus))
+    longsword_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus) ^ attacks
 
 greatsword_attack_action(attacks, ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
-    repeat_sum(attacks, greatsword_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus))
+    greatsword_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus) ^ attacks
 
 longbow_attack_action(attacks, ac, attack_bonus, damage_mod, roll=d20, hit_bonus=0):
-    repeat_sum(attacks, longbow_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus))
+    longbow_attack(ac, attack_bonus, damage_mod, roll=roll, hit_bonus=hit_bonus) ^ attacks
