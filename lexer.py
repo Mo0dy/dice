@@ -43,8 +43,6 @@ ADV = "ADV"                              # "d+"
 DIS = "DIS"                              # "d-"
 LPAREN = "LPAREN"                        # "("
 RPAREN = "RPAREN"                        # ")"
-ELSEDIV = "ELSEDIV"                      # "|/"
-ELSEFLOORDIV = "ELSEFLOORDIV"            # "|//"
 HIGH = "HIGH"                            # "h"
 LOW = "LOW"                              # "l"
 EOF = "EOF"                              # end of file
@@ -186,8 +184,6 @@ class Lexer(object):
             [r"h(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(HIGH, x)],
             [r"l(?=\b|\s|\d|\(|\[|\{|\"|\!|\~|\-)", lambda x: Token(LOW, x)],
             [r"\|\|", lambda x: Token(SPLITZERO, x)],
-            [r"\|//", lambda x: Token(ELSEFLOORDIV, x)],
-            [r"\|\/", lambda x: Token(ELSEDIV, x)],
             [r"\(",   lambda x: Token(LPAREN, x)],
             [r"\)",   lambda x: Token(RPAREN, x)],
             [r"\{",   lambda x: Token(LBRACE, x)],

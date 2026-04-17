@@ -23,8 +23,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `in` checks support membership against a finite measure or domain.
 - `->` applies the `1` branch of a Bernoulli distribution to another distribution.
 - `|` adds an else-branch to `->`.
-- `|/` is shorthand for “else, use half damage”.
-- `|//` is shorthand for “else, use half damage rounded down”.
+- `@` inside the else-branch names the already-evaluated `->` value.
+- leading operators inside the else-branch are relative to that `@`, so `| / 2` means `| @ / 2`.
 - `[a..b]` creates an unnamed sweep over an inclusive integer range.
 - `[a..<b]` creates an unnamed sweep whose upper bound is excluded.
 - `[a, b, c]` creates an unnamed sweep over explicit values.
@@ -305,8 +305,8 @@ d20 >= [5,11]
 d20 >= 11 -> 5
 d20 >= 11 -> 2d6
 d20 >= 11 -> 10 | 5
-d20 < 14 -> 2d10 |/
-d20 < 14 -> 2d10 |//
+d20 < 14 -> 2d10 | / 2
+d20 < 14 -> 2d10 | // 2
 {10, 15}
 d{10, 15}
 d20 >= 19

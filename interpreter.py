@@ -34,8 +34,6 @@ from lexer import (
     EOF,
     ADV,
     DIS,
-    ELSEDIV,
-    ELSEFLOORDIV,
     HIGH,
     LOW,
     AVG,
@@ -714,9 +712,16 @@ class Interpreter:
 
     def visit_TenOp(self, node):
         if node.op1.type == RES and node.op2.type == ELSE:
+            condition = self.visit(node.left)
+            success_value = self.visit(node.middle)
+            self.local_scopes.append({"@": success_value})
+            try:
+                else_value = self.visit(node.right)
+            finally:
+                self.local_scopes.pop()
             return self._with_runtime_context(
                 node,
-                lambda: self.executor.reselse(self.visit(node.left), self.visit(node.middle), self.visit(node.right)),
+                lambda: self.executor.reselse(condition, success_value, else_value),
             )
         if node.op1.type == ROLL and node.op2.type == HIGH:
             return self._with_runtime_context(
@@ -759,10 +764,6 @@ class Interpreter:
             return self._with_runtime_context(node, lambda: self.executor.member(self.visit(node.left), self.visit(node.right)))
         if node.op.type == RES:
             return self._with_runtime_context(node, lambda: self.executor.res(self.visit(node.left), self.visit(node.right)))
-        if node.op.type == ELSEDIV:
-            return self._with_runtime_context(node, lambda: self.executor.reselsediv(self.visit(node.left), self.visit(node.right)))
-        if node.op.type == ELSEFLOORDIV:
-            return self._with_runtime_context(node, lambda: self.executor.reselsefloordiv(self.visit(node.left), self.visit(node.right)))
         if node.op.type == ASSIGN:
             self.global_scope[node.left.value] = self.visit(node.right)
             return None

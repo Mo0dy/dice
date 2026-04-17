@@ -7,4 +7,4 @@ damage_on_hit_adv(ac, bonus, dmg) = hit_adv(ac, bonus) -> dmg | 0
 crit_hit(ac, bonus, hit_damage, crit_damage) = split d20 | == 20 -> crit_damage | + bonus >= ac -> hit_damage ||
 
 save_fail(dc, save_bonus) = d20 + save_bonus < dc
-save_half(dc, save_bonus, dmg) = save_fail(dc, save_bonus) -> dmg |//
+save_half(dc, save_bonus, dmg) = save_fail(dc, save_bonus) -> dmg | // 2

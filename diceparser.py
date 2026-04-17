@@ -58,8 +58,6 @@ from lexer import (
     ADV,
     LPAREN,
     RPAREN,
-    ELSEDIV,
-    ELSEFLOORDIV,
     HIGH,
     LOW,
     AVG,
@@ -96,8 +94,6 @@ TOKEN_LABELS = {
     DIV: "'/'",
     FLOORDIV: "'//'",
     ELSE: "'|'",
-    ELSEDIV: "'|/'",
-    ELSEFLOORDIV: "'|//'",
     LBRACK: "'['",
     RBRACK: "']'",
     LBRACE: "'{'",
@@ -214,7 +210,7 @@ class DiceParser(Parser):
 
     Grammar:
         expr      :  resolve (PIPE pipeline_target)*
-        resolve   :  comp (RES comp ((ELSE comp) | ELSEDIV | ELSEFLOORDIV)?)?
+        resolve   :  comp (RES comp (ELSE branch_else)?)?
         comp      :  side ((GREATER_OR_EQUAL | LESS_OR_EQUAL | GREATER | LESS | EQUAL | IN) side)?
         side      :  term ((PLUS | MINUS) term)*
         term      :  roll ((MUL | DIV | FLOORDIV) roll)*
@@ -286,7 +282,13 @@ class DiceParser(Parser):
     def _anonymous_name(self, token):
         return Val(Token(ID, "@", span=token.span))
 
+    def _relative_branch_else(self, reference):
+        if self.current_token.type in [GREATER_OR_EQUAL, LESS_OR_EQUAL, GREATER, LESS, EQUAL, IN, PLUS, MUL, DIV, FLOORDIV, CARET]:
+            return self._continue_comp(self._anonymous_name(reference))
+        return self.comp()
+
     def _continue_term(self, node):
+        node = self._continue_repeated(node)
         while self.current_token.type in [MUL, DIV, FLOORDIV]:
             token = self.current_token
             self.eat(token.type)
@@ -307,6 +309,26 @@ class DiceParser(Parser):
             token = self.current_token
             self.eat(token.type)
             node = BinOp(node, token, self.side())
+        return node
+
+    def _continue_roll(self, node):
+        if self.current_token.type == ROLL:
+            token = self.current_token
+            self.eat(ROLL)
+            node2 = self.factor()
+            if self.current_token.type in [HIGH, LOW]:
+                token2 = self.current_token
+                self.eat(token2.type)
+                return TenOp(node, token, node2, token2, self.factor())
+            node = BinOp(node, token, node2)
+        return node
+
+    def _continue_repeated(self, node):
+        node = self._continue_roll(node)
+        if self.current_token.type == CARET:
+            token = self.current_token
+            self.eat(CARET)
+            node = BinOp(node, token, self.factor())
         return node
 
     def _split_guard(self, name, *, allow_anonymous_sugar):
@@ -495,25 +517,10 @@ class DiceParser(Parser):
             return None
 
     def roll(self):
-        node = self.factor()
-        if self.current_token.type == ROLL:
-            token = self.current_token
-            self.eat(ROLL)
-            node2 = self.factor()
-            if self.current_token.type in [HIGH, LOW]:
-                token2 = self.current_token
-                self.eat(token2.type)
-                return TenOp(node, token, node2, token2, self.factor())
-            node = BinOp(node, token, node2)
-        return node
+        return self._continue_roll(self.factor())
 
     def repeated(self):
-        node = self.roll()
-        if self.current_token.type == CARET:
-            token = self.current_token
-            self.eat(CARET)
-            node = BinOp(node, token, self.factor())
-        return node
+        return self._continue_repeated(self.factor())
 
     def term(self):
         node = self.repeated()
@@ -553,15 +560,7 @@ class DiceParser(Parser):
             if self.current_token.type == ELSE:
                 token2 = self.current_token
                 self.eat(ELSE)
-                node = TenOp(node, token, new_node1, token2, self.comp())
-            elif self.current_token.type == ELSEDIV:
-                token2 = self.current_token
-                self.eat(ELSEDIV)
-                node = BinOp(node, token2, new_node1)
-            elif self.current_token.type == ELSEFLOORDIV:
-                token2 = self.current_token
-                self.eat(ELSEFLOORDIV)
-                node = BinOp(node, token2, new_node1)
+                node = TenOp(node, token, new_node1, token2, self._relative_branch_else(new_node1.token))
             else:
                 # no tenery operator just normal resolve
                 node = BinOp(node, token, new_node1)

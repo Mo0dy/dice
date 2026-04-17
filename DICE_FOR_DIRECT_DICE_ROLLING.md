@@ -80,7 +80,7 @@ This is the Halfling Lucky style problem. The rule triggers from the unmodified 
 ## 9. Some effects want one damage roll shared across multiple targets
 
 ```dice
-save_half(dc, bonus, dmg) = d20 + bonus < dc -> dmg |/
+save_half(dc, bonus, dmg) = d20 + bonus < dc -> dmg | / 2
 save_half(15, 2, 8 d 6) + save_half(15, 5, 8 d 6)
 ```
 

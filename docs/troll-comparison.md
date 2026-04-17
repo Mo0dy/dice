@@ -18,7 +18,7 @@ Example commands:
 
 ## Main Language Differences
 
-- Our DSL has Bernoulli `0` / `1` comparison results and branching operators like `->`, `|`, `|/`, and `|//`.
+- Our DSL has Bernoulli `0` / `1` comparison results and branching operators like `->` and `|`, with relative else forms such as `| / 2` and `| // 2`.
 - Troll does not have boolean values. It uses empty vs non-empty collections as truthiness.
 - Our DSL has imports and a standard-library surface such as `import "std:dnd/weapons.dice"`.
 - Troll has functions, but no comparable module/import mechanism in the language, so shared helpers are duplicated across files.
@@ -33,7 +33,7 @@ Example commands:
 - `crit_hit(...)` also ports well, but needs an explicit local binding so one `d20` roll is reused across the crit and hit branches.
 - `repeat_sum(n, expr)` maps cleanly to `sum (n # expr)`.
 - Attack-roll helpers like advantage are straightforward because Troll has strong collection operators like `max`, `largest`, and `count`.
-- `save_half(...)` now maps cleanly: the D&D helper uses `|//` on our side, and Troll's integer arithmetic already rounds `dmg / 2` down.
+- `save_half(...)` now maps cleanly: the D&D helper uses `| // 2` on our side, and Troll's integer arithmetic already rounds `dmg / 2` down.
 
 ## Verified Ports
 

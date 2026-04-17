@@ -180,15 +180,28 @@ class RuntimeTest(unittest.TestCase):
         result = only_distribution(interpret_file("attack = d20 >= 11\nattack -> 5"))
         self.assertAlmostEqual(result[5], 0.5)
 
-    def test_elsediv_matches_explicit_else_branch(self):
-        shorthand = interpret_statement("d20 < 14 -> 2d10 |/")
-        explicit = interpret_statement("d20 < 14 -> 2d10 | 2d10 / 2")
+    def test_relative_else_division_matches_explicit_at_form(self):
+        shorthand = interpret_statement("d20 < 14 -> 2d10 | / 2")
+        explicit = interpret_statement("d20 < 14 -> 2d10 | @ / 2")
         self.assertEqual(str(shorthand), str(explicit))
 
-    def test_elsefloordiv_matches_explicit_else_branch(self):
-        shorthand = interpret_statement("d20 < 14 -> 2d10 |//")
-        explicit = interpret_statement("d20 < 14 -> 2d10 | 2d10 // 2")
+    def test_relative_else_floor_division_matches_explicit_at_form(self):
+        shorthand = interpret_statement("d20 < 14 -> 2d10 | // 2")
+        explicit = interpret_statement("d20 < 14 -> 2d10 | @ // 2")
         self.assertEqual(str(shorthand), str(explicit))
+
+    def test_relative_else_supports_other_operators(self):
+        shorthand = interpret_statement("d20 >= 11 -> 5 | + 2")
+        explicit = interpret_statement("d20 >= 11 -> 5 | @ + 2")
+        self.assertEqual(str(shorthand), str(explicit))
+
+    def test_legacy_half_damage_syntax_is_rejected(self):
+        with self.assertRaises(Exception):
+            interpret_statement("d20 < 14 -> 2d10 |/")
+
+    def test_legacy_floor_half_damage_syntax_is_rejected(self):
+        with self.assertRaises(Exception):
+            interpret_statement("d20 < 14 -> 2d10 |//")
 
     def test_arithmetic_distribution_still_works(self):
         result = only_distribution(interpret_statement("d2 + d2"))

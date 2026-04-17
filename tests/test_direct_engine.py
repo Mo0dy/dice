@@ -29,8 +29,8 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(set(distrib.keys()).issubset({0, 5}))
 
-    def test_direct_backend_supports_floor_half_damage_shorthand(self):
-        result = direct_sample("d20 < 14 -> 2d10 |//", seed=123)
+    def test_direct_backend_supports_relative_else_floor_division(self):
+        result = direct_sample("d20 < 14 -> 2d10 | // 2", seed=123)
         distrib = result.only_distribution()
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(all(float(outcome).is_integer() for outcome in distrib.keys()))
