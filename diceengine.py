@@ -10,6 +10,7 @@ import importlib
 from itertools import product
 from math import inf, isfinite, sqrt
 import random
+import re
 from typing import Any, Generic, TypeVar
 
 from diagnostics import RuntimeError as DiceRuntimeError
@@ -27,6 +28,7 @@ TRUE = 1
 FALSE = 0
 PROBABILITY_TOLERANCE = 1e-9
 _viewer_module = None
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def exception(message):
@@ -135,6 +137,99 @@ def _canonicalize_weighted_entries(entries):
             order.append(outcome)
         merged[outcome] = existing + float(weight)
     return tuple((outcome, merged[outcome]) for outcome in order if merged[outcome] != 0)
+
+
+def _is_identifier_key(key):
+    return isinstance(key, str) and _IDENTIFIER_PATTERN.match(key) is not None
+
+
+def _is_record_key(key):
+    return isinstance(key, int) or _is_identifier_key(key)
+
+
+def _format_runtime_key(key):
+    if isinstance(key, int):
+        return str(key)
+    return key
+
+
+def _format_runtime_literal(value):
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return '"{}"'.format(escaped)
+    if isinstance(value, TupleValue) or isinstance(value, RecordValue):
+        return str(value)
+    return str(value)
+
+
+@dataclass(frozen=True, init=False)
+class TupleValue:
+    items: tuple[object, ...]
+
+    def __init__(self, items=()):
+        object.__setattr__(self, "items", tuple(items))
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, index):
+        return self.items[index]
+
+    def __repr__(self):
+        if not self.items:
+            return "()"
+        if len(self.items) == 1:
+            return "({},)".format(_format_runtime_literal(self.items[0]))
+        return "({})".format(", ".join(_format_runtime_literal(item) for item in self.items))
+
+    __str__ = __repr__
+
+
+@dataclass(frozen=True, init=False)
+class RecordValue:
+    entries: tuple[tuple[object, object], ...]
+
+    def __init__(self, entries):
+        normalized = []
+        seen = set()
+        for key, value in entries:
+            if not _is_record_key(key):
+                runtime_error("record keys must be identifiers or integers")
+            if key in seen:
+                runtime_error("duplicate record key {}".format(key))
+            seen.add(key)
+            normalized.append((key, value))
+        if not normalized:
+            runtime_error("records require at least one entry")
+        object.__setattr__(self, "entries", tuple(normalized))
+
+    def __iter__(self):
+        return iter(self.entries)
+
+    def items(self):
+        return self.entries
+
+    def keys(self):
+        return tuple(key for key, _ in self.entries)
+
+    def values(self):
+        return tuple(value for _, value in self.entries)
+
+    def __getitem__(self, key):
+        for entry_key, value in self.entries:
+            if entry_key == key:
+                return value
+        raise KeyError(key)
+
+    def __repr__(self):
+        return "({})".format(
+            ", ".join("{}: {}".format(_format_runtime_key(key), _format_runtime_literal(value)) for key, value in self.entries)
+        )
+
+    __str__ = __repr__
 
 
 @dataclass(frozen=True, init=False)
@@ -392,7 +487,7 @@ def _deterministic_distribution(value):
 
 
 def _coerce_scalar(value):
-    if isinstance(value, (int, float, str, FiniteMeasure, SweepValues)):
+    if isinstance(value, (int, float, str, TupleValue, RecordValue, FiniteMeasure, SweepValues)):
         return value
     runtime_error("unsupported runtime value {}".format(type(value)))
 
@@ -400,7 +495,7 @@ def _coerce_scalar(value):
 def _coerce_to_measure_cell(value):
     if isinstance(value, FiniteMeasure):
         return value
-    if isinstance(value, (int, float, str)):
+    if isinstance(value, (int, float, str, TupleValue, RecordValue)):
         return FiniteMeasure(((value, 1.0),))
     runtime_error("expected a finite measure-compatible value, got {}".format(type(value)))
 
@@ -413,7 +508,7 @@ def _coerce_to_distribution_cell(value):
             "expected a normalized distribution here",
             hint="Normalize a finite measure with d{...} before using it probabilistically.",
         )
-    if isinstance(value, (int, float, str)):
+    if isinstance(value, (int, float, str, TupleValue, RecordValue)):
         return _deterministic_distribution(value)
     runtime_error("expected a distribution-compatible value, got {}".format(type(value)))
 
@@ -427,6 +522,10 @@ def _coerce_value_to_sweep(value):
 
 
 def _runtime_type_name(value):
+    if isinstance(value, TupleValue):
+        return "tuple"
+    if isinstance(value, RecordValue):
+        return "record"
     if isinstance(value, Distribution):
         return "Distribution"
     if isinstance(value, FiniteMeasure):
@@ -637,6 +736,10 @@ def _pairwise_numeric(left, right, operator, opname):
     return Distribution(result)
 
 
+def _is_structured_value(value):
+    return isinstance(value, (TupleValue, RecordValue))
+
+
 def _numeric_binary_cell(left, right, operator, opname, *, allow_measure_transform=True):
     left_is_raw_measure = isinstance(left, FiniteMeasure) and not isinstance(left, Distribution)
     right_is_raw_measure = isinstance(right, FiniteMeasure) and not isinstance(right, Distribution)
@@ -660,6 +763,11 @@ def _compare_plain(left, right, operator):
     result = []
     for left_value, left_probability in left.items():
         for right_value, right_probability in right.items():
+            if _is_structured_value(left_value) or _is_structured_value(right_value):
+                runtime_error(
+                    "comparisons do not support tuple or record values yet",
+                    hint="Use tuples and records as data values for now, not with comparison operators.",
+                )
             comparison_true = False
             if operator == "<=":
                 comparison_true = left_value <= right_value
@@ -681,6 +789,11 @@ def _member_cell(left, right):
     domain = _coerce_to_measure_cell(right)
     support = set()
     for outcome, _ in domain.items():
+        if _is_structured_value(outcome):
+            runtime_error(
+                "in does not support tuple or record values yet",
+                hint="Use tuples and records as stored values for now, not with membership tests.",
+            )
         if isinstance(outcome, Distribution):
             runtime_error(
                 "in does not accept probabilistic members on the right-hand side yet",
@@ -689,6 +802,11 @@ def _member_cell(left, right):
         support.add(outcome)
     result = []
     for outcome, probability in left_distribution.items():
+        if _is_structured_value(outcome):
+            runtime_error(
+                "in does not support tuple or record values yet",
+                hint="Use tuples and records as stored values for now, not with membership tests.",
+            )
         result.append((TRUE if outcome in support else FALSE, probability))
     return Distribution(result)
 

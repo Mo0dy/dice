@@ -10,6 +10,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `Distribution`: a normalized probability distribution such as `d20` or `d{10, 15}`
 - `SweepValues`: a finite set of input values used to build bracket sweeps such as `[AC:10..20]`
 - `Sweep[T]`: zero or more sweep axes whose cells hold values such as `Distribution` or `FiniteMeasure`
+- `tuple`: an immutable structured value such as `()` or `(1, "fire")`
+- `record`: an immutable keyed structured value such as `(PLAN: "gwm", LEVEL: 11)`
 - numeric Bernoulli outcomes such as `0` and `1`
 
 ## Semantics
@@ -31,6 +33,10 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `[name:a..b]` creates a named sweep over an inclusive integer range.
 - `[name:a..<b]` creates a named sweep whose upper bound is excluded.
 - `[name:a, b, c]` creates a named sweep over explicit values.
+- `()` creates an empty tuple.
+- `(a,)` creates a one-element tuple.
+- `(a, b, c)` creates a tuple.
+- `(KEY: value, ...)` creates a record when each `KEY` is an identifier or integer.
 - `f(x): expr` defines a top-level one-line function.
 - `f(x):` followed by an indented body defines a multiline function with local assignments and one final expression line.
 - `f(a, b=1)` defines defaults, and `f(b=2, a=1)` calls by keyword.
@@ -61,6 +67,8 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - `shape(expr)` returns the sweep axes as a string such as `[AC: (10, 11, 12)]`.
 - operator-backed semantics are also available as functions such as `add(...)`, `roll(...)`, `greaterorequal(...)`, and `reselse(...)`.
 - `( ... )` groups expressions.
+- tuple and record comparison operators are not supported yet.
+- tuple and record field access is not supported yet.
 
 ## Running Dice
 

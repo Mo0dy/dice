@@ -72,7 +72,20 @@ class HostFunction:
 def validate_runtime_value(value):
     if value is None:
         return value
-    if isinstance(value, (int, float, str, diceengine.SweepValues, diceengine.FiniteMeasure, diceengine.Distribution, diceengine.Sweep)):
+    if isinstance(
+        value,
+        (
+            int,
+            float,
+            str,
+            diceengine.TupleValue,
+            diceengine.RecordValue,
+            diceengine.SweepValues,
+            diceengine.FiniteMeasure,
+            diceengine.Distribution,
+            diceengine.Sweep,
+        ),
+    ):
         return value
     raise Exception("Unsupported host value type {}".format(type(value)))
 

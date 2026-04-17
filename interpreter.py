@@ -51,6 +51,8 @@ from diceengine import (
     SweepValues,
     FiniteMeasure,
     Distribution,
+    TupleValue,
+    RecordValue,
     PROBABILITY_TOLERANCE,
     RenderConfig,
     TRUE,
@@ -461,7 +463,7 @@ class Interpreter:
             self.exception(str(error))
 
     def _literal_scalar_value(self, value, *, node, context, hint=None):
-        if isinstance(value, (int, float, str)):
+        if isinstance(value, (int, float, str, TupleValue, RecordValue)):
             return value
         if isinstance(value, Sweep):
             if not value.is_unswept():
@@ -936,6 +938,12 @@ class Interpreter:
                 print(value)
             return None
         self.exception("{} not implemented".format(node), node=node)
+
+    def visit_TupleLiteral(self, node):
+        return TupleValue(self.visit(item) for item in node.items)
+
+    def visit_RecordLiteral(self, node):
+        return RecordValue((entry.key, self.visit(entry.value)) for entry in node.entries)
 
     def visit_Val(self, node):
         if node.token.type in [INTEGER, FLOAT, STRING]:

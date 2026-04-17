@@ -26,7 +26,15 @@ except ImportError:  # pragma: no cover - platform-specific
 
 from interpreter import Interpreter
 from executor import D, dicefunction
-from diceengine import Distributions, Distribution, FiniteMeasure, RenderConfig, wait_for_rendered_figures
+from diceengine import (
+    Distributions,
+    Distribution,
+    FiniteMeasure,
+    TupleValue,
+    RecordValue,
+    RenderConfig,
+    wait_for_rendered_figures,
+)
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
 
@@ -64,7 +72,13 @@ def _ordered_labels(values):
     def sort_key(value):
         if isinstance(value, (int, float)):
             return (0, value)
-        return (1, str(value))
+        if isinstance(value, str):
+            return (1, value)
+        if isinstance(value, TupleValue):
+            return (2, str(value))
+        if isinstance(value, RecordValue):
+            return (3, str(value))
+        return (4, str(value))
 
     return list(sorted(values, key=sort_key))
 
@@ -97,6 +111,44 @@ def _format_scalar(value, roundlevel=0):
 def _format_label(value, roundlevel=0):
     if _is_numeric(value):
         return _format_rounded_numeric(value, roundlevel)
+    return str(value)
+
+
+def _serialize_embedded_value(value, roundlevel=0, probability_mode="raw"):
+    if isinstance(value, TupleValue):
+        return {
+            "type": "tuple",
+            "items": [
+                _serialize_embedded_value(item, roundlevel, probability_mode=probability_mode)
+                for item in value.items
+            ],
+        }
+    if isinstance(value, RecordValue):
+        return {
+            "type": "record",
+            "entries": [
+                {
+                    "key_kind": "integer" if isinstance(key, int) else "identifier",
+                    "key": key,
+                    "value": _serialize_embedded_value(entry_value, roundlevel, probability_mode=probability_mode),
+                }
+                for key, entry_value in value.items()
+            ],
+        }
+    if isinstance(value, Distribution):
+        return {
+            "type": "distribution",
+            "distribution": _serialize_distribution(value, roundlevel, probability_mode=probability_mode),
+        }
+    if isinstance(value, FiniteMeasure):
+        return {
+            "type": "measure",
+            "measure": _serialize_measure(value, roundlevel),
+        }
+    if isinstance(value, str):
+        return value
+    if _is_numeric(value):
+        return _round_numeric(value, roundlevel)
     return str(value)
 
 
@@ -253,7 +305,7 @@ def _serialize_distribution(distrib, roundlevel=0, probability_mode="raw"):
     for outcome in _ordered_labels(distrib.keys()):
         entries.append(
             {
-                "outcome": _round_numeric(outcome, roundlevel) if _is_numeric(outcome) else outcome,
+                "outcome": _serialize_embedded_value(outcome, roundlevel, probability_mode=probability_mode),
                 "probability": _round_numeric(distrib[outcome] * scale, roundlevel),
             }
         )
@@ -265,7 +317,7 @@ def _serialize_measure(measure, roundlevel=0):
     for outcome in _ordered_labels(measure.keys()):
         entries.append(
             {
-                "outcome": _round_numeric(outcome, roundlevel) if _is_numeric(outcome) else str(outcome),
+                "outcome": _serialize_embedded_value(outcome, roundlevel),
                 "weight": _round_numeric(measure[outcome], roundlevel),
             }
         )
@@ -279,7 +331,7 @@ def _serialize_result(result, roundlevel=0, probability_mode="raw"):
             {
                 "key": axis.key,
                 "name": axis.name if not axis.name.startswith("sweep_") else None,
-                "values": [_round_numeric(value, roundlevel) if _is_numeric(value) else value for value in axis.values],
+                "values": [_serialize_embedded_value(value, roundlevel, probability_mode=probability_mode) for value in axis.values],
             }
             for axis in result.axes
         ]
@@ -291,7 +343,7 @@ def _serialize_result(result, roundlevel=0, probability_mode="raw"):
                     {
                         "axis_key": axis.key,
                         "axis_name": axis.name if not axis.name.startswith("sweep_") else None,
-                        "value": _round_numeric(value, roundlevel) if _is_numeric(value) else value,
+                        "value": _serialize_embedded_value(value, roundlevel, probability_mode=probability_mode),
                     }
                 )
             if distribution_only:
@@ -316,8 +368,18 @@ def _serialize_result(result, roundlevel=0, probability_mode="raw"):
                             }
                             if isinstance(distrib, FiniteMeasure)
                             else {
-                                "kind": "scalar" if _is_numeric(distrib) or isinstance(distrib, str) else type(distrib).__name__,
-                                "value": _round_numeric(distrib, roundlevel) if _is_numeric(distrib) else str(distrib),
+                                "kind": (
+                                    "scalar"
+                                    if _is_numeric(distrib)
+                                    else "string"
+                                    if isinstance(distrib, str)
+                                    else "tuple"
+                                    if isinstance(distrib, TupleValue)
+                                    else "record"
+                                    if isinstance(distrib, RecordValue)
+                                    else type(distrib).__name__
+                                ),
+                                "value": _serialize_embedded_value(distrib, roundlevel, probability_mode=probability_mode),
                             }
                         ),
                     }
@@ -331,6 +393,10 @@ def _serialize_result(result, roundlevel=0, probability_mode="raw"):
         return {"type": "distribution", "distribution": _serialize_distribution(result, roundlevel, probability_mode=probability_mode)}
     if isinstance(result, FiniteMeasure):
         return {"type": "measure", "measure": _serialize_measure(result, roundlevel)}
+    if isinstance(result, TupleValue):
+        return _serialize_embedded_value(result, roundlevel, probability_mode=probability_mode)
+    if isinstance(result, RecordValue):
+        return _serialize_embedded_value(result, roundlevel, probability_mode=probability_mode)
     if isinstance(result, str):
         return {"type": "string", "value": result}
     if _is_numeric(result):

@@ -22,6 +22,9 @@ from syntaxtree import (
     MeasureEntry,
     MeasureLiteral,
     SweepLiteral,
+    TupleLiteral,
+    RecordLiteral,
+    RecordEntry,
     Param,
     CallArg,
     LocalAssign,
@@ -283,6 +286,87 @@ class DiceParser(Parser):
         self.eat(RBRACE)
         return MeasureLiteral(entries, token)
 
+    def _record_key(self):
+        if self.current_token.type not in (ID, INTEGER):
+            self.exception(
+                "record keys must be identifiers or integers",
+                token=self.current_token,
+                hint='Use a key like PLAN: 11 or 0: 5.',
+            )
+        token = self.current_token
+        self.eat(token.type)
+        return token
+
+    def record_literal(self):
+        token = self.current_token
+        self.eat(LPAREN)
+        entries = []
+        seen = set()
+        while True:
+            key_token = self._record_key()
+            normalized_key = (key_token.type, key_token.value)
+            if normalized_key in seen:
+                self.exception(
+                    "duplicate record key {}".format(key_token.value),
+                    token=key_token,
+                    hint="Each record key may appear only once.",
+                )
+            seen.add(normalized_key)
+            self.eat(COLON)
+            entries.append(RecordEntry(key_token.value, key_token.type, self.expr(), key_token))
+            if self.current_token.type != COMMA:
+                break
+            self.eat(COMMA)
+            if self.current_token.type == RPAREN:
+                self.exception(
+                    "records do not allow trailing commas yet",
+                    token=self.current_token,
+                    hint='Write records like (PLAN: 11, LEVEL: 5).',
+                )
+            if self.current_token.type not in (ID, INTEGER) or self.peek_token.type != COLON:
+                self.exception(
+                    "cannot mix tuple and record entries",
+                    token=self.current_token,
+                    hint='Use either tuple syntax like (1, 2) or record syntax like (PLAN: 11).',
+                )
+        self.eat(RPAREN)
+        return RecordLiteral(entries, token)
+
+    def parenthesized_value(self):
+        state = self.snapshot()
+        token = self.current_token
+        self.eat(LPAREN)
+        if self.current_token.type == RPAREN:
+            self.eat(RPAREN)
+            return TupleLiteral([], token)
+        if self.current_token.type in (ID, INTEGER) and self.peek_token.type == COLON:
+            self.restore(state)
+            return self.record_literal()
+        first = self.expr()
+        if self.current_token.type == RPAREN:
+            self.eat(RPAREN)
+            return first
+        if self.current_token.type != COMMA:
+            self.exception(
+                "expected ',' or ')' in parenthesized expression",
+                token=self.current_token,
+            )
+        items = [first]
+        while self.current_token.type == COMMA:
+            self.eat(COMMA)
+            if self.current_token.type == RPAREN:
+                self.eat(RPAREN)
+                return TupleLiteral(items, token)
+            if self.current_token.type in (ID, INTEGER) and self.peek_token.type == COLON:
+                self.exception(
+                    "cannot mix tuple and record entries",
+                    token=self.current_token,
+                    hint='Use either tuple syntax like (1, 2) or record syntax like (PLAN: 11).',
+                )
+            items.append(self.expr())
+        self.eat(RPAREN)
+        return TupleLiteral(items, token)
+
     def _anonymous_name(self, token):
         return Val(Token(ID, "@", span=token.span))
 
@@ -419,10 +503,7 @@ class DiceParser(Parser):
                 hint="Rewrite this as 'split ... | guard -> result'.",
             )
         elif self.current_token.type == LPAREN:
-            self.eat(LPAREN)
-            node = self.expr()
-            self.eat(RPAREN)
-            return node
+            return self.parenthesized_value()
         elif self.current_token.type == ROLL:
             token = self.current_token
             self.eat(ROLL)
