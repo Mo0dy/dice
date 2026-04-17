@@ -450,6 +450,43 @@ Distrib = Distribution
 Distributions = Sweep
 
 
+@dataclass(frozen=True)
+class ChartSpec:
+    intent: str
+    payload: object
+    x_label: str | None = None
+    title: str | None = None
+    width_override: str | None = None
+
+
+@dataclass(frozen=True)
+class ReportBlock:
+    kind: str
+    value: object
+
+
+@dataclass(frozen=True)
+class ReportSpec:
+    title: str | None = None
+    hero: ChartSpec | None = None
+    blocks: tuple[ReportBlock, ...] = ()
+
+    def is_empty(self):
+        return self.title is None and self.hero is None and not self.blocks
+
+
+@dataclass(frozen=True)
+class RenderPlan:
+    kind: str
+    payload: object
+    width_class: str
+
+
+class PanelWidthClass:
+    NARROW = "narrow"
+    WIDE = "wide"
+
+
 def _require_numeric(value, opname):
     if not isinstance(value, (int, float)):
         runtime_error(
@@ -488,7 +525,7 @@ def _deterministic_distribution(value):
 
 
 def _coerce_scalar(value):
-    if isinstance(value, (int, float, str, TupleValue, RecordValue, FiniteMeasure, SweepValues)):
+    if isinstance(value, (int, float, str, TupleValue, RecordValue, FiniteMeasure, SweepValues, ChartSpec, ReportSpec)):
         return value
     runtime_error("unsupported runtime value {}".format(type(value)))
 
@@ -1522,85 +1559,93 @@ def total(value):
     return total_with(add, value)
 
 
-def _require_render_text(value, message, hint):
+def _require_string(value, context):
+    if value is None:
+        return None
     if not isinstance(value, str):
-        runtime_error(message, hint=hint)
+        runtime_error(context)
     return value
 
 
-def _render(*args, render_config=None, assume_probability=False):
+def _require_chart_spec(value, context):
+    if not isinstance(value, ChartSpec):
+        runtime_error(context)
+    return value
+
+
+def chart_with_width(chart, width):
+    chart = _require_chart_spec(chart, "width overrides expect a chart spec")
+    normalized = _require_string(width, "panel width must be a string")
+    normalized = normalized.strip().lower()
+    if normalized not in (PanelWidthClass.NARROW, PanelWidthClass.WIDE):
+        runtime_error("panel width must be 'narrow' or 'wide'")
+    return replace(chart, width_override=normalized)
+
+
+def report_set_title(report, text):
+    report = report if report is not None else ReportSpec()
+    text = _require_string(text, "r_title expects a string")
+    if report.title is not None:
+        runtime_error("duplicate r_title in one pending report")
+    return replace(report, title=text)
+
+
+def report_add_note(report, text):
+    report = report if report is not None else ReportSpec()
+    text = _require_string(text, "r_note expects a string")
+    return replace(report, blocks=report.blocks + (ReportBlock("note", text),))
+
+
+def report_set_hero(report, chart):
+    report = report if report is not None else ReportSpec()
+    chart = _require_chart_spec(chart, "r_hero expects a chart spec")
+    if report.hero is not None:
+        runtime_error("duplicate r_hero in one pending report")
+    return replace(report, hero=chart)
+
+
+def report_add_row(report, charts):
+    report = report if report is not None else ReportSpec()
+    normalized = tuple(_require_chart_spec(chart, "r_row expects chart specs") for chart in charts)
+    if not normalized:
+        runtime_error("r_row expects at least one chart spec")
+    if len(normalized) > 2:
+        runtime_error("r_row supports at most two chart specs in v1")
+    return replace(report, blocks=report.blocks + (ReportBlock("row", normalized),))
+
+
+def report_append_chart(report, chart):
+    report = report if report is not None else ReportSpec()
+    chart = _require_chart_spec(chart, "pending report append expects a chart spec")
+    return replace(report, blocks=report.blocks + (ReportBlock("panel", chart),))
+
+
+def _normalize_render_export(path=None, format=None, dpi=None):
+    if path is not None and not isinstance(path, str):
+        runtime_error("render path must be a string")
+    if format is not None:
+        if not isinstance(format, str):
+            runtime_error("render format must be a string")
+        if format.strip().lower() != "png":
+            runtime_error("render format must be png in report v1")
+        format = "png"
+    if dpi is not None:
+        if not isinstance(dpi, (int, float)) or dpi <= 0:
+            runtime_error("render dpi must be a positive number")
+    return path, format, dpi
+
+
+def render_report(report, render_config=None, path=None, format=None, dpi=None):
+    report = report if report is not None else ReportSpec()
+    if report.is_empty():
+        runtime_error("render() requires at least one pending report item")
     viewer = _get_viewer()
     render_config = render_config if render_config is not None else RenderConfig()
-    if not args:
-        runtime_error("render expects at least one expression")
-    if len(args) == 1:
-        return viewer.render_result(
-            args[0],
-            render_config=render_config,
-            assume_probability=assume_probability,
-        ).output_path
-    if len(args) == 2:
-        runtime_error(
-            "render titles require an axis label before the title",
-            hint='Call render(value, "Axis Label", "Title").',
-        )
-    if len(args) == 3:
-        axis_label = _require_render_text(args[1], "render axis labels must be strings", 'Call render(value, "Axis Label", "Title").')
-        if not isinstance(args[2], str):
-            runtime_error(
-                "render comparisons require a label for every expression",
-                hint='Call render(value1, "Label 1", value2, "Label 2").',
-            )
-        return viewer.render_result(
-            args[0],
-            x_label=axis_label,
-            title=args[2],
-            render_config=render_config,
-            assume_probability=assume_probability,
-        ).output_path
-
-    comparison_axis_label = None
-    comparison_title = None
-    comparison_args = args
-    if len(args) >= 6 and isinstance(args[-2], str) and isinstance(args[-1], str):
-        potential_args = args[:-2]
-        if len(potential_args) >= 4 and len(potential_args) % 2 == 0:
-            comparison_args = potential_args
-            comparison_axis_label = args[-2]
-            comparison_title = args[-1]
-    if comparison_axis_label is None and len(args) % 2 != 0:
-        runtime_error(
-            "render titles require an axis label before the title",
-            hint='Call render(value, "Axis Label", "Title") or render(value1, "Label 1", value2, "Label 2", "Axis Label", "Title").',
-        )
-    if len(comparison_args) % 2 != 0:
-        runtime_error(
-            "render comparisons require a label for every expression",
-            hint='Call render(value1, "Label 1", value2, "Label 2").',
-        )
-    entries = []
-    for index in range(0, len(comparison_args), 2):
-        label = comparison_args[index + 1]
-        if not isinstance(label, str):
-            runtime_error("render comparison labels must be strings")
-        entries.append((label, comparison_args[index]))
-    if len(entries) < 2:
-        runtime_error(
-            "render comparisons need at least two expressions",
-            hint='Call render(value1, "Label 1", value2, "Label 2").',
-        )
-    return viewer.render_comparison(
-        entries,
-        x_label=comparison_axis_label,
-        title=comparison_title,
+    path, format, dpi = _normalize_render_export(path=path, format=format, dpi=dpi)
+    return viewer.render_report(
+        report,
         render_config=render_config,
-        assume_probability=assume_probability,
+        path=path,
+        output_format=format,
+        dpi=dpi,
     ).output_path
-
-
-def render(*args, render_config=None):
-    return _render(*args, render_config=render_config, assume_probability=False)
-
-
-def renderp(*args, render_config=None):
-    return _render(*args, render_config=render_config, assume_probability=True)

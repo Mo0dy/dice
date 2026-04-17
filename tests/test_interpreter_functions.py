@@ -90,9 +90,9 @@ class InterpreterFunctionScopeTest(unittest.TestCase):
         self.assertIn("function repeat_sum missing required argument count", str(error.exception))
         self.assertIn("Call it like repeat_sum(count, value).", str(error.exception))
 
-    def test_render_remains_positional_variadic(self):
-        with self.assertRaisesRegex(Exception, "does not accept keyword arguments"):
-            interpret('render(expr=d20)')
+    def test_render_accepts_keyword_arguments(self):
+        with self.assertRaisesRegex(Exception, "requires at least one pending report item"):
+            interpret('render(path="out.png")')
 
     def test_unknown_function_raises_from_interpreter(self):
         with self.assertRaisesRegex(Exception, "Unknown function"):

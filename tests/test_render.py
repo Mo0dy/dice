@@ -3,7 +3,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,367 +15,159 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import dice
-import diceengine
 import viewer
 from dice import interpret_file, interpret_statement
-from diceengine import Distributions
+from diceengine import ChartSpec, PanelWidthClass, RenderConfig, ReportSpec
+from executor import ExactExecutor
 
 
-class RenderStatementTest(unittest.TestCase):
-    def test_render_single_expression_calls_render_result(self):
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), None)
-        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            result = interpret_statement("render(d20)")
-        self.assertIsNone(result)
-        render_result.assert_called_once()
-        rendered = render_result.call_args.args[0]
-        self.assertIsInstance(rendered, Distributions)
-
-    def test_render_comparison_calls_render_comparison(self):
-        program = "a = d20\nb = d20 + 1\nrender(a, \"a\", b, \"b\")"
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_bar", "Outcome", "Probability", ("a", "b")), None)
-        with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
-            result = interpret_file(program)
-        self.assertIsNone(result)
-        render_comparison.assert_called_once()
-        entries = render_comparison.call_args.args[0]
-        self.assertEqual([label for label, _ in entries], ["a", "b"])
-
-    def test_render_single_expression_accepts_axis_label_and_title(self):
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), None)
-        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            result = interpret_statement('render(d20, "Roll", "Hit chances")')
-        self.assertIsNone(result)
-        render_result.assert_called_once()
-        self.assertEqual(render_result.call_args.kwargs["x_label"], "Roll")
-        self.assertEqual(render_result.call_args.kwargs["title"], "Hit chances")
-
-    def test_render_comparison_accepts_axis_label_and_trailing_title(self):
-        program = 'a = d20\nb = d20 + 1\nrender(a, "a", b, "b", "Roll", "Comparison")'
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_bar", "Outcome", "Probability", ("a", "b")), None)
-        with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
-            result = interpret_file(program)
-        self.assertIsNone(result)
-        render_comparison.assert_called_once()
-        self.assertEqual(render_comparison.call_args.kwargs["x_label"], "Roll")
-        self.assertEqual(render_comparison.call_args.kwargs["title"], "Comparison")
-
-    def test_renderp_passes_probability_override_for_single_expression(self):
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("line", "AC", "Probability"), None)
-        with mock.patch.object(viewer, "render_result", return_value=mock_outcome) as render_result:
-            result = interpret_statement('renderp((d20 >= [AC:10..12]) $ mean, "AC", "Hit chance")')
-        self.assertIsNone(result)
-        render_result.assert_called_once()
-        self.assertTrue(render_result.call_args.kwargs["assume_probability"])
-
-    def test_renderp_passes_probability_override_for_comparison(self):
-        program = 'a = (d20 >= [AC:10..12]) $ mean\nb = (d20 >= [AC:10..12]) $ mean\nrenderp(a, "a", b, "b", "AC", "Hit chance")'
-        mock_outcome = viewer.RenderOutcome(viewer.RenderSpec("compare_line", "AC", "Probability", ("a", "b")), None)
-        with mock.patch.object(viewer, "render_comparison", return_value=mock_outcome) as render_comparison:
-            result = interpret_file(program)
-        self.assertIsNone(result)
-        render_comparison.assert_called_once()
-        self.assertTrue(render_comparison.call_args.kwargs["assume_probability"])
-
-    def test_render_returns_output_path_in_headless_mode(self):
-        result = interpret_statement("render(d20)")
+class RenderRuntimeTest(unittest.TestCase):
+    def test_top_level_chart_auto_appends_and_render_flushes(self):
+        result = interpret_statement("r_auto(d20); render()")
         self.assertIsInstance(result, str)
         self.assertTrue(result.endswith(".png"))
         self.assertTrue(os.path.exists(result))
 
-    def test_render_comparison_requires_labels(self):
-        with self.assertRaisesRegex(Exception, "require an axis label before the title"):
-            interpret_statement("render(d20, d20)")
+    def test_render_accepts_export_kwargs(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "chart.png"
+            result = interpret_statement(f'r_auto(d20); render(path="{output}", format="png", dpi=120)')
+            self.assertEqual(result, str(output))
+            self.assertTrue(output.exists())
 
-    def test_render_comparison_requires_label_for_every_expression(self):
-        with self.assertRaisesRegex(Exception, "require a label for every expression"):
-            interpret_statement('render(d20, "a", d20)')
+    def test_render_requires_pending_items(self):
+        with self.assertRaisesRegex(Exception, "requires at least one pending report item"):
+            interpret_statement("render()")
 
-    def test_render_lazily_loads_viewer_once(self):
-        diceengine._viewer_module = None
-        mock_viewer = mock.Mock()
-        mock_viewer.render_result.side_effect = [
-            viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "first"),
-            viewer.RenderOutcome(viewer.RenderSpec("bar", "Outcome", "Probability"), "second"),
-        ]
-        try:
-            with mock.patch("diceengine.importlib.import_module", return_value=mock_viewer) as import_module:
-                self.assertEqual(diceengine.render("one"), "first")
-                self.assertEqual(diceengine.render("two"), "second")
-            import_module.assert_called_once_with("viewer")
-            self.assertEqual(mock_viewer.render_result.call_count, 2)
-        finally:
-            diceengine._viewer_module = None
+    def test_duplicate_title_is_rejected(self):
+        with self.assertRaisesRegex(Exception, "duplicate r_title"):
+            interpret_statement('r_title("A"); r_title("B")')
 
-    def test_dice_session_uses_non_blocking_render_config(self):
-        diceengine._viewer_module = None
-        mock_viewer = mock.Mock()
-        mock_viewer.render_result.return_value = viewer.RenderOutcome(
-            viewer.RenderSpec("bar", "Outcome", "Probability"),
-            None,
+    def test_duplicate_hero_is_rejected(self):
+        with self.assertRaisesRegex(Exception, "duplicate r_hero"):
+            interpret_statement('r_hero(r_auto(d20)); r_hero(r_auto(d6))')
+
+    def test_render_resets_state_between_outputs(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            first = Path(tempdir) / "first.png"
+            second = Path(tempdir) / "second.png"
+            program = (
+                f'r_auto(d20); render(path="{first}")\n'
+                f'r_auto(d6); render(path="{second}")\n'
+            )
+            result = interpret_file(program)
+            self.assertEqual(result, str(second))
+            self.assertTrue(first.exists())
+            self.assertTrue(second.exists())
+
+    def test_chart_assignment_does_not_auto_append_until_referenced(self):
+        with self.assertRaisesRegex(Exception, "requires at least one pending report item"):
+            interpret_statement("chart = r_auto(d20); render()")
+        result = interpret_statement("chart = r_auto(d20); chart; render()")
+        self.assertTrue(result.endswith(".png"))
+
+
+class PlannerTest(unittest.TestCase):
+    def setUp(self):
+        self.executor = ExactExecutor()
+
+    def test_r_auto_unswept_distribution_is_narrow(self):
+        chart = ChartSpec("auto", interpret_statement("d20"))
+        plan = viewer.build_chart_plan(chart)
+        self.assertEqual(plan.kind, "unswept_distribution")
+        self.assertEqual(plan.width_class, PanelWidthClass.NARROW)
+
+    def test_r_auto_two_axis_scalar_prefers_wide_heatmap(self):
+        chart = ChartSpec("auto", interpret_statement("~([AC:10..11] + [BONUS:1..2])"))
+        plan = viewer.build_chart_plan(chart)
+        self.assertEqual(plan.kind, "scalar_heatmap")
+        self.assertEqual(plan.width_class, PanelWidthClass.WIDE)
+
+    def test_r_compare_scalar_sweeps_builds_compare_scalar_plan(self):
+        chart = self.executor.r_compare(
+            interpret_statement('("A", ~(d20 >= [AC:10..12] -> 5 | 0))'),
+            interpret_statement('("B", ~(d20 >= [AC:10..12] -> 7 | 0))'),
+            x="AC",
         )
-        session = dice.dice_interpreter()
-        try:
-            with mock.patch("diceengine.importlib.import_module", return_value=mock_viewer):
-                session.interpreter.executor.render("one")
-            mock_viewer.render_result.assert_called_once_with(
-                "one",
-                render_config=diceengine.RenderConfig(interactive_blocking=False),
-                assume_probability=False,
-            )
-        finally:
-            diceengine._viewer_module = None
+        self.assertIsInstance(chart, ChartSpec)
+        plan = viewer.build_chart_plan(chart)
+        self.assertEqual(plan.kind, "compare_scalar")
 
-
-class ViewerSpecTest(unittest.TestCase):
-    def test_unswept_distribution_uses_bar_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("d20"))
-        self.assertEqual(spec.kind, "bar")
-
-    def test_one_sweep_scalar_uses_line_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)"))
-        self.assertEqual(spec.kind, "line")
-        self.assertEqual(spec.x_label, "AC")
-        self.assertFalse(spec.probability_values)
-
-    def test_renderp_one_sweep_scalar_uses_probability_bar_spec(self):
-        spec = viewer.build_render_spec(
-            interpret_statement("(d20 >= [AC:10..12]) $ mean"),
-            assume_probability=True,
+    def test_r_diff_builds_diff_plan(self):
+        chart = self.executor.r_diff(
+            interpret_statement('("A", ~(d20 >= [AC:10..12] -> 5 | 0))'),
+            interpret_statement('("B", ~(d20 >= [AC:10..12] -> 7 | 0))'),
+            x="AC",
         )
-        self.assertEqual(spec.kind, "bar_scalar")
-        self.assertEqual(spec.x_label, "AC")
-        self.assertTrue(spec.probability_values)
-        self.assertEqual(spec.y_label, "Probability")
+        plan = viewer.build_chart_plan(chart)
+        self.assertEqual(plan.kind, "diff")
+        self.assertEqual(plan.width_class, PanelWidthClass.WIDE)
 
-    def test_one_sweep_distribution_uses_heatmap_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("d20 >= [AC:10..12]"))
-        self.assertEqual(spec.kind, "heatmap_distribution")
-        self.assertEqual(spec.x_label, "AC")
-
-    def test_two_sweep_scalar_uses_heatmap_spec(self):
-        spec = viewer.build_render_spec(interpret_statement("~([AC:10..11] + [BONUS:1..2])"))
-        self.assertEqual(spec.kind, "heatmap_scalar")
-        self.assertEqual(spec.x_label, "BONUS")
-        self.assertEqual(spec.y_label, "AC")
-
-    def test_renderp_two_sweep_scalar_uses_probability_heatmap_spec(self):
-        spec = viewer.build_render_spec(
-            interpret_statement("([AC:10..11] + [BONUS:1..2]) * 0.01"),
-            assume_probability=True,
+    def test_r_best_builds_strategy_plan(self):
+        chart = ChartSpec(
+            "best",
+            interpret_file(
+                'score(plan, ac): split plan as name | name == "plain" -> ac | otherwise -> ac + 1\n'
+                'score([PLAN:"plain", "hex"], [AC:10..12])'
+            ),
         )
-        self.assertEqual(spec.kind, "heatmap_scalar")
-        self.assertTrue(spec.probability_values)
+        plan = viewer.build_chart_plan(chart)
+        self.assertEqual(plan.kind, "best_strategy")
+        self.assertEqual(plan.width_class, PanelWidthClass.WIDE)
 
-    def test_comparison_of_unswept_distributions_uses_overlay_spec(self):
-        spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("d20")),
-            ("b", interpret_statement("d20 + 1")),
-        ])
-        self.assertEqual(spec.kind, "compare_bar")
+    def test_report_plan_packs_narrow_panels_two_up_and_wide_panels_full_row(self):
+        pending = ReportSpec()
+        from diceengine import report_append_chart
 
-    def test_comparison_of_scalar_sweeps_uses_line_overlay_spec(self):
-        spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)")),
-            ("b", interpret_statement("~(d20 >= [AC:10..12] -> 7 | 0)")),
-        ])
-        self.assertEqual(spec.kind, "compare_line")
-        self.assertEqual(spec.x_label, "AC")
-
-    def test_renderp_comparison_of_scalar_sweeps_uses_probability_overlay(self):
-        spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("(d20 >= [AC:10..12]) $ mean")),
-            ("b", interpret_statement("(d20 >= [AC:10..12]) $ mean")),
-        ], assume_probability=True)
-        self.assertEqual(spec.kind, "compare_line")
-        self.assertEqual(spec.x_label, "AC")
-        self.assertTrue(spec.probability_values)
-
-    def test_comparison_of_bernoulli_sweeps_uses_probability_overlay_spec(self):
-        spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("d20 >= [AC:10..12]")),
-            ("b", interpret_statement("d20 >= [AC:10..12]")),
-        ])
-        self.assertEqual(spec.kind, "compare_probability_line")
-        self.assertEqual(spec.x_label, "AC")
-
-    def test_comparison_of_distribution_sweeps_allows_unnamed_axes(self):
-        spec, _ = viewer.build_comparison_spec([
-            ("a", interpret_statement("d2 + [10..12]")),
-            ("b", interpret_statement("d2 + [10..12]")),
-        ])
-        self.assertEqual(spec.kind, "compare_distribution_line")
-        self.assertEqual(spec.x_label, "Sweep 1")
-
-    def test_comparison_rejects_incompatible_sweep_values(self):
-        with self.assertRaisesRegex(Exception, "matching sweep axis values"):
-            viewer.build_comparison_spec([
-                ("a", interpret_statement("~(d20 >= [AC:10..12] -> 5 | 0)")),
-                ("b", interpret_statement("~(d20 >= [AC:11..13] -> 7 | 0)")),
-            ])
-
-    def test_comparison_rejects_two_sweep_distribution_shapes(self):
-        with self.assertRaisesRegex(Exception, "one-sweep distribution results"):
-            viewer.build_comparison_spec([
-                ("a", interpret_statement("d20 + [AC:10..11] + [BONUS:1..2]")),
-                ("b", interpret_statement("d20 + [AC:10..11] + [BONUS:1..2]")),
-            ])
-
-    def test_render_rejects_unsupported_shape(self):
-        with self.assertRaisesRegex(Exception, "does not support this result shape yet"):
-            viewer.build_render_spec(interpret_statement("~([AC:10..11] + [BONUS:1..2] + [LEVEL:1..2])"))
+        pending = report_append_chart(pending, self.executor.r_auto(interpret_statement("d20")))
+        pending = report_append_chart(pending, self.executor.r_auto(interpret_statement("d6")))
+        pending = report_append_chart(
+            pending,
+            self.executor.r_wide(self.executor.r_auto(interpret_statement("~([AC:10..11] + [BONUS:1..2])"))),
+        )
+        plan = viewer.build_report_plan(pending)
+        self.assertEqual(len(plan.rows), 2)
+        self.assertEqual(len(plan.rows[0]), 2)
+        self.assertEqual(plan.rows[1][0].width_class, PanelWidthClass.WIDE)
 
 
-class ViewerBackendTest(unittest.TestCase):
-    def test_probability_bar_scales_to_percent_by_default(self):
-        result = interpret_statement("d2")
-        figure, ax = viewer.plt.subplots()
-        try:
-            viewer._plot_unswept_bar(ax, result)
-            heights = [patch.get_height() for patch in ax.patches]
-            self.assertEqual(heights, [50.0, 50.0])
-        finally:
-            viewer.plt.close(figure)
-
-    def test_probability_bar_can_use_raw_probabilities(self):
-        result = interpret_statement("d2")
-        figure, ax = viewer.plt.subplots()
-        try:
-            viewer._plot_unswept_bar(
-                ax,
-                result,
-                render_config=diceengine.RenderConfig(probability_mode="raw"),
+class FigureStructureTest(unittest.TestCase):
+    def test_compare_scalar_uses_direct_labels_without_legend_for_small_series_count(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor().r_compare(
+                interpret_statement('("A", ~(d20 >= [AC:10..12] -> 5 | 0))'),
+                interpret_statement('("B", ~(d20 >= [AC:10..12] -> 7 | 0))'),
+                x="AC",
             )
-            heights = [patch.get_height() for patch in ax.patches]
-            self.assertEqual(heights, [0.5, 0.5])
+        )
+        figure, ax = viewer.plt.subplots()
+        try:
+            viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
+            self.assertIsNone(ax.get_legend())
+            self.assertGreaterEqual(len(ax.texts), 2)
         finally:
             viewer.plt.close(figure)
 
-    def test_probability_scalar_bar_scales_values_to_percent(self):
-        result = interpret_statement("(d20 >= [AC:10..12]) $ mean")
+    def test_distribution_sweep_adds_colorbar(self):
+        plan = viewer.build_chart_plan(ChartSpec("auto", interpret_statement("d20 >= [AC:10..12]")))
         figure, ax = viewer.plt.subplots()
         try:
-            viewer._plot_scalar_bar(
-                ax,
-                result,
-                render_config=diceengine.RenderConfig(),
-                probability_values=True,
+            viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
+            self.assertEqual(len(figure.axes), 2)
+        finally:
+            viewer.plt.close(figure)
+
+    def test_render_report_outputs_png(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "report.png"
+            program = (
+                'r_title("Report")\n'
+                'r_compare(("A", ~(d20 >= [AC:10..12] -> 5 | 0)), ("B", ~(d20 >= [AC:10..12] -> 7 | 0)), x="AC")\n'
+                f'render(path="{output}")\n'
             )
-            for actual, expected in zip([patch.get_height() for patch in ax.patches], [55.0, 50.0, 45.0]):
-                self.assertAlmostEqual(actual, expected)
-        finally:
-            viewer.plt.close(figure)
-
-    def test_probability_heatmap_scales_scalar_values_to_percent(self):
-        result = interpret_statement("([AC:10..11] + [BONUS:1..2]) * 0.01")
-        figure, ax = viewer.plt.subplots()
-        try:
-            image = viewer._plot_scalar_heatmap(
-                ax,
-                result,
-                render_config=diceengine.RenderConfig(),
-                probability_values=True,
-            )
-            self.assertEqual(image.get_array().tolist(), [[11.0, 12.0], [12.0, 13.0]])
-        finally:
-            viewer.plt.close(figure)
-
-    def test_titled_figure_sets_window_title(self):
-        figure = viewer.plt.figure()
-        original_manager = getattr(figure.canvas, "manager", None)
-        mock_manager = mock.Mock()
-        figure.canvas.manager = mock_manager
-        try:
-            viewer._set_window_title(figure, "Hit chances")
-            mock_manager.set_window_title.assert_called_once_with("Hit chances")
-        finally:
-            figure.canvas.manager = original_manager
-            viewer.plt.close(figure)
-
-    def test_multiple_figures_still_set_window_title(self):
-        figure = viewer.plt.figure()
-        original_manager = getattr(figure.canvas, "manager", None)
-        mock_manager = mock.Mock()
-        figure.canvas.manager = mock_manager
-        try:
-            with mock.patch.object(viewer.plt, "get_fignums", return_value=[1, 2]):
-                viewer._set_window_title(figure, "Hit chances")
-            mock_manager.set_window_title.assert_called_once_with("Hit chances")
-        finally:
-            figure.canvas.manager = original_manager
-            viewer.plt.close(figure)
-
-    def test_qtagg_is_treated_as_interactive_backend(self):
-        figure = viewer.plt.figure()
-        try:
-            with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
-                with mock.patch.object(viewer.plt, "show") as show:
-                    with mock.patch.object(viewer.plt, "close") as close:
-                        output_path = viewer._show_figure(figure)
-            self.assertIsNone(output_path)
-            show.assert_called_once()
-            close.assert_called_once_with(figure)
-        finally:
-            viewer.plt.close(figure)
-
-    def test_qtagg_can_render_non_blocking(self):
-        figure = viewer.plt.figure()
-        try:
-            with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
-                with mock.patch.object(viewer.plt, "show") as show:
-                    with mock.patch.object(viewer.plt, "pause") as pause:
-                        with mock.patch.object(viewer.plt, "close") as close:
-                            output_path = viewer._show_figure(
-                                figure,
-                                render_config=diceengine.RenderConfig(
-                                    interactive_blocking=False
-                                ),
-                            )
-            self.assertIsNone(output_path)
-            show.assert_called_once_with(block=False)
-            pause.assert_called_once_with(0.001)
-            close.assert_not_called()
-        finally:
-            viewer.plt.close(figure)
-
-    def test_wait_for_rendered_figures_blocks_until_close_in_deferred_mode(self):
-        figure = viewer.plt.figure()
-        try:
-            with mock.patch.object(viewer.plt, "get_backend", return_value="QtAgg"):
-                with mock.patch.object(viewer.plt, "get_fignums", return_value=[figure.number]):
-                    with mock.patch.object(viewer.plt, "show") as show:
-                        viewer.wait_for_rendered_figures(
-                            render_config=diceengine.RenderConfig.from_mode("deferred")
-                        )
-            show.assert_called_once_with()
-        finally:
-            viewer.plt.close(figure)
-
-    def test_render_bar_uses_percent_probability_axis_label_by_default(self):
-        result = interpret_statement("d2")
-        figure, ax = viewer.plt.subplots()
-        try:
-            with mock.patch.object(viewer.plt, "subplots", return_value=(figure, ax)):
-                with mock.patch.object(viewer, "_show_figure", return_value=None):
-                    viewer.render_result(result)
-            self.assertEqual(ax.get_ylabel(), "Probability (%)")
-        finally:
-            viewer.plt.close(figure)
-
-    def test_render_bar_can_use_raw_probability_axis_label(self):
-        result = interpret_statement("d2")
-        figure, ax = viewer.plt.subplots()
-        try:
-            with mock.patch.object(viewer.plt, "subplots", return_value=(figure, ax)):
-                with mock.patch.object(viewer, "_show_figure", return_value=None):
-                    viewer.render_result(
-                        result,
-                        render_config=diceengine.RenderConfig(probability_mode="raw"),
-                    )
-            self.assertEqual(ax.get_ylabel(), "Probability")
-        finally:
-            viewer.plt.close(figure)
+            result = interpret_file(program)
+            self.assertEqual(result, str(output))
+            self.assertTrue(output.exists())
 
 
 if __name__ == "__main__":

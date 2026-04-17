@@ -79,7 +79,7 @@ class LexerWhitespaceTest(unittest.TestCase):
         self.assertEqual(tokens("sum(3, d6)"), [(ID, "sum"), ("LPAREN", "("), (INTEGER, 3), ("COMMA", ","), (ROLL, "d"), (INTEGER, 6), ("RPAREN", ")")])
 
     def test_render_name_tokenizes_as_identifier(self):
-        self.assertEqual(tokens('render(d20, "hit")'), [(ID, "render"), ("LPAREN", "("), (ROLL, "d"), (INTEGER, 20), ("COMMA", ","), (STRING, "hit"), ("RPAREN", ")")])
+        self.assertEqual(tokens('render(path="hit.png")'), [(ID, "render"), ("LPAREN", "("), (ID, "path"), ("ASSIGN", "="), (STRING, "hit.png"), ("RPAREN", ")")])
 
     def test_pipeline_tokenizes(self):
         self.assertEqual(tokens("d20 $ mean"), [(ROLL, "d"), (INTEGER, 20), (PIPE, "$"), (ID, "mean")])

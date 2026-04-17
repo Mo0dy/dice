@@ -51,6 +51,7 @@ from diceengine import (
     SweepValues,
     FiniteMeasure,
     Distribution,
+    ChartSpec,
     TupleValue,
     RecordValue,
     PROBABILITY_TOLERANCE,
@@ -504,6 +505,52 @@ class Interpreter:
 
     def _bind_call_arguments(self, entry, args, node=None):
         if entry.variadic:
+            if getattr(entry, "variadic_keyword_arguments", False):
+                positional_values = []
+                keyword_values = {}
+                parameter_indexes = {parameter.name: parameter for parameter in getattr(entry, "parameters", ())}
+                saw_keyword = False
+                for arg in args:
+                    if arg.name is None:
+                        if saw_keyword:
+                            self.exception(
+                                "positional arguments cannot follow keyword arguments",
+                                node=arg,
+                                hint=self._call_hint(entry),
+                            )
+                        positional_values.append(self.visit(arg.value))
+                        continue
+
+                    saw_keyword = True
+                    keyword = arg.name.value
+                    parameter = parameter_indexes.get(keyword)
+                    if parameter is None:
+                        self.exception(
+                            "function {} got an unknown keyword argument {}".format(entry.name, keyword),
+                            node=arg,
+                            hint=self._call_hint(entry),
+                        )
+                    if keyword in keyword_values:
+                        self.exception(
+                            "function {} got multiple values for argument {}".format(entry.name, keyword),
+                            node=arg,
+                            hint=self._call_hint(entry),
+                        )
+                    keyword_values[keyword] = self.visit(arg.value)
+
+                for parameter in getattr(entry, "parameters", ()):
+                    if parameter.name in keyword_values:
+                        continue
+                    if parameter.has_default:
+                        keyword_values[parameter.name] = self._resolve_default_argument(entry, parameter)
+                        continue
+                    self.exception(
+                        "function {} missing required argument {}".format(entry.name, parameter.name),
+                        node=node,
+                        hint=self._call_hint(entry),
+                    )
+                return positional_values, keyword_values
+
             for arg in args:
                 if arg.name is not None:
                     self.exception(
@@ -589,6 +636,9 @@ class Interpreter:
             self.call_stack.pop()
 
     def _call_host_function(self, entry, values):
+        if entry.variadic and getattr(entry, "variadic_keyword_arguments", False):
+            positional_values, keyword_values = values
+            return self._validate_runtime_value(entry.function(*positional_values, **keyword_values))
         return self._validate_runtime_value(entry.function(*values))
 
     def _parse_imported_source(self, resolved_path):
@@ -634,7 +684,14 @@ class Interpreter:
             for n in node.nodes:
                 if type(n).__name__ == "FunctionDef":
                     continue
-                last_result = self.visit(n)
+                statement_result = self.visit(n)
+                if isinstance(statement_result, ChartSpec) and not (
+                    type(n).__name__ == "BinOp" and n.op.type == ASSIGN
+                ):
+                    self.executor.append_chart(statement_result)
+                    last_result = None
+                    continue
+                last_result = statement_result
             return last_result
         self.exception("{} not implemented".format(node), node=node)
 

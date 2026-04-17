@@ -64,6 +64,6 @@ That implementation still exists in git history (`git show HEAD:preprocessor.py`
 
 ## Rendering Layer
 
-Rendering is now centered on declarative `render(...)` statements in the language.
+Rendering is now centered on stateful `r_*` spec builders plus `render(...)` as the final flush/export step.
 
 `viewer.py` renders runtime `Distributions` directly and chooses a chart shape from the result structure instead of parsing textual dict output.

@@ -9,4 +9,6 @@ paladin_smite_strike = paladin_smite(17, 8, 4, slot_level=3)
 warlock_round = agonizing_eldritch_blast_by_level(15, 7, 4, level=11)
 wizard_blast = fireball(15, 2, slot_level=3)
 
-render(fighter_longsword, "Longsword", greatsword_gwf, "Greatsword (GWF)", paladin_smite_strike, "Paladin smite", warlock_round, "Agonizing blast", wizard_blast, "Fireball", "Damage", "Combat damage profiles")
+r_title("Combat damage profiles")
+r_hero(r_compare(("Longsword", fighter_longsword), ("Greatsword (GWF)", greatsword_gwf), ("Paladin smite", paladin_smite_strike), ("Agonizing blast", warlock_round), ("Fireball", wizard_blast), x="Damage"))
+render()

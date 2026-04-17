@@ -51,9 +51,10 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 - reducer `axes` may be omitted to reduce across all sweep axes, or passed as one axis ref or a tuple such as `"PLAN"`, `0`, or `("PLAN", "LEVEL")`.
 - `argmaxover(...)` returns coordinate records such as `(PLAN: "gwm")` or `(PLAN: "gwm", LEVEL: 11)`, and those records can be fed back into `expr[...]`.
 - `total(expr)` is shorthand for `sumover(...)` when `expr` has exactly one named sweep axis.
-- `render(expr)` renders one result with smart defaults.
-- `renderp(expr)` renders one result and treats scalar y-values as probabilities.
-- `render(expr1, "label1", expr2, "label2")` compares multiple compatible results.
+- `r_auto(expr, x="...")`, `r_dist(expr, x="...")`, `r_cdf(expr, x="...")`, and `r_surv(expr, x="...")` build chart specs.
+- `r_compare(("Label", expr), ...)`, `r_diff(("A", expr), ("B", expr), ...)`, and `r_best(expr, ...)` build comparison and strategy chart specs.
+- `r_title("...")`, `r_note("...")`, `r_hero(spec)`, and `r_row(spec1, spec2)` build the pending report.
+- `render(path=..., format="png", dpi=...)` flushes the pending report to output and resets report state.
 - `expr $ f` passes `expr` as the first argument to `f`.
 - `expr $ f(a, b)` passes `expr` as the first argument to `f(expr, a, b)`.
 - `import "path/to/file"` loads another dice file once. Relative paths resolve from the importing file, absolute paths resolve from the filesystem root, and `std:...` resolves from dice's packaged standard library. When the target is a `.dice` file, the extension is optional.
@@ -148,8 +149,8 @@ AC/BONUS   1   2
       11  12  13
 ```
 
-Use `render(...)` in a program when you want a graph instead of text output.
-CLI script execution uses deferred rendering by default: each `render(...)` call opens a figure without blocking, then `dice.py --file ...` waits for all open figures to close before exiting.
+Use the `r_*` helpers plus `render(...)` in a program when you want graphs instead of text output.
+CLI script execution uses deferred rendering by default: each `render(...)` call flushes one pending report, then `dice.py --file ...` waits for all open figures to close before exiting.
 
 Example rendering program:
 
@@ -158,7 +159,7 @@ python3 dice.py --file path/to/plot.dice
 ```
 
 ```text
-renderp(d20 >= [AC:10..20] -> 5 | 0 $ mean)
+r_title("Hit chance"); r_auto((d20 >= [AC:10..20] -> 5 | 0) $ mean, x="AC"); render()
 ```
 
 ## Functions
@@ -194,7 +195,7 @@ sumover([party:1, 2, 3], "party")
 meanover(d2 + [bonus:0, 1], "bonus")
 ([PLAN:1, 2] + [AC:10, 11])["AC", "PLAN"]
 total([party:1, 2, 3])
-renderp(d20 >= [AC:10..20] -> 5 | 0 $ mean)
+r_title("Hit chance"); r_auto((d20 >= [AC:10..20] -> 5 | 0) $ mean, x="AC"); render()
 ```
 
 ## Split
@@ -252,22 +253,18 @@ Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also prese
 
 ## Rendering
 
-- `render(expr)` renders one expression result immediately.
-- `renderp(expr)` renders one expression and forces scalar y-values to use probability formatting.
-- `render(expr, "axis label", "title")` renders one expression, overrides the x-axis label, and sets the figure title.
-- `renderp(expr, "axis label", "title")` does the same with probability formatting.
-- `render(expr1, "a", expr2, "b")` compares multiple compatible results on one chart.
-- `render(expr1, "a", expr2, "b", "axis label", "title")` compares multiple results, overrides the x-axis label, and sets the figure title.
-- `renderp(expr1, "a", expr2, "b", "axis label", "title")` does the same with probability formatting.
+- `r_auto(expr, x="...", title="...")` builds a chart spec with smart defaults.
+- `r_dist(expr, x="...", title="...")`, `r_cdf(...)`, and `r_surv(...)` build explicit distribution views.
+- `r_compare(("a", expr1), ("b", expr2), x="...", title="...")` builds a labeled comparison chart spec.
+- `r_diff(("a", expr1), ("b", expr2), x="...", title="...")` builds a delta comparison chart spec.
+- `r_best(expr, title="...")` builds a strategy winner/margin chart spec for suitable sweeps.
+- bare top-level chart specs append themselves to the pending report in source order.
+- `r_title("...")`, `r_note("...")`, `r_hero(spec)`, and `r_row(...)` shape the pending report explicitly.
+- `render(path=..., format="png", dpi=...)` flushes the current pending report and resets state.
 - `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` switch render behavior inside dice programs.
 - `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
-- Axis labels come from named sweeps like `[AC:10..20]`.
-- Unnamed sweeps still render, but use fallback axis labels.
-- Comparison renders align one-sweep results by their sweep values; matching names help with labels but are not required.
-- `render(...)` still treats true distributions as probabilities automatically.
-- render probability displays default to percentages.
-- Supported quick-render shapes are:
-  unswept distributions, one-sweep scalar results, one-sweep full distributions, and two-sweep scalar results.
+- Axis labels still come from named sweeps like `[AC:10..20]` unless explicitly overridden.
+- Quick-render planning currently supports unswept distributions, one-sweep scalar results, one-sweep distribution sweeps, and two-sweep scalar heatmaps.
 
 ## Python Integration
 
@@ -280,7 +277,9 @@ from diceengine import Distribution, FiniteMeasure, Sweep, greaterorequal, rolls
 session = dice_interpreter()
 result = session("d20 >= [AC:10..12] -> 5 | 0")
 session.assign("cached", result)
-session("render(cached)")
+session('r_title("Cached")')
+session("r_auto(cached)")
+session("render()")
 
 @dicefunction
 def add_two(value):
@@ -331,7 +330,7 @@ d2 ^ 3
 sumover([party:1, 2, 3], "party")
 argmaxover([PLAN:1, 2] + [AC:10, 11], "PLAN")
 total([party:1, 2, 3])
-render(d20)
+r_title("d20"); r_auto(d20); render()
 add(1, 1)
 greaterorequal(d20, 11)
 rollhigh(3, 20, 1)

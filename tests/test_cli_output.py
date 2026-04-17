@@ -305,7 +305,7 @@ class CliMainIntegrationTest(unittest.TestCase):
     def test_main_waits_for_rendered_figures_after_file_execution(self):
         with tempfile.TemporaryDirectory() as tempdir:
             path = Path(tempdir) / "plot.dice"
-            path.write_text('render(d20, "Roll", "Title")\n', encoding="utf-8")
+            path.write_text('r_title("Title")\nr_auto(d20)\nrender()\n', encoding="utf-8")
             with mock.patch.object(sys, "argv", ["dice.py", "--file", str(path)]):
                 with mock.patch("dice.wait_for_rendered_figures") as wait_for_rendered_figures:
                     with mock.patch("sys.stdout", new=io.StringIO()):
@@ -318,7 +318,7 @@ class CliMainIntegrationTest(unittest.TestCase):
     def test_main_honors_script_render_mode_toggle(self):
         with tempfile.TemporaryDirectory() as tempdir:
             path = Path(tempdir) / "plot.dice"
-            path.write_text('set_render_mode("blocking")\nrender(d20, "Roll", "Title")\n', encoding="utf-8")
+            path.write_text('set_render_mode("blocking")\nr_title("Title")\nr_auto(d20)\nrender()\n', encoding="utf-8")
             with mock.patch.object(sys, "argv", ["dice.py", "--file", str(path)]):
                 with mock.patch("dice.wait_for_rendered_figures") as wait_for_rendered_figures:
                     with mock.patch("sys.stdout", new=io.StringIO()):
