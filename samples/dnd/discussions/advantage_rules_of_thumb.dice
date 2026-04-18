@@ -1,0 +1,14 @@
+# Recreate the memorable advantage/disadvantage facts from
+# https://www.reddit.com/r/dndnext/comments/labqox/some_helpful_probability_rules_of_thumb_for/
+
+metric_value(metric):
+    split metric as name
+    | name == "nat20_plain" -> (d20 == 20) $ mean
+    | name == "nat20_adv" -> (d+20 == 20) $ mean
+    | name == "nat1_adv" -> (d+20 == 1) $ mean
+    | name == "at_least_15_adv" -> (d+20 >= 15) $ mean
+    | name == "at_least_7_adv" -> (d+20 >= 7) $ mean
+    | name == "nat1_disadv" -> (d-20 == 1) $ mean
+    | otherwise -> (d-20 >= 15) $ mean
+
+metric_value([METRIC:"nat20_plain", "nat20_adv", "nat1_adv", "at_least_15_adv", "at_least_7_adv", "nat1_disadv", "at_least_15_disadv"])

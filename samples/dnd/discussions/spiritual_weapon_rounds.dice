@@ -1,0 +1,20 @@
+# Compare round-by-round damage from Spiritual Weapon + Sacred Flame
+# against Guiding Bolt on round 1 followed by Sacred Flame.
+#
+# This intentionally does not try to price Guiding Bolt's granted advantage
+# on a later ally attack; it stays on the caster's direct damage only.
+
+import "std:dnd/spells.dice"
+
+flame_round(): sacred_flame(15, 2, level=5) $ mean
+weapon_round():
+    swing = spiritual_weapon_attack(16, 7, 4) $ mean
+    swing + flame_round()
+bolt_open_round(): guiding_bolt(16, 7, slot_level=2) $ mean
+
+plan_value(plan, round):
+    split plan as name
+    | name == "spiritual_weapon" -> weapon_round() * round
+    | otherwise -> split round | == 1 -> bolt_open_round() | otherwise -> bolt_open_round() + flame_round() * (@ - 1)
+
+plan_value([PLAN:"spiritual_weapon", "guiding_bolt"], [ROUND:1..6])

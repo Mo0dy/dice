@@ -1,0 +1,109 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": "METRIC",
+      "values": [
+        "standard_agonizing_eb",
+        "quickened_agonizing_eb",
+        "single_fireball",
+        "double_fireball_action_surge",
+        "fighter_two_attacks",
+        "fighter_hasted_three_attacks"
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "standard_agonizing_eb"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 17.925000000000022,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "quickened_agonizing_eb"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 35.850000000000044,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "single_fireball"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 22.299999999999997,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "double_fireball_action_surge"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 44.599999999999994,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "fighter_two_attacks"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 10.649999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "fighter_hasted_three_attacks"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 15.974999999999998,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

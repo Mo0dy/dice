@@ -157,6 +157,15 @@ DND_CASES = (
     ),
     _case(
         "at_table",
+        "hunters_mark_hand_crossbow_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        hunters_mark_hand_crossbow(16, 7, 4)
+        """,
+    ),
+    _case(
+        "at_table",
         "ice_knife_first_level",
         """
         import "std:dnd/spells.dice"
@@ -202,11 +211,29 @@ DND_CASES = (
     ),
     _case(
         "at_table",
+        "hand_crossbow_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        hand_crossbow_attack(16, 7, 4)
+        """,
+    ),
+    _case(
+        "at_table",
         "magic_missile",
         """
         import "std:dnd/spells.dice"
 
         magic_missile(3)
+        """,
+    ),
+    _case(
+        "at_table",
+        "polearm_master_attack",
+        """
+        import "std:dnd/weapons.dice"
+
+        polearm_master_attack(16, 6, 4)
         """,
     ),
     _case(
@@ -270,6 +297,15 @@ DND_CASES = (
         import "std:dnd/spells.dice"
 
         spirit_guardians(15, 2, slot_level=3)
+        """,
+    ),
+    _case(
+        "at_table",
+        "spiritual_weapon_attack",
+        """
+        import "std:dnd/spells.dice"
+
+        spiritual_weapon_attack(16, 6, 4)
         """,
     ),
     _case(
@@ -435,6 +471,15 @@ DND_CASES = (
     ),
     _case(
         "analysis",
+        "polearm_master_vs_ac",
+        """
+        import "std:dnd/weapons.dice"
+
+        ~polearm_master_attack([10..22], 6, 4)
+        """,
+    ),
+    _case(
+        "analysis",
         "inflict_wounds_vs_ac",
         """
         import "std:dnd/spells.dice"
@@ -476,6 +521,15 @@ DND_CASES = (
         import "std:dnd/spells.dice"
 
         ~sacred_flame(15, [0..9], level=11)
+        """,
+    ),
+    _case(
+        "analysis",
+        "spiritual_weapon_vs_ac",
+        """
+        import "std:dnd/spells.dice"
+
+        ~spiritual_weapon_attack([10..22], 6, 4)
         """,
     ),
     _case(

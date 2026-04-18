@@ -1,0 +1,109 @@
+{
+  "axes": [
+    {
+      "key": "sweep_2",
+      "name": "METRIC",
+      "values": [
+        "mean_2d6",
+        "mean_2d6_gwf",
+        "delta_2d6",
+        "mean_1d12",
+        "mean_1d12_gwf",
+        "delta_1d12"
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "mean_2d6"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 6.999999999999999,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "mean_2d6_gwf"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 8.333333333333332,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "delta_2d6"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 1.333333333333333,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "mean_1d12"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 6.5,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "mean_1d12_gwf"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 7.333333333333332,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_2",
+          "axis_name": "METRIC",
+          "value": "delta_1d12"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.8333333333333321,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

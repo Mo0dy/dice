@@ -1,0 +1,125 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": "METRIC",
+      "values": [
+        "nat20_plain",
+        "nat20_adv",
+        "nat1_adv",
+        "at_least_15_adv",
+        "at_least_7_adv",
+        "nat1_disadv",
+        "at_least_15_disadv"
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "nat20_plain"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.05,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "nat20_adv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.0975,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "nat1_adv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.0025000000000000005,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "at_least_15_adv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.5100000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "at_least_7_adv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.9100000000000001,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "nat1_disadv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.0975,
+          "probability": 1.0
+        }
+      ]
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "METRIC",
+          "value": "at_least_15_disadv"
+        }
+      ],
+      "distribution": [
+        {
+          "outcome": 0.09000000000000001,
+          "probability": 1.0
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}

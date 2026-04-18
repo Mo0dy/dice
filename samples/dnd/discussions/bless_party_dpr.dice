@@ -1,0 +1,20 @@
+# Quantify Bless as a party DPR amplifier across AC.
+
+import "std:dnd/weapons.dice"
+import "std:dnd/spells.dice"
+
+fighter(ac, hit_bonus=0): fighter_attack_action(2, ac, 7, 4, hit_bonus=hit_bonus) $ mean
+ranger(ac, hit_bonus=0): longbow_attack(ac, 9, 4, hit_bonus=hit_bonus) $ mean
+warlock(ac, hit_bonus=0): agonizing_eldritch_blast_by_level(ac, 7, 4, level=11, hit_bonus=hit_bonus) $ mean
+
+party_plain(ac): fighter(ac) + ranger(ac) + warlock(ac)
+party_blessed(ac): fighter(ac, d4) + ranger(ac, d4) + warlock(ac, d4)
+party_hit_cap(): (((1 d 8 + 4) ^ 2) $ mean) + ((1 d 8 + 4) $ mean) + (((d10 + 4) ^ 3) $ mean)
+
+measure_value(measure, ac):
+    split measure as name
+    | name == "plain" -> party_plain(ac)
+    | name == "blessed" -> party_blessed(ac)
+    | otherwise -> (party_blessed(ac) - party_plain(ac)) / (party_hit_cap() - party_plain(ac))
+
+measure_value([MEASURE:"plain", "blessed", "gap_closed"], [AC:10..22])

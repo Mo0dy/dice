@@ -14,6 +14,7 @@ These are user-facing example programs built on `stdlib/dnd`.
 - `magic_missile_vs_slot.dice`: show exact magic missile scaling by slot level
 - `martial_tradeoffs.dice`: compare blessing, fighting styles, power attacks, and mark effects across AC
 - `spell_slot_showdown.dice`: compare how common spells scale as slot level rises
+- `discussions/`: recreate online D&D math discussions as exact `dice` sample programs, including feat tradeoffs, action-economy break-even points, and concentration edge cases
 
 The thin one-scenario regression fixtures that used to live here now belong under `tests/`.
 The goal of this directory is readability: each file should be substantial enough to show how

@@ -1,0 +1,63 @@
+{
+  "axes": [],
+  "cells": [
+    {
+      "coordinates": [],
+      "distribution": [
+        {
+          "outcome": 0,
+          "probability": 0.39999999999999997
+        },
+        {
+          "outcome": 5,
+          "probability": 0.09166666666666666
+        },
+        {
+          "outcome": 6,
+          "probability": 0.09305555555555554
+        },
+        {
+          "outcome": 7,
+          "probability": 0.09444444444444444
+        },
+        {
+          "outcome": 8,
+          "probability": 0.09583333333333333
+        },
+        {
+          "outcome": 9,
+          "probability": 0.09722222222222221
+        },
+        {
+          "outcome": 10,
+          "probability": 0.09861111111111111
+        },
+        {
+          "outcome": 11,
+          "probability": 0.008333333333333335
+        },
+        {
+          "outcome": 12,
+          "probability": 0.006944444444444445
+        },
+        {
+          "outcome": 13,
+          "probability": 0.005555555555555556
+        },
+        {
+          "outcome": 14,
+          "probability": 0.004166666666666667
+        },
+        {
+          "outcome": 15,
+          "probability": 0.002777777777777778
+        },
+        {
+          "outcome": 16,
+          "probability": 0.001388888888888889
+        }
+      ]
+    }
+  ],
+  "type": "distributions"
+}
