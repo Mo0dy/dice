@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run the Hexed Scorching Ray benchmark across exact and sampled backends."""
+"""Run the Chaos Bolt chain benchmark across exact and sampled backends."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ if __package__ in (None, ""):
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from benchmarks import common
-    from benchmarks.hexed_scorching_ray import exact_dice, plotting, python_numpy, python_random_baseline, workload
+    from benchmarks.chaos_bolt_chain import exact_dice, plotting, python_numpy, python_random_baseline, workload
 else:
     from benchmarks import common
     from . import exact_dice, plotting, python_numpy, python_random_baseline, workload
@@ -64,7 +64,7 @@ def validate_backend(exact_sweep, backend_name: str, config: BenchmarkConfig) ->
         exact = exact_sweep.cells[coordinate]
         mean_error = abs(exact.average() - common.distribution_mean(sampled))
         tvd = common.total_variation_distance(exact, sampled)
-        if mean_error > 0.35 or tvd > 0.075:
+        if mean_error > 0.6 or tvd > 0.10:
             failures.append((coordinate, mean_error, tvd))
     if failures:
         lines = ["validation failed for backend {}".format(backend_name)]
@@ -141,22 +141,25 @@ def parse_args() -> BenchmarkConfig:
 def main() -> None:
     config = parse_args()
 
-    print("Benchmark: hexed/blessed Scorching Ray sweep")
+    print("Benchmark: Chaos Bolt chain sweep")
     print("Axis order: {}".format(", ".join(workload.AXIS_ORDER)))
     print(
-        "Cells: {} (slots={} modes={} attack_bonuses={} bless_states={} ac_values={})".format(
+        "Cells: {} (slots={} modes={} attack_bonuses={} bless_states={} target_counts={} ac_values={})".format(
             len(workload.SLOTS)
             * len(workload.MODES)
             * len(workload.ATTACK_BONUSES)
             * len(workload.BLESS_VALUES)
+            * len(workload.TARGET_COUNTS)
             * len(workload.ACS),
             len(workload.SLOTS),
             len(workload.MODES),
             len(workload.ATTACK_BONUSES),
             len(workload.BLESS_VALUES),
+            len(workload.TARGET_COUNTS),
             len(workload.ACS),
         )
     )
+    print("Exact benchmark mode: representative+validation probes")
     print("Sampled backends: {}".format(", ".join(config.backends)))
     print(
         "Python sample counts per cell: {}".format(
@@ -171,18 +174,11 @@ def main() -> None:
             )
         )
 
+    exact_coordinates = tuple(dict.fromkeys(workload.VALIDATION_CELLS + workload.REPRESENTATIVE_CELLS))
     exact_start = perf_counter()
-    exact_sweep = exact_dice.evaluate_exact_sweep()
+    exact_sweep = exact_dice.evaluate_coordinates(exact_coordinates)
     exact_elapsed = perf_counter() - exact_start
-    actual_axis_order = tuple(axis.name for axis in exact_sweep.axes)
-    if actual_axis_order != workload.AXIS_ORDER:
-        raise SystemExit(
-            "unexpected exact axis order {} (expected {})".format(
-                actual_axis_order,
-                workload.AXIS_ORDER,
-            )
-        )
-    print("Exact sweep time: {:.3f}s".format(exact_elapsed))
+    print("Exact probe time: {:.3f}s for {} coordinates".format(exact_elapsed, len(exact_coordinates)))
 
     if not config.skip_validation:
         for backend_name in config.backends:
@@ -214,7 +210,6 @@ def main() -> None:
             sampled_runs[label] = sampled_sweep
 
             print("Sampled sweep time ({}): {:.3f}s".format(label, sampled_elapsed))
-            print("Sampled / exact slowdown ({}): {:.2f}x".format(label, sampled_elapsed / exact_elapsed))
             print("Representative cells ({}):".format(label))
             for line in common.summarize_cells(exact_sweep, sampled_sweep, workload.REPRESENTATIVE_CELLS):
                 print("  " + line)

@@ -1,4 +1,4 @@
-"""Plotting helpers for benchmark comparisons."""
+"""Plotting helpers for Chaos Bolt chain benchmark comparisons."""
 
 from __future__ import annotations
 

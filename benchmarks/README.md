@@ -8,11 +8,18 @@ Current benchmark workloads:
 - `hexed_scorching_ray`
   A deep D&D damage sweep used to compare the exact `dice` runtime against
   Monte Carlo implementations.
+- `chaos_bolt_chain`
+  A bounded multi-target Chaos Bolt cascade with repeated attack rolls,
+  conditional jumps, and deeper roll-dependent stop logic.
 
 Recommended entry point:
 
 ```bash
 python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py --backend numpy --sample-counts 4000 16000 256000
+```
+
+```bash
+python3 /home/felix/_Documents/Projects/dice/benchmarks/chaos_bolt_chain/run.py --backend numpy --sample-counts 4000 16000
 ```
 
 Notes:
