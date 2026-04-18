@@ -56,6 +56,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - When adding standard-library builtins, define them in `diceengine.py` and register them through `executor.py` so dice and Python use the same callable surface.
 - For import behavior, keep resolution relative to the importing file and prefer explicit runtime syntax over hidden preprocessing.
 - For semantic changes, check `diceengine.py` first; most exact operator and callable behavior lives there.
+- Multiline functions are part of the active language surface; prefer them over dense one-line functions when samples or stdlib helpers need local bindings, repeated subexpressions, or multi-step logic.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.
 - Prefer `README.md` for current tested examples and `scripts/` / `notes.org` for older intent or design history.
 - `dnd-sources/` is local convenience/reference material for development only. Do not treat it as repository content to quote, mirror, import into user-facing docs, or mention from the library/tests/samples unless the user explicitly asks for that provenance.

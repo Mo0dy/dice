@@ -88,3 +88,5 @@ End with a list of all language features similar to what we have now) and a link
 
 /home/felix/_Documents/Projects/dice/samples/dnd/spell_slot_showdown.dice
 - Same as above
+
+# Evaluate Python / report interop (it should be easy to modify existing rendered reports / the report spec based rendering from python).
