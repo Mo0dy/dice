@@ -88,9 +88,35 @@ class FunctionTest(unittest.TestCase):
         result = only_distribution(interpret_file("double_inc(x):\n    y = x + 1\n    y * 2\ndouble_inc(3)"))
         self.assertEqual(result[8], 1)
 
+    def test_multiline_function_body_can_end_with_split_on_following_line(self):
+        result = only_distribution(
+            interpret_file(
+                "chaos_strike(leap_damage):\n"
+                "    roll = d20\n"
+                "    hit_bonus = 0\n"
+                "    split roll as attack_roll\n"
+                "    | attack_roll == 1 -> 0\n"
+                "    | attack_roll == 20 -> 1\n"
+                "    | attack_roll + 7 + hit_bonus >= 13 -> 2\n"
+                "    ||\n"
+                "chaos_strike(0)"
+            )
+        )
+        self.assertAlmostEqual(result[0], 0.25)
+        self.assertAlmostEqual(result[1], 0.05)
+        self.assertAlmostEqual(result[2], 0.7)
+
     def test_local_rebinding_is_allowed_inside_function_body(self):
         result = only_distribution(interpret_file("rebind(x):\n    x = x + 1\n    x = x * 2\n    x\nrebind(3)"))
         self.assertEqual(result[8], 1)
+
+    def test_reserved_operator_name_is_rejected_as_parameter(self):
+        with self.assertRaisesRegex(Exception, r"reserved name 'd' cannot be used as a parameter name"):
+            interpret_file("f(a, b, c, d): a + b + c + d\nf(1, 2, 3, 4)")
+
+    def test_reserved_operator_name_is_rejected_as_assignment_target(self):
+        with self.assertRaisesRegex(Exception, r"reserved name 'd' cannot be used as an assignment target"):
+            interpret_file("d = 4\nd")
 
     def test_keyword_arguments_work_for_dsl_functions(self):
         result = only_distribution(interpret_file("sum2(a, b): a + b\nsum2(b=4, a=3)"))

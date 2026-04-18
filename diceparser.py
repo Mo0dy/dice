@@ -215,7 +215,7 @@ class Parser(object):
         ) = state
 
     def eat_match_separators(self):
-        while self.current_token.type == SEMI and self.peek_token.type in [SEMI, ELSE]:
+        while self.current_token.type == SEMI and self.peek_token.type in [SEMI, ELSE, SPLITZERO]:
             self.eat(SEMI)
 
 
@@ -253,6 +253,8 @@ class DiceParser(Parser):
         token = self.current_token
         self.eat(LBRACK)
         sweep_name = None
+        if self.current_token.type in (ROLL, HIGH, LOW) and self.peek_token.type == COLON:
+            self._reserved_name_context("a sweep axis name")
         if self.current_token.type == ID and self.peek_token.type == COLON:
             sweep_name = Val(self.current_token)
             self.eat(ID)
@@ -399,6 +401,37 @@ class DiceParser(Parser):
         self.eat(RBRACK)
         return SweepIndex(value, clauses, token)
 
+    def _reserved_name_context(self, context):
+        self.exception(
+            "reserved name {!r} cannot be used as {}".format(self.current_token.value, context),
+            token=self.current_token,
+            hint="Choose a different name; 'd', 'h', and 'l' are reserved operators.",
+        )
+
+    def _looks_like_function_header_text(self, text):
+        paren_index = text.find("(")
+        if paren_index == -1:
+            return False
+        depth = 0
+        in_string = False
+        for index in range(paren_index, len(text)):
+            char = text[index]
+            if char == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    index += 1
+                    while index < len(text) and text[index] in (" ", "\t"):
+                        index += 1
+                    return index < len(text) and text[index] == ":"
+        return False
+
     def primary(self):
         if self.current_token.type == LBRACK:
             return self.sweep_literal()
@@ -520,6 +553,8 @@ class DiceParser(Parser):
         if self.current_token.type == AS:
             explicit_binding = True
             self.eat(AS)
+            if self.current_token.type in (ROLL, HIGH, LOW):
+                self._reserved_name_context("a split binding name")
             if self.current_token.type != ID:
                 self.exception(
                     "expected an identifier after 'as'",
@@ -598,6 +633,8 @@ class DiceParser(Parser):
         return self.postfix(self.primary())
 
     def call_arg(self):
+        if self.current_token.type in (ROLL, HIGH, LOW) and self.peek_token.type == ASSIGN:
+            self._reserved_name_context("a keyword argument name")
         if self.current_token.type == ID and self.peek_token.type == ASSIGN:
             name = Val(self.current_token)
             self.eat(ID)
@@ -617,6 +654,8 @@ class DiceParser(Parser):
         return Call(name, args)
 
     def parameter(self):
+        if self.current_token.type in (ROLL, HIGH, LOW):
+            self._reserved_name_context("a parameter name")
         if self.current_token.type != ID:
             self.exception(
                 "expected a parameter name",
@@ -660,6 +699,8 @@ class DiceParser(Parser):
         self.eat_zero_or_more(SEMI)
         items = []
         while self.current_token.type != DEDENT:
+            if self.current_token.type in (ROLL, HIGH, LOW) and self.peek_token.type == ASSIGN:
+                self._reserved_name_context("a local assignment target")
             if self.current_token.type == ID and self.peek_token.type == ASSIGN:
                 name = Val(self.current_token)
                 self.eat(ID)
@@ -709,7 +750,14 @@ class DiceParser(Parser):
                 return None
             self.eat(COLON)
             return FunctionDef(Val(name_token), params, self.function_body(name_token))
-        except ParserError:
+        except ParserError as error:
+            header_text = "{}{}{}".format(
+                state[0].value or "",
+                state[1].value or "",
+                state[2],
+            )
+            if "reserved name" in error.message and self._looks_like_function_header_text(header_text):
+                raise
             self.restore(state)
             return None
 
@@ -801,6 +849,8 @@ class DiceParser(Parser):
             path = Val(self.current_token)
             self.eat(STRING)
             return Import(path, token)
+        if self.current_token.type in (ROLL, HIGH, LOW) and self.peek_token.type == ASSIGN:
+            self._reserved_name_context("an assignment target")
         if self.current_token.type == ID and self.peek_token.type == ASSIGN:
             token = self.current_token
             self.eat(ID)
