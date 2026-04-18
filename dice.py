@@ -354,6 +354,22 @@ def _handle_repl_command(text, state, interpreter):
         backend_name = interpreter.executor.set_render_backend(parts[1])
         state["render_backend"] = backend_name
         return "render_backend = {}".format(backend_name)
+    if parts[0] == "set_render_autoflush":
+        if len(parts) != 2:
+            raise InteractiveCommandError(
+                "set_render_autoflush expects exactly one mode argument"
+            )
+        autoflush_mode = interpreter.executor.set_render_autoflush(parts[1])
+        state["render_autoflush"] = autoflush_mode
+        return "render_autoflush = {}".format(autoflush_mode)
+    if parts[0] == "set_render_omit_dominant_zero":
+        if len(parts) != 2:
+            raise InteractiveCommandError(
+                "set_render_omit_dominant_zero expects exactly one mode argument"
+            )
+        zero_mode = interpreter.executor.set_render_omit_dominant_zero(parts[1])
+        state["render_omit_dominant_zero"] = zero_mode
+        return "render_omit_dominant_zero = {}".format(zero_mode)
     if parts[0] == "set_probability_mode":
         if len(parts) != 2:
             raise InteractiveCommandError(
@@ -508,6 +524,8 @@ def runinteractive(args):
         "roundlevel": args.roundlevel,
         "render_mode": interpreter.executor.render_config.mode_name(),
         "render_backend": interpreter.executor.render_config.backend,
+        "render_autoflush": "on" if interpreter.executor.render_config.auto_render_pending_on_exit else "off",
+        "render_omit_dominant_zero": "on" if interpreter.executor.render_config.omit_dominant_zero_outcome else "off",
         "probability_mode": _resolve_probability_mode(
             interpreter.executor.render_config.probability_mode,
             json_output=json_output,

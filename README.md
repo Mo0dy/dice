@@ -291,11 +291,13 @@ Axis labels usually come from named sweeps such as `[AC:10..20]`, but you can ov
 
 ### Output and render settings
 
-- `render(path=..., format="png", dpi=...)` writes the pending report and resets report state.
+- `render(path=..., format="png", dpi=...)` writes the pending report immediately and resets report state.
 - `path` is optional. Without it, dice writes to a temporary PNG path in headless mode.
 - `format` currently expects PNG output.
 - `dpi` controls raster export density.
 - `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` control how figures are shown.
+- `set_render_autoflush("on")` and `set_render_autoflush("off")` control whether pending charts auto-render at the end of a top-level program. The default is `on`.
+- `set_render_omit_dominant_zero("on")` and `set_render_omit_dominant_zero("off")` control whether unswept numeric plots can hide a dominant zero bar. The default is `on`.
 - `set_probability_mode("percent")` and `set_probability_mode("raw")` control probability-axis formatting.
 
 Current quick-render planning covers:

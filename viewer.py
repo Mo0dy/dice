@@ -519,7 +519,8 @@ def render_chart_on_axes(figure, axes, plan, render_config):
             subplots = np.array([subplots])
         for subplot, (label, result) in zip(subplots.flat, entries):
             subplan = build_chart_plan(
-                ChartSpec("auto", result, x_label=plan.x_label, y_label=plan.y_label, title=label)
+                ChartSpec("auto", result, x_label=plan.x_label, y_label=plan.y_label, title=label),
+                render_config=render_config,
             )
             render_chart_on_axes(figure, subplot, subplan, render_config)
         for subplot in subplots.flat[len(entries):]:
@@ -537,7 +538,7 @@ def render_chart(chart_spec, *, render_config=None, path=None, output_format="pn
     render_config = render_config if render_config is not None else RenderConfig()
     if (output_format or "png").strip().lower() != "png":
         raise Exception("render format must be png in report v1")
-    plan = build_chart_plan(chart_spec)
+    plan = build_chart_plan(chart_spec, render_config=render_config)
     if plan.kind == "best_strategy":
         figure, axes = plt.subplots(2, 1, figsize=(11.5, 6.6), gridspec_kw={"height_ratios": [1.3, 1.0]})
     elif plan.kind == "compare_faceted":
@@ -565,7 +566,7 @@ def render_report(report_spec, *, render_config=None, path=None, output_format="
     render_config = render_config if render_config is not None else RenderConfig()
     if (output_format or "png").strip().lower() != "png":
         raise Exception("render format must be png in report v1")
-    plan = build_report_plan(report_spec)
+    plan = build_report_plan(report_spec, render_config=render_config)
     row_count = len(plan.rows) + (1 if plan.hero is not None else 0)
     figure = plt.figure(figsize=(12.5, max(5.5, 2.2 + row_count * 3.8 + len(plan.notes) * 0.5)))
     outer_rows = row_count if row_count else 1

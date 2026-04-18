@@ -68,7 +68,7 @@ That implementation still exists in git history (`git show HEAD:preprocessor.py`
 
 ## Rendering Layer
 
-Rendering is now centered on stateful `r_*` spec builders plus `render(...)` as the final flush/export step.
+Rendering is now centered on stateful `r_*` spec builders. Pending charts auto-render at the end of a top-level program by default, and `render(...)` remains the explicit flush/export step when you want to control timing or write multiple reports.
 
 `viewer.py` renders runtime `Distributions` directly and chooses a chart shape from the result structure instead of parsing textual dict output.
 

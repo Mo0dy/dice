@@ -20,9 +20,20 @@ import viewer
 from dice import interpret_file, interpret_statement
 from diceengine import ChartSpec, PanelWidthClass, RenderConfig, ReportSpec
 from executor import ExactExecutor
+from interpreter import Interpreter
 
 
 class RenderRuntimeTest(unittest.TestCase):
+    def test_top_level_chart_autoflushes_at_end_of_program(self):
+        result = interpret_statement("r_auto(d20)")
+        self.assertIsInstance(result, str)
+        self.assertTrue(result.endswith(".png"))
+        self.assertTrue(os.path.exists(result))
+
+    def test_render_autoflush_can_be_disabled(self):
+        result = interpret_statement('set_render_autoflush("off"); r_auto(d20)')
+        self.assertIsNone(result)
+
     def test_top_level_chart_auto_appends_and_render_flushes(self):
         result = interpret_statement("r_auto(d20); render()")
         self.assertIsInstance(result, str)
@@ -54,14 +65,14 @@ class RenderRuntimeTest(unittest.TestCase):
 
     def test_json_backend_exports_distribution_hints(self):
         result = interpret_statement(
-            'r_title("Title"); r_dist((d20 >= 18 -> d8 | 0), x="Damage"); render()',
+            'r_title("Title"); r_dist((d20 >= 18 -> d8 | 0)); render()',
             render_config=RenderConfig(backend="json"),
         )
         payload = json.loads(result)
         hints = payload["report"]["rows"][0][0]["hints"]
         self.assertEqual([hint["kind"] for hint in hints], ["omit_outcome"])
         self.assertEqual(hints[0]["outcome"], 0)
-        self.assertIn("0 dmg omitted", hints[0]["note"])
+        self.assertIn("0 omitted from scale", hints[0]["note"])
 
     def test_json_backend_can_write_json_output(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -107,7 +118,12 @@ class RenderRuntimeTest(unittest.TestCase):
         self.assertTrue(result.endswith(".png"))
 
     def test_chart_constructors_accept_y_keyword(self):
-        chart = interpret_statement('r_auto(~([SLOT:1..3] * 2), x="Spell slot", y="Dmg")')
+        interpreter = Interpreter(None, render_config=RenderConfig(auto_render_pending_on_exit=False))
+        interpret_statement(
+            'chart = r_auto(~([SLOT:1..3] * 2), x="Spell slot", y="Dmg")',
+            interpreter=interpreter,
+        )
+        chart = interpreter.global_scope["chart"]
         self.assertEqual(chart.y_label, "Dmg")
 
 
@@ -142,13 +158,22 @@ class PlannerTest(unittest.TestCase):
         plan = viewer.build_chart_plan(
             ExactExecutor().r_dist(
                 interpret_statement("(d20 >= 18 -> d8 | 0)"),
-                x="Damage",
             )
         )
         omit_hints = [hint for hint in plan.hints if hint["kind"] == "omit_outcome"]
         self.assertEqual(len(omit_hints), 1)
         self.assertEqual(omit_hints[0]["outcome"], 0)
-        self.assertIn("0 dmg omitted", omit_hints[0]["note"])
+        self.assertIn("0 omitted from scale", omit_hints[0]["note"])
+
+    def test_dominant_zero_omit_hint_can_be_disabled(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor(render_config=RenderConfig(omit_dominant_zero_outcome=False)).r_dist(
+                interpret_statement("(d20 >= 18 -> d8 | 0)"),
+            ),
+            render_config=RenderConfig(omit_dominant_zero_outcome=False),
+        )
+        omit_hints = [hint for hint in plan.hints if hint["kind"] == "omit_outcome"]
+        self.assertEqual(omit_hints, [])
 
     def test_r_compare_scalar_sweeps_builds_compare_scalar_plan(self):
         chart = self.executor.r_compare(
@@ -228,7 +253,6 @@ class FigureStructureTest(unittest.TestCase):
         plan = viewer.build_chart_plan(
             ExactExecutor().r_dist(
                 interpret_statement("(d20 >= 18 -> d8 | 0)"),
-                x="Damage",
                 title="Damage profile",
             )
         )
@@ -236,11 +260,16 @@ class FigureStructureTest(unittest.TestCase):
         try:
             viewer.render_chart_on_axes(figure, ax, plan, RenderConfig())
             note_text = "\n".join(text.get_text() for text in ax.texts)
-            self.assertIn("0 dmg omitted", note_text)
+            self.assertIn("0 omitted from scale", note_text)
             centers = [patch.get_x() + patch.get_width() / 2 for patch in ax.patches]
             self.assertGreater(min(centers), 0)
         finally:
             viewer.plt.close(figure)
+
+    def test_binary_distribution_does_not_omit_zero_bar(self):
+        plan = viewer.build_chart_plan(ChartSpec("auto", interpret_statement("d20 >= 11")))
+        omit_hints = [hint for hint in plan.hints if hint["kind"] == "omit_outcome"]
+        self.assertEqual(omit_hints, [])
 
     def test_dense_distribution_can_clip_tails_with_annotation(self):
         plan = viewer.build_chart_plan(

@@ -185,6 +185,26 @@ class CliInteractiveTest(unittest.TestCase):
         self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(stdout.getvalue(), "render_backend = json\n")
 
+    def test_set_render_autoflush_command_updates_repl_setting(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["$ set_render_autoflush off", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(stdout.getvalue(), "render_autoflush = off\n")
+
+    def test_set_render_omit_dominant_zero_command_updates_repl_setting(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["$ set_render_omit_dominant_zero off", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(stdout.getvalue(), "render_omit_dominant_zero = off\n")
+
     def test_repl_prints_split_implicit_zero_warning(self):
         args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
         with mock.patch("builtins.input", side_effect=["split d20 | == 20 -> 10", "exit"]):
@@ -324,6 +344,18 @@ class CliMainIntegrationTest(unittest.TestCase):
         wait_for_rendered_figures.assert_called_once_with(
             dice.RenderConfig.from_mode("deferred")
         )
+
+    def test_main_autoflushes_pending_render_at_end_of_file(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            path = Path(tempdir) / "plot.dice"
+            path.write_text('r_title("Title")\nr_auto(d20)\n', encoding="utf-8")
+            with mock.patch.object(sys, "argv", ["dice.py", "--file", str(path)]):
+                with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                    exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        rendered_path = stdout.getvalue().strip()
+        self.assertTrue(rendered_path.endswith(".png"))
+        self.assertTrue(os.path.exists(rendered_path))
 
     def test_main_honors_script_render_mode_toggle(self):
         with tempfile.TemporaryDirectory() as tempdir:
