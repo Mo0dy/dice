@@ -251,20 +251,85 @@ When identifiers are involved, write dice operators with spaces so they remain s
 
 Compact names like `adb` or `ad20` stay ordinary identifiers. Strings also preserve internal spaces now, for example `"fire bolt"`.
 
-## Rendering
+## Creating Reports
 
-- `r_auto(expr, x="...", y="...", title="...")` builds a chart spec with smart defaults.
-- `r_dist(expr, x="...", title="...")`, `r_cdf(...)`, and `r_surv(...)` build explicit distribution views.
-- `r_compare(("a", expr1), ("b", expr2), x="...", y="...", title="...")` builds a labeled comparison chart spec.
-- `r_diff(("a", expr1), ("b", expr2), x="...", title="...")` builds a delta comparison chart spec.
-- `r_best(expr, title="...")` builds a strategy winner/margin chart spec for suitable sweeps.
-- bare top-level chart specs append themselves to the pending report in source order.
-- `r_title("...")`, `r_note("...")`, `r_hero(spec)`, and `r_row(...)` shape the pending report explicitly.
-- `render(path=..., format="png", dpi=...)` flushes the current pending report and resets state.
-- `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` switch render behavior inside dice programs.
-- `set_probability_mode("percent")` and `set_probability_mode("raw")` switch probability display style inside dice programs.
-- Axis labels still come from named sweeps like `[AC:10..20]` unless explicitly overridden.
-- Quick-render planning currently supports unswept distributions, one-sweep scalar results, one-sweep distribution sweeps, and two-sweep scalar heatmaps.
+The report surface is stateful.
+
+- `r_*` chart helpers build chart specs.
+- bare top-level chart specs append themselves to the current pending report in source order.
+- layout helpers such as `r_title(...)` and `r_row(...)` mutate that pending report.
+- `render(...)` flushes the current report to output and then resets report state.
+
+This means one dice file can create multiple separate report images by calling `render(...)` more than once.
+
+### Chart builders
+
+- `r_auto(expr, x="...", y="...", title="...")` chooses a chart from the result shape.
+- `r_dist(expr, x="...", y="...", title="...")` forces an exact distribution / PMF view.
+- `r_cdf(expr, x="...", y="...", title="...")` forces a cumulative view.
+- `r_surv(expr, x="...", y="...", title="...")` forces a survival view using `P(X > x)`.
+- `r_compare(("Label", expr1), ("Other", expr2), x="...", y="...", title="...")` compares multiple labeled expressions.
+- `r_diff(("A", expr1), ("B", expr2), x="...", y="...", title="...")` plots a two-series delta.
+- `r_best(expr, title="...")` renders a winner map plus winner margin for suitable two-axis scalar sweeps.
+
+### Report layout
+
+- `r_title("...")` sets the report title. Only one title is allowed per report.
+- `r_note("...")` appends note text at the bottom of the report.
+- `r_hero(spec)` places one chart in the hero slot. Only one hero chart is allowed per report.
+- `r_row(spec1, spec2)` places one explicit row with one or two charts.
+- `r_wide(spec)` and `r_narrow(spec)` override the automatic width choice for auto-appended charts.
+
+If you do not use `r_row(...)`, auto-appended charts are packed automatically:
+
+- narrow charts are packed two-up
+- wide charts take a full row
+
+Axis labels usually come from named sweeps such as `[AC:10..20]`, but you can override them with `x="..."` and `y="..."`.
+
+### Output and render settings
+
+- `render(path=..., format="png", dpi=...)` writes the pending report and resets report state.
+- `path` is optional. Without it, dice writes to a temporary PNG path in headless mode.
+- `format` currently expects PNG output.
+- `dpi` controls raster export density.
+- `set_render_mode("blocking")`, `set_render_mode("nonblocking")`, and `set_render_mode("deferred")` control how figures are shown.
+- `set_probability_mode("percent")` and `set_probability_mode("raw")` control probability-axis formatting.
+
+Current quick-render planning covers:
+
+- unswept distributions
+- one-axis scalar sweeps
+- one-axis distribution sweeps
+- two-axis scalar heatmaps
+- labeled scalar/distribution comparisons
+- strategy winner/margin reports from suitable two-axis scalar sweeps
+
+### Examples
+
+Single-chart report:
+
+```dice
+r_title("d20"); r_auto(d20, x="Outcome"); render()
+```
+
+Comparison report with a hero chart and a full-width delta chart:
+
+```dice
+r_title("Hit chance"); r_hero(r_compare(("Normal", ~(d20 >= [AC:10..18])), ("Boosted", ~(d20 + 1 >= [AC:10..18])), x="Armor class", y="Hit chance")); r_wide(r_diff(("Boosted", ~(d20 + 1 >= [AC:10..18])), ("Normal", ~(d20 >= [AC:10..18])), x="Armor class", y="Extra hit chance")); render()
+```
+
+Explicit row layout with two distribution panels:
+
+```dice
+r_title("Distributions"); r_row(r_dist(d20, x="Outcome", title="d20"), r_cdf(d20, x="Outcome", title="CDF")); render()
+```
+
+Two separate reports in one program:
+
+```dice
+r_title("First"); r_auto(d20); render(); r_title("Second"); r_auto(d6); render()
+```
 
 ## Python Integration
 
