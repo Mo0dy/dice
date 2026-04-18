@@ -30,7 +30,6 @@ from renderplan import (
 _PALETTE = ("#2F5D8C", "#D97706", "#2F855A", "#B83280", "#4C51BF", "#C05621")
 _SEQUENTIAL_CMAP = "Blues"
 _DIVERGING_CMAP = "RdBu_r"
-_TAIL_CLIP_MASS = 0.001
 
 
 def _is_interactive_backend(backend_name):
@@ -162,13 +161,6 @@ def _format_percent_axis(ax):
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _pos: "{}%".format(int(y) if float(y).is_integer() else f"{y:.0f}")))
 
 
-def _looks_like_damage_axis(label):
-    if not isinstance(label, str):
-        return False
-    normalized = label.strip().lower()
-    return normalized == "dmg" or "damage" in normalized
-
-
 def _add_plot_notes(ax, notes):
     visible = [note for note in notes if note]
     if not visible:
@@ -186,91 +178,57 @@ def _add_plot_notes(ax, notes):
     )
 
 
-def _central_probability_window(distrib):
+def _hint_values(plan, kind):
+    return [hint for hint in plan.hints if hint.get("kind") == kind]
+
+
+def _resolved_outcomes(distrib, plan):
     outcomes = _ordered_values(distrib.keys())
-    if len(outcomes) < 25 or not all(isinstance(outcome, (int, float)) for outcome in outcomes):
-        return outcomes, None
-    probabilities = [distrib[outcome] for outcome in outcomes]
-    left_index = 0
-    right_index = len(outcomes) - 1
-    removed_mass = 0.0
-    while left_index < right_index:
-        left_mass = probabilities[left_index]
-        right_mass = probabilities[right_index]
-        if removed_mass + min(left_mass, right_mass) > _TAIL_CLIP_MASS:
-            break
-        if left_mass <= right_mass:
-            removed_mass += left_mass
-            left_index += 1
-        else:
-            removed_mass += right_mass
-            right_index -= 1
-    if left_index == 0 and right_index == len(outcomes) - 1:
-        return outcomes, None
-    kept = outcomes[left_index : right_index + 1]
-    if not kept:
-        return outcomes, None
-    return kept, "Showing central 99.9% of mass; tails omitted."
-
-
-def _dominant_zero_note(distrib, x_label):
-    if not _looks_like_damage_axis(x_label):
-        return None
-    if 0 not in distrib.keys():
-        return None
-    other_outcomes = [outcome for outcome in distrib.keys() if outcome != 0]
-    if not other_outcomes:
-        return None
-    zero_probability = distrib[0]
-    highest_other = max(distrib[outcome] for outcome in other_outcomes)
-    if zero_probability < 0.2 or zero_probability < highest_other * 2:
-        return None
-    return "0 dmg omitted from scale: {:.0f}% miss.".format(zero_probability * 100)
-
-
-def _dominant_zero_probability(distrib, x_label):
-    if not _looks_like_damage_axis(x_label):
-        return None
-    if 0 not in distrib.keys():
-        return None
-    other_outcomes = [outcome for outcome in distrib.keys() if outcome != 0]
-    if not other_outcomes:
-        return None
-    zero_probability = distrib[0]
-    highest_other = max(distrib[outcome] for outcome in other_outcomes)
-    if zero_probability < 0.2 or zero_probability < highest_other * 2:
-        return None
-    return zero_probability
-
-
-def _display_outcomes(distrib, x_label, clip_tails=True):
-    if clip_tails:
-        outcomes, tail_note = _central_probability_window(distrib)
-    else:
-        outcomes, tail_note = _ordered_values(distrib.keys()), None
-    notes = [tail_note]
-    zero_note = _dominant_zero_note(distrib, x_label)
-    if zero_note is not None and 0 in outcomes:
-        outcomes = tuple(outcome for outcome in outcomes if outcome != 0)
-        notes.append(zero_note)
+    notes = []
+    for hint in _hint_values(plan, "clip_outcomes"):
+        hinted_outcomes = tuple(hint.get("visible_outcomes", ()))
+        if hinted_outcomes:
+            outcomes = hinted_outcomes
+        note = hint.get("note")
+        if note:
+            notes.append(note)
+    for hint in _hint_values(plan, "omit_outcome"):
+        omitted_outcome = hint.get("outcome")
+        outcomes = tuple(outcome for outcome in outcomes if outcome != omitted_outcome)
+        note = hint.get("note")
+        if note:
+            notes.append(note)
     if not outcomes:
-        outcomes = _ordered_values(distrib.keys())
-        notes = []
-    return outcomes, tuple(note for note in notes if note)
+        return _ordered_values(distrib.keys()), ()
+    deduped_notes = []
+    for note in notes:
+        if note not in deduped_notes:
+            deduped_notes.append(note)
+    return outcomes, tuple(deduped_notes)
 
 
-def _plot_unswept_distribution(ax, result, render_config, x_label=None, y_label=None):
+def _series_label_suffixes(plan):
+    suffixes = {}
+    for hint in _hint_values(plan, "series_label_suffix"):
+        label = hint.get("label")
+        suffix = hint.get("suffix")
+        if label is not None and suffix:
+            suffixes[label] = suffix
+    return suffixes
+
+
+def _plot_unswept_distribution(ax, result, plan, render_config):
     distrib = result.only_distribution()
-    outcomes, notes = _display_outcomes(distrib, x_label, clip_tails=True)
+    outcomes, notes = _resolved_outcomes(distrib, plan)
     positions, tick_labels = _category_positions(outcomes)
     values = [_scale_probability(distrib[outcome], render_config) for outcome in outcomes]
     ax.bar(positions, values, color=_PALETTE[0], alpha=0.9, edgecolor="white", linewidth=0.6)
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
-    if x_label is not None:
-        ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label if y_label is not None else _probability_label(render_config))
+    if plan.x_label is not None:
+        ax.set_xlabel(plan.x_label)
+    ax.set_ylabel(plan.y_label if plan.y_label is not None else _probability_label(render_config))
     _format_percent_axis(ax)
     _add_plot_notes(ax, notes)
 
@@ -405,58 +363,56 @@ def _plot_compare_scalar(ax, entries, render_config, x_label=None, y_label=None)
         ax.legend(frameon=False)
 
 
-def _plot_compare_unswept(ax, entries, render_config, x_label=None, y_label=None):
+def _plot_compare_unswept(ax, entries, plan, render_config):
     all_outcomes = []
     seen = set()
     notes = []
-    remove_zero = False
     displayed_outcomes_by_label = {}
-    zero_probabilities = {}
+    unfiltered_outcomes = []
+    unfiltered_seen = set()
+    omitted_outcomes = {hint.get("outcome") for hint in _hint_values(plan, "omit_outcome")}
+    label_suffixes = _series_label_suffixes(plan)
     for _, result in entries:
         distrib = result.only_distribution()
-        outcomes, distrib_notes = _display_outcomes(distrib, x_label, clip_tails=False)
-        notes.extend(
-            note for note in distrib_notes if not note.startswith("0 dmg omitted from scale:")
-        )
+        outcomes = _ordered_values(distrib.keys())
         displayed_outcomes_by_label[id(result)] = outcomes
-    if _looks_like_damage_axis(x_label):
-        for label, result in entries:
-            distrib = result.only_distribution()
-            zero_probability = _dominant_zero_probability(distrib, x_label)
-            if zero_probability is not None:
-                remove_zero = True
-                zero_probabilities[label] = zero_probability
+        for outcome in outcomes:
+            if outcome not in unfiltered_seen:
+                unfiltered_outcomes.append(outcome)
+                unfiltered_seen.add(outcome)
+    for hint in _hint_values(plan, "omit_outcome"):
+        note = hint.get("note")
+        if note:
+            notes.append(note)
     for _, result in entries:
         outcomes = displayed_outcomes_by_label[id(result)]
         for outcome in outcomes:
-            if remove_zero and outcome == 0:
+            if outcome in omitted_outcomes:
                 continue
             if outcome not in seen:
                 all_outcomes.append(outcome)
                 seen.add(outcome)
+    if not all_outcomes:
+        all_outcomes = unfiltered_outcomes
     positions, tick_labels = _category_positions(all_outcomes)
     for index, (label, result) in enumerate(entries):
         distrib = result.only_distribution()
         values = [_scale_probability(distrib[outcome], render_config) for outcome in all_outcomes]
         color = _PALETTE[index % len(_PALETTE)]
-        display_label = label
-        if label in zero_probabilities:
-            display_label = "{} ({:.0f}% miss)".format(label, zero_probabilities[label] * 100)
+        display_label = "{}{}".format(label, label_suffixes.get(label, ""))
         ax.step(positions, values, where="mid", color=color, linewidth=1.8, label=display_label)
     if tick_labels is not None:
         ax.set_xticks(positions)
         ax.set_xticklabels(tick_labels)
-    if x_label is not None:
-        ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label if y_label is not None else _probability_label(render_config))
+    if plan.x_label is not None:
+        ax.set_xlabel(plan.x_label)
+    ax.set_ylabel(plan.y_label if plan.y_label is not None else _probability_label(render_config))
     _format_percent_axis(ax)
     ax.legend(frameon=False)
     deduped_notes = []
     for note in notes:
         if note not in deduped_notes:
             deduped_notes.append(note)
-    if zero_probabilities:
-        deduped_notes.insert(0, "0 dmg omitted from x-axis.")
     _add_plot_notes(ax, deduped_notes)
 
 
@@ -539,7 +495,7 @@ def render_chart_on_axes(figure, axes, plan, render_config):
     else:
         ax = axes
     if plan.kind == "unswept_distribution":
-        _plot_unswept_distribution(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
+        _plot_unswept_distribution(ax, plan.payload, plan, render_config)
     elif plan.kind == "cdf":
         _plot_distribution_curve(ax, plan.payload, render_config, "cdf", x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "surv":
@@ -555,7 +511,7 @@ def render_chart_on_axes(figure, axes, plan, render_config):
     elif plan.kind == "compare_scalar":
         _plot_compare_scalar(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
     elif plan.kind == "compare_unswept":
-        _plot_compare_unswept(ax, plan.payload, render_config, x_label=plan.x_label, y_label=plan.y_label)
+        _plot_compare_unswept(ax, plan.payload, plan, render_config)
     elif plan.kind == "compare_faceted":
         entries = plan.payload
         subplots = ax

@@ -46,10 +46,22 @@ class RenderRuntimeTest(unittest.TestCase):
         self.assertEqual(payload["backend"], "json")
         self.assertEqual(payload["report"]["title"], "Title")
         self.assertEqual(payload["report"]["rows"][0][0]["kind"], "unswept_distribution")
+        self.assertEqual(payload["report"]["rows"][0][0]["hints"], [])
         self.assertEqual(
             payload["report"]["rows"][0][0]["payload"]["cells"][0]["distribution"][0]["outcome"],
             1,
         )
+
+    def test_json_backend_exports_distribution_hints(self):
+        result = interpret_statement(
+            'r_title("Title"); r_dist((d20 >= 18 -> d8 | 0), x="Damage"); render()',
+            render_config=RenderConfig(backend="json"),
+        )
+        payload = json.loads(result)
+        hints = payload["report"]["rows"][0][0]["hints"]
+        self.assertEqual([hint["kind"] for hint in hints], ["omit_outcome"])
+        self.assertEqual(hints[0]["outcome"], 0)
+        self.assertIn("0 dmg omitted", hints[0]["note"])
 
     def test_json_backend_can_write_json_output(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -114,6 +126,29 @@ class PlannerTest(unittest.TestCase):
         plan = viewer.build_chart_plan(chart)
         self.assertEqual(plan.kind, "scalar_heatmap")
         self.assertEqual(plan.width_class, PanelWidthClass.WIDE)
+
+    def test_dense_distribution_plan_contains_tail_clip_hint(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor().r_dist(
+                interpret_statement("d6 ^ 12"),
+                x="Total damage",
+            )
+        )
+        clip_hints = [hint for hint in plan.hints if hint["kind"] == "clip_outcomes"]
+        self.assertEqual(len(clip_hints), 1)
+        self.assertIn("central 99.9% of mass", clip_hints[0]["note"])
+
+    def test_damage_distribution_plan_contains_zero_omit_hint(self):
+        plan = viewer.build_chart_plan(
+            ExactExecutor().r_dist(
+                interpret_statement("(d20 >= 18 -> d8 | 0)"),
+                x="Damage",
+            )
+        )
+        omit_hints = [hint for hint in plan.hints if hint["kind"] == "omit_outcome"]
+        self.assertEqual(len(omit_hints), 1)
+        self.assertEqual(omit_hints[0]["outcome"], 0)
+        self.assertIn("0 dmg omitted", omit_hints[0]["note"])
 
     def test_r_compare_scalar_sweeps_builds_compare_scalar_plan(self):
         chart = self.executor.r_compare(

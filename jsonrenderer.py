@@ -52,6 +52,7 @@ def serialize_chart_plan(plan, probability_mode="raw"):
         "x_label": plan.x_label,
         "y_label": plan.y_label,
         "title": plan.title,
+        "hints": list(plan.hints),
         "payload": _serialize_chart_payload(plan, probability_mode),
     }
 
