@@ -12,7 +12,7 @@ Current benchmark workloads:
 Recommended entry point:
 
 ```bash
-python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py --backend numpy --sample-counts 4000 16000
+python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py --backend numpy --sample-counts 4000 16000 256000
 ```
 
 Notes:
@@ -21,3 +21,5 @@ Notes:
   shipped module surface.
 - The NumPy backend still rolls primitive dice directly. It does not use
   precomputed alias tables, PMFs, or other derived stochastic primitives.
+- The NumPy backend can split each state's trial count evenly across worker
+  processes with `--numpy-processes N`.

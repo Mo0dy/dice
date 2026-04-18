@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import os
 from statistics import mean
 import sys
 from time import perf_counter
@@ -37,6 +38,7 @@ class BenchmarkConfig:
     skip_validation: bool
     plot_path: str | None
     numpy_batch_size: int
+    numpy_processes: int
 
 
 def distribution_mean(distribution: dict[int, float]) -> float:
@@ -71,7 +73,10 @@ def summarize_cells(exact_sweep, sampled_sweep, coordinates) -> list[str]:
 
 def backend_kwargs(config: BenchmarkConfig, backend_name: str) -> dict[str, object]:
     if backend_name == "numpy":
-        return {"batch_size": config.numpy_batch_size}
+        return {
+            "batch_size": config.numpy_batch_size,
+            "processes": config.numpy_processes,
+        }
     return {}
 
 
@@ -141,6 +146,12 @@ def parse_args() -> BenchmarkConfig:
         default=50000,
         help="Batch size for the NumPy backend.",
     )
+    parser.add_argument(
+        "--numpy-processes",
+        type=int,
+        default=(os.cpu_count() or 1),
+        help="Worker-process count for the NumPy backend. Trials are split evenly across workers.",
+    )
     args = parser.parse_args()
     backends = tuple(dict.fromkeys(args.backend or ("numpy",)))
     sample_counts = tuple(dict.fromkeys(args.sample_counts))
@@ -152,6 +163,7 @@ def parse_args() -> BenchmarkConfig:
         skip_validation=args.skip_validation,
         plot_path=args.plot_path,
         numpy_batch_size=args.numpy_batch_size,
+        numpy_processes=max(1, args.numpy_processes),
     )
 
 
@@ -180,6 +192,13 @@ def main() -> None:
             ", ".join("{:,}".format(sample_count) for sample_count in config.sample_counts)
         )
     )
+    if "numpy" in config.backends:
+        print(
+            "NumPy backend config: processes={} batch_size={:,}".format(
+                config.numpy_processes,
+                config.numpy_batch_size,
+            )
+        )
 
     exact_start = perf_counter()
     exact_sweep = exact_dice.evaluate_exact_sweep()
