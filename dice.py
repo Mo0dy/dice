@@ -2,7 +2,6 @@
 """Interactive interpreter for the dice language"""
 
 import argparse
-import json
 import os
 import sys
 
@@ -37,6 +36,15 @@ from diceengine import (
 )
 from diceparser import DiceParser, ParserError
 from lexer import Lexer, LexerError
+from resultjson import (
+    format_result_json as _format_result_json,
+    is_numeric as _is_numeric,
+    resolve_probability_mode as _resolve_probability_mode,
+    round_numeric as _round_numeric,
+    serialize_embedded_value as _serialize_embedded_value,
+    serialize_measure as _serialize_measure,
+    serialize_result as _serialize_result,
+)
 
 
 timeout_seconds = 5
@@ -49,10 +57,6 @@ REPL_COMPLETER_DELIMS = " \t\n\"'`(){}[];,|&<>!=+*"
 
 class InteractiveCommandError(Exception):
     """Raised for invalid REPL-only commands."""
-
-
-def _is_numeric(value):
-    return isinstance(value, (int, float))
 
 
 def _is_deterministic_distribution(distrib):
@@ -83,12 +87,6 @@ def _ordered_labels(values):
     return list(sorted(values, key=sort_key))
 
 
-def _round_numeric(value, roundlevel):
-    if roundlevel and isinstance(value, float):
-        return round(value, roundlevel)
-    return value
-
-
 def _format_rounded_numeric(value, roundlevel=0):
     if isinstance(value, int):
         return str(value)
@@ -112,50 +110,6 @@ def _format_label(value, roundlevel=0):
     if _is_numeric(value):
         return _format_rounded_numeric(value, roundlevel)
     return str(value)
-
-
-def _serialize_embedded_value(value, roundlevel=0, probability_mode="raw"):
-    if isinstance(value, TupleValue):
-        return {
-            "type": "tuple",
-            "items": [
-                _serialize_embedded_value(item, roundlevel, probability_mode=probability_mode)
-                for item in value.items
-            ],
-        }
-    if isinstance(value, RecordValue):
-        return {
-            "type": "record",
-            "entries": [
-                {
-                    "key_kind": "integer" if isinstance(key, int) else "identifier",
-                    "key": key,
-                    "value": _serialize_embedded_value(entry_value, roundlevel, probability_mode=probability_mode),
-                }
-                for key, entry_value in value.items()
-            ],
-        }
-    if isinstance(value, Distribution):
-        return {
-            "type": "distribution",
-            "distribution": _serialize_distribution(value, roundlevel, probability_mode=probability_mode),
-        }
-    if isinstance(value, FiniteMeasure):
-        return {
-            "type": "measure",
-            "measure": _serialize_measure(value, roundlevel),
-        }
-    if isinstance(value, str):
-        return value
-    if _is_numeric(value):
-        return _round_numeric(value, roundlevel)
-    return str(value)
-
-
-def _resolve_probability_mode(probability_mode=None, json_output=False):
-    if probability_mode is not None:
-        return probability_mode
-    return "raw" if json_output else "percent"
 
 
 def _format_probability(value, roundlevel=0, probability_mode="percent"):
@@ -299,116 +253,8 @@ def _format_result_text(result, roundlevel=0, probability_mode="percent"):
     return str(result)
 
 
-def _serialize_distribution(distrib, roundlevel=0, probability_mode="raw"):
-    scale = 100.0 if probability_mode == "percent" else 1.0
-    entries = []
-    for outcome in _ordered_labels(distrib.keys()):
-        entries.append(
-            {
-                "outcome": _serialize_embedded_value(outcome, roundlevel, probability_mode=probability_mode),
-                "probability": _round_numeric(distrib[outcome] * scale, roundlevel),
-            }
-        )
-    return entries
-
-
-def _serialize_measure(measure, roundlevel=0):
-    entries = []
-    for outcome in _ordered_labels(measure.keys()):
-        entries.append(
-            {
-                "outcome": _serialize_embedded_value(outcome, roundlevel),
-                "weight": _round_numeric(measure[outcome], roundlevel),
-            }
-        )
-    return entries
-
-
-def _serialize_result(result, roundlevel=0, probability_mode="raw"):
-    if isinstance(result, Distributions):
-        distribution_only = all(isinstance(distrib, Distribution) for distrib in result.cells.values())
-        axes = [
-            {
-                "key": axis.key,
-                "name": axis.name if not axis.name.startswith("sweep_") else None,
-                "values": [_serialize_embedded_value(value, roundlevel, probability_mode=probability_mode) for value in axis.values],
-            }
-            for axis in result.axes
-        ]
-        cells = []
-        for coordinates, distrib in result.cells.items():
-            coordinate_entries = []
-            for axis, value in zip(result.axes, coordinates):
-                coordinate_entries.append(
-                    {
-                        "axis_key": axis.key,
-                        "axis_name": axis.name if not axis.name.startswith("sweep_") else None,
-                        "value": _serialize_embedded_value(value, roundlevel, probability_mode=probability_mode),
-                    }
-                )
-            if distribution_only:
-                cells.append(
-                    {
-                        "coordinates": coordinate_entries,
-                        "distribution": _serialize_distribution(
-                            distrib,
-                            roundlevel,
-                            probability_mode=probability_mode,
-                        ),
-                    }
-                )
-            else:
-                cells.append(
-                    {
-                        "coordinates": coordinate_entries,
-                        "value": (
-                            {
-                                "kind": "measure",
-                                "measure": _serialize_measure(distrib, roundlevel),
-                            }
-                            if isinstance(distrib, FiniteMeasure)
-                            else {
-                                "kind": (
-                                    "scalar"
-                                    if _is_numeric(distrib)
-                                    else "string"
-                                    if isinstance(distrib, str)
-                                    else "tuple"
-                                    if isinstance(distrib, TupleValue)
-                                    else "record"
-                                    if isinstance(distrib, RecordValue)
-                                    else type(distrib).__name__
-                                ),
-                                "value": _serialize_embedded_value(distrib, roundlevel, probability_mode=probability_mode),
-                            }
-                        ),
-                    }
-                )
-        return {
-            "type": "distributions" if distribution_only else "sweep",
-            "axes": axes,
-            "cells": cells,
-        }
-    if isinstance(result, Distribution):
-        return {"type": "distribution", "distribution": _serialize_distribution(result, roundlevel, probability_mode=probability_mode)}
-    if isinstance(result, FiniteMeasure):
-        return {"type": "measure", "measure": _serialize_measure(result, roundlevel)}
-    if isinstance(result, TupleValue):
-        return _serialize_embedded_value(result, roundlevel, probability_mode=probability_mode)
-    if isinstance(result, RecordValue):
-        return _serialize_embedded_value(result, roundlevel, probability_mode=probability_mode)
-    if isinstance(result, str):
-        return {"type": "string", "value": result}
-    if _is_numeric(result):
-        return {"type": "scalar", "value": _round_numeric(result, roundlevel)}
-    return {"type": type(result).__name__, "value": str(result)}
-
-
-def _format_result_json(result, roundlevel=0, probability_mode="raw"):
-    return json.dumps(
-        _serialize_result(result, roundlevel, probability_mode=probability_mode),
-        indent=2,
-    )
+def _build_render_config(mode, render_backend="matplotlib"):
+    return RenderConfig.from_mode(mode).with_backend(render_backend)
 
 
 def _history_file_path():
@@ -500,6 +346,14 @@ def _handle_repl_command(text, state, interpreter):
         mode_name = interpreter.executor.render_config.mode_name()
         state["render_mode"] = mode_name
         return "render_mode = {}".format(mode_name)
+    if parts[0] == "set_render_backend":
+        if len(parts) != 2:
+            raise InteractiveCommandError(
+                "set_render_backend expects exactly one backend argument"
+            )
+        backend_name = interpreter.executor.set_render_backend(parts[1])
+        state["render_backend"] = backend_name
+        return "render_backend = {}".format(backend_name)
     if parts[0] == "set_probability_mode":
         if len(parts) != 2:
             raise InteractiveCommandError(
@@ -633,6 +487,7 @@ def print_interactive_error(error):
 def runinteractive(args):
     """Run a simple interactive shell."""
     json_output = getattr(args, "json_output", False)
+    render_backend = getattr(args, "render_backend", "matplotlib")
 
     def emit_result(result):
         print_result(
@@ -646,12 +501,13 @@ def runinteractive(args):
     interpreter = Interpreter(
         None,
         current_dir=os.getcwd(),
-        render_config=NON_BLOCKING_RENDER_CONFIG,
+        render_config=_build_render_config("nonblocking", render_backend),
         output_callback=emit_result,
     )
     state = {
         "roundlevel": args.roundlevel,
         "render_mode": interpreter.executor.render_config.mode_name(),
+        "render_backend": interpreter.executor.render_config.backend,
         "probability_mode": _resolve_probability_mode(
             interpreter.executor.render_config.probability_mode,
             json_output=json_output,
@@ -747,6 +603,12 @@ def main():
     parser.add_argument("-i", "--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("-f", "--file", dest="file", help="Execute a dice source file")
     parser.add_argument("--json", action="store_true", dest="json_output", help="Print structured JSON output")
+    parser.add_argument(
+        "--render-backend",
+        choices=("matplotlib", "json"),
+        default="matplotlib",
+        help="Select the render backend",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("command", nargs="*", help="Command to execute")
 
@@ -776,7 +638,7 @@ def main():
         interpreter = Interpreter(
             None,
             current_dir=os.path.dirname(os.path.abspath(args.file)),
-            render_config=DEFERRED_RENDER_CONFIG,
+            render_config=_build_render_config("deferred", args.render_backend),
             output_callback=emit_result,
         )
         with open(args.file) as f:
@@ -811,7 +673,7 @@ def main():
     interpreter = Interpreter(
         None,
         current_dir=os.getcwd(),
-        render_config=DEFERRED_RENDER_CONFIG,
+        render_config=_build_render_config("deferred", args.render_backend),
         output_callback=lambda result: print_result(
             result,
             args.verbose,

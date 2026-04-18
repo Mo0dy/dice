@@ -27,7 +27,11 @@ except ImportError:
 TRUE = 1
 FALSE = 0
 PROBABILITY_TOLERANCE = 1e-9
-_viewer_module = None
+_renderer_modules = {}
+_RENDERER_MODULE_NAMES = {
+    "matplotlib": "viewer",
+    "json": "jsonrenderer",
+}
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _OMITTED = object()
 
@@ -45,6 +49,7 @@ class RenderConfig:
     interactive_blocking: bool = True
     wait_for_figures_on_exit: bool = False
     probability_mode: str | None = None
+    backend: str = "matplotlib"
 
     @classmethod
     def from_mode(cls, mode):
@@ -70,6 +75,9 @@ class RenderConfig:
 
     def with_probability_mode(self, mode):
         return replace(self, probability_mode=_normalize_probability_mode(mode))
+
+    def with_backend(self, backend):
+        return replace(self, backend=_normalize_render_backend(backend))
 
     def mode_name(self):
         if self.interactive_blocking:
@@ -106,16 +114,31 @@ def _normalize_probability_mode(mode):
     return normalized
 
 
-def _get_viewer():
-    global _viewer_module
-    if _viewer_module is None:
-        _viewer_module = importlib.import_module("viewer")
-    return _viewer_module
+def _normalize_render_backend(backend):
+    if not isinstance(backend, str):
+        runtime_error("render backend must be a string")
+    normalized = backend.strip().lower()
+    if normalized not in _RENDERER_MODULE_NAMES:
+        runtime_error(
+            "unknown render backend {}".format(backend),
+            hint='Use "matplotlib" or "json".',
+        )
+    return normalized
+
+
+def _get_renderer(render_config=None):
+    render_config = render_config if render_config is not None else RenderConfig()
+    backend = _normalize_render_backend(render_config.backend)
+    renderer = _renderer_modules.get(backend)
+    if renderer is None:
+        renderer = importlib.import_module(_RENDERER_MODULE_NAMES[backend])
+        _renderer_modules[backend] = renderer
+    return renderer
 
 
 def wait_for_rendered_figures(render_config=None):
-    viewer = _get_viewer()
-    viewer.wait_for_rendered_figures(
+    renderer = _get_renderer(render_config)
+    renderer.wait_for_rendered_figures(
         render_config=render_config if render_config is not None else RenderConfig()
     )
 
@@ -1627,9 +1650,7 @@ def _normalize_render_export(path=None, format=None, dpi=None):
     if format is not None:
         if not isinstance(format, str):
             runtime_error("render format must be a string")
-        if format.strip().lower() != "png":
-            runtime_error("render format must be png in report v1")
-        format = "png"
+        format = format.strip().lower()
     if dpi is not None:
         if not isinstance(dpi, (int, float)) or dpi <= 0:
             runtime_error("render dpi must be a positive number")
@@ -1640,13 +1661,13 @@ def render_report(report, render_config=None, path=None, format=None, dpi=None):
     report = report if report is not None else ReportSpec()
     if report.is_empty():
         runtime_error("render() requires at least one pending report item")
-    viewer = _get_viewer()
     render_config = render_config if render_config is not None else RenderConfig()
+    renderer = _get_renderer(render_config)
     path, format, dpi = _normalize_render_export(path=path, format=format, dpi=dpi)
-    return viewer.render_report(
+    return renderer.render_report(
         report,
         render_config=render_config,
         path=path,
         output_format=format,
         dpi=dpi,
-    ).output_path
+    ).result

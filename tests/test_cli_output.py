@@ -175,6 +175,16 @@ class CliInteractiveTest(unittest.TestCase):
         self.assertEqual(stderr.getvalue(), "")
         self.assertEqual(stdout.getvalue(), "probability_mode = raw\n  0: 0.50\n  1: 0.50\n(E): 0.50\n")
 
+    def test_set_render_backend_command_updates_repl_render_backend(self):
+        args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
+        with mock.patch("builtins.input", side_effect=["$ set_render_backend json", "exit"]):
+            with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+                    exit_code = dice.runinteractive(args)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(stdout.getvalue(), "render_backend = json\n")
+
     def test_repl_prints_split_implicit_zero_warning(self):
         args = SimpleNamespace(roundlevel=2, verbose=False, json_output=False)
         with mock.patch("builtins.input", side_effect=["split d20 | == 20 -> 10", "exit"]):
@@ -380,6 +390,18 @@ class CliMainIntegrationTest(unittest.TestCase):
                 {"outcome": 3, "probability": 0.33},
             ],
         )
+
+    def test_main_can_select_json_render_backend(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            path = Path(tempdir) / "plot.dice"
+            path.write_text('r_title("Title")\nr_auto(d20)\nrender()\n', encoding="utf-8")
+            with mock.patch.object(sys, "argv", ["dice.py", "--render-backend", "json", "--file", str(path)]):
+                with mock.patch("sys.stdout", new=io.StringIO()) as stdout:
+                    exit_code = dice.main()
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload["type"], "report")
+        self.assertEqual(payload["backend"], "json")
 
     def test_main_uses_interactive_flag_for_repl(self):
         with mock.patch.object(sys, "argv", ["dice.py", "--interactive"]):

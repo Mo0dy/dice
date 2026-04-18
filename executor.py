@@ -331,6 +331,7 @@ class Executor(ABC):
             "argmaxover",
             "total",
             "set_render_mode",
+            "set_render_backend",
             "set_probability_mode",
             "r_title",
             "r_note",
@@ -464,6 +465,10 @@ class Executor(ABC):
     def set_render_mode(self, mode):
         self.render_config = self.render_config.with_mode(mode)
         return self.render_config.mode_name()
+
+    def set_render_backend(self, backend):
+        self.render_config = self.render_config.with_backend(backend)
+        return self.render_config.backend
 
     def set_probability_mode(self, mode):
         self.render_config = self.render_config.with_probability_mode(mode)

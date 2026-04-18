@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import tempfile
@@ -34,6 +35,33 @@ class RenderRuntimeTest(unittest.TestCase):
             result = interpret_statement(f'r_auto(d20); render(path="{output}", format="png", dpi=120)')
             self.assertEqual(result, str(output))
             self.assertTrue(output.exists())
+
+    def test_json_backend_returns_serialized_report_plan(self):
+        result = interpret_statement(
+            'r_title("Title"); r_auto(d20, x="Outcome"); render()',
+            render_config=RenderConfig(backend="json"),
+        )
+        payload = json.loads(result)
+        self.assertEqual(payload["type"], "report")
+        self.assertEqual(payload["backend"], "json")
+        self.assertEqual(payload["report"]["title"], "Title")
+        self.assertEqual(payload["report"]["rows"][0][0]["kind"], "unswept_distribution")
+        self.assertEqual(
+            payload["report"]["rows"][0][0]["payload"]["cells"][0]["distribution"][0]["outcome"],
+            1,
+        )
+
+    def test_json_backend_can_write_json_output(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            output = Path(tempdir) / "chart.json"
+            result = interpret_statement(
+                f'r_auto(d20); render(path="{output}", format="json")',
+                render_config=RenderConfig(backend="json"),
+            )
+            self.assertEqual(result, str(output))
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["type"], "report")
+            self.assertEqual(payload["backend"], "json")
 
     def test_render_requires_pending_items(self):
         with self.assertRaisesRegex(Exception, "requires at least one pending report item"):
