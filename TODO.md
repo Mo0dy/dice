@@ -90,3 +90,6 @@ End with a list of all language features similar to what we have now) and a link
 - Same as above
 
 # Evaluate Python / report interop (it should be easy to modify existing rendered reports / the report spec based rendering from python).
+# Improved Examples
+- Add comments to samples
+- Create sample files that teach the language / reporting etc.

@@ -11,4 +11,12 @@ metric_value(metric):
     | name == "mean_1d12_gwf" -> great_weapon_fighting_dice(1, 12) $ mean
     | otherwise -> (great_weapon_fighting_dice(1, 12) $ mean) - ((1 d 12) $ mean)
 
-metric_value([METRIC:"mean_2d6", "mean_2d6_gwf", "delta_2d6", "mean_1d12", "mean_1d12_gwf", "delta_1d12"])
+metrics = metric_value([METRIC:"mean_2d6", "mean_2d6_gwf", "delta_2d6", "mean_1d12", "mean_1d12_gwf", "delta_1d12"])
+
+r_title("Great Weapon Fighting average damage")
+r_note("Source: rpg.stackexchange.com/questions/47172")
+r_note("Online claim: GWF adds about +1.33 on 2d6 weapons and +0.83 on 1d12 weapons.")
+r_hero(r_auto(metrics, x="Metric", y="Expected damage", title="Average damage and deltas"))
+render()
+
+metrics

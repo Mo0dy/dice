@@ -30,14 +30,19 @@
 
 ## Online discussion sample pass
 
-- Python orchestration was the right boundary for this pass.
-  - The `.dice` samples were a good fit for exact probability calculations, AC sweeps, and round-by-round damage packages.
-  - The cross-sample work of dumping structured data, selecting the best mode per AC, and comparing local outputs against online claims was much cleaner in Python than in one giant `dice` program.
-  - This is the clearest current example of "keep the math in `dice`, do report assembly and aggregation in Python".
+- Sample-local `dice` reports were feasible more often than expected.
+  - The `.dice` samples were already a good fit for exact probability calculations, AC sweeps, and round-by-round damage packages.
+  - After leaning on the report surface in `README.md`, most of the human-facing discussion reports also fit cleanly in the same `.dice` file as the underlying data program.
+  - The current preferred structure is: exact data plus rendered report in one `.dice` file when that stays readable, and only a sibling `*_report.py` when the report truly needs extra orchestration that the DSL report surface cannot express cleanly.
+
+- The test runner should stay centralized even when the reports do not.
+  - Rendering logic now belongs with the sample in `samples/dnd/discussions/`.
+  - The orchestration that remains centralized is just the small test-side runner that finds those report files and renders them in batch for verification.
+  - That split feels cleaner than one global report generator because the report intent stays near the math it is describing.
 
 - `split` remains an awkward edge inside user-defined functions.
   - Multiline functions do exist and are useful, but a `split ...` body still feels parser-sensitive in shapes that look like they should be straightforward.
-  - In practice, samples were more robust when they exposed raw plan lines and let the Python report layer compute derived comparisons like gaps or "best of two strategies".
+  - In practice, samples were more robust when they exposed raw plan lines and let the report choose among those lines visually instead of trying to express every derived comparison inside a helper function.
   - This is a concrete language pain point because many TTRPG discussions naturally want "evaluate several plans, then compare them".
 
 - Several online claims matched exactly once turned into exact `dice` samples.

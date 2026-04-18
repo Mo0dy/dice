@@ -12,4 +12,12 @@ metric_value(metric):
     | name == "fighter_two_attacks" -> fighter_attack_action(2, 16, 7, 4) $ mean
     | otherwise -> (fighter_attack_action(2, 16, 7, 4) $ mean) + (longsword_attack(16, 7, 4) $ mean)
 
-metric_value([METRIC:"standard_agonizing_eb", "quickened_agonizing_eb", "single_fireball", "double_fireball_action_surge", "fighter_two_attacks", "fighter_hasted_three_attacks"])
+metrics = metric_value([METRIC:"standard_agonizing_eb", "quickened_agonizing_eb", "single_fireball", "double_fireball_action_surge", "fighter_two_attacks", "fighter_hasted_three_attacks"])
+
+r_title("Burst turns and action economy")
+r_note("Sources: reddit.com/r/dndnext/comments/y6k9az and reddit.com/r/dndnext/comments/11fhp8v")
+r_note("Online claims: Quickened Spell can double Eldritch Blast output, Action Surge can double action spells, and Haste adds one extra attack.")
+r_hero(r_auto(metrics, x="Metric", y="Expected damage", title="Burst-turn checkpoints"))
+render()
+
+metrics

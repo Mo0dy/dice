@@ -12,4 +12,12 @@ metric_value(metric):
     | name == "hit_adv_ac15" -> hit(15, 8, roll=d+20) $ mean
     | otherwise -> hit(15, 8, roll=3 d 20 h 1) $ mean
 
-metric_value([METRIC:"crit_plain", "crit_adv", "crit_elven", "hit_plain_ac15", "hit_adv_ac15", "hit_elven_ac15"])
+metrics = metric_value([METRIC:"crit_plain", "crit_adv", "crit_elven", "hit_plain_ac15", "hit_adv_ac15", "hit_elven_ac15"])
+
+r_title("Elven Accuracy crit-fishing")
+r_note("Source: reddit.com/r/dndnext/comments/mm3zb0")
+r_note("Online claim: crit rate moves from 5% to 9.75% with advantage and 14.26% with Elven Accuracy.")
+r_hero(r_auto(metrics, x="Metric", y="Probability", title="Crit and hit-rate checkpoints"))
+render()
+
+metrics

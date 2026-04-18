@@ -1,7 +1,7 @@
 {
   "axes": [
     {
-      "key": "sweep_0",
+      "key": "sweep_1",
       "name": "PLAN",
       "values": [
         "plain",
@@ -9,7 +9,7 @@
       ]
     },
     {
-      "key": "sweep_1",
+      "key": "sweep_0",
       "name": "ROUND",
       "values": [
         1,
@@ -25,12 +25,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 1
         }
@@ -45,12 +45,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 2
         }
@@ -65,12 +65,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 3
         }
@@ -85,12 +85,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 4
         }
@@ -105,12 +105,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 5
         }
@@ -125,12 +125,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "plain"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 6
         }
@@ -145,12 +145,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 1
         }
@@ -165,12 +165,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 2
         }
@@ -185,12 +185,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 3
         }
@@ -205,12 +205,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 4
         }
@@ -225,12 +225,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 5
         }
@@ -245,12 +245,12 @@
     {
       "coordinates": [
         {
-          "axis_key": "sweep_0",
+          "axis_key": "sweep_1",
           "axis_name": "PLAN",
           "value": "hunters_mark"
         },
         {
-          "axis_key": "sweep_1",
+          "axis_key": "sweep_0",
           "axis_name": "ROUND",
           "value": 6
         }

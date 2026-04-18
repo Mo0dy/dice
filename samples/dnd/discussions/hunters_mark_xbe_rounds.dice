@@ -12,4 +12,18 @@ plan_value(plan, round):
     | name == "plain" -> plain_round(16) * round
     | otherwise -> split round | == 1 -> mark_open_round(16) | otherwise -> mark_open_round(16) + mark_full_round(16) * (@ - 1)
 
-plan_value([PLAN:"plain", "hunters_mark"], [ROUND:1..6])
+rounds = [ROUND:1..6]
+results = plan_value([PLAN:"plain", "hunters_mark"], rounds)
+
+plain = plan_value("plain", rounds)
+mark = plan_value("hunters_mark", rounds)
+gap = mark - plain
+
+r_title("Hunter's Mark vs Crossbow Expert")
+r_note("Source: reddit.com/r/dndnext/comments/n1c381")
+r_note("Online claim: Hunter's Mark often needs about two rounds to repay the lost Crossbow Expert bonus-action attack.")
+r_hero(r_compare(("Plain hand crossbow", plain), ("Hunter's Mark", mark), x="Round", y="Cumulative expected damage", title="Cumulative damage by round"))
+r_row(r_auto(gap, x="Round", y="Extra expected damage", title="Hunter's Mark minus plain hand crossbow"))
+render()
+
+results

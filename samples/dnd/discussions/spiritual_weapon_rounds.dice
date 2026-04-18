@@ -17,4 +17,18 @@ plan_value(plan, round):
     | name == "spiritual_weapon" -> weapon_round() * round
     | otherwise -> split round | == 1 -> bolt_open_round() | otherwise -> bolt_open_round() + flame_round() * (@ - 1)
 
-plan_value([PLAN:"spiritual_weapon", "guiding_bolt"], [ROUND:1..6])
+rounds = [ROUND:1..6]
+results = plan_value([PLAN:"spiritual_weapon", "guiding_bolt"], rounds)
+
+weapon = plan_value("spiritual_weapon", rounds)
+bolt = plan_value("guiding_bolt", rounds)
+gap = weapon - bolt
+
+r_title("Spiritual Weapon vs Guiding Bolt")
+r_note("Source: reddit.com/r/dndnext/comments/k0vw32")
+r_note("Online claim: Spiritual Weapon can take several rounds to catch up once setup and Guiding Bolt utility are counted.")
+r_hero(r_compare(("Spiritual Weapon + Sacred Flame", weapon), ("Guiding Bolt then Sacred Flame", bolt), x="Round", y="Cumulative expected damage", title="Cumulative damage by round"))
+r_row(r_auto(gap, x="Round", y="Extra expected damage", title="Spiritual Weapon line minus Guiding Bolt line"))
+render()
+
+results

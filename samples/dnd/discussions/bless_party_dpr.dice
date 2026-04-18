@@ -17,4 +17,18 @@ measure_value(measure, ac):
     | name == "blessed" -> party_blessed(ac)
     | otherwise -> (party_blessed(ac) - party_plain(ac)) / (party_hit_cap() - party_plain(ac))
 
-measure_value([MEASURE:"plain", "blessed", "gap_closed"], [AC:10..22])
+ac = [AC:10..22]
+results = measure_value([MEASURE:"plain", "blessed", "gap_closed"], ac)
+
+plain = measure_value("plain", ac)
+blessed = measure_value("blessed", ac)
+gap_closed = measure_value("gap_closed", ac)
+
+r_title("Bless as party DPR")
+r_note("Source: reddit.com/r/dndnext/comments/1of3fyk")
+r_note("Online claim: Bless closes part of the gap to capped-hit DPR, and matters more as accuracy gets worse.")
+r_hero(r_compare(("Plain", plain), ("Blessed", blessed), x="AC", y="Expected damage", title="Party DPR by AC"))
+r_row(r_auto(gap_closed, x="AC", y="Share of remaining DPR gap", title="Gap to capped-hit DPR closed by Bless"))
+render()
+
+results
