@@ -8,8 +8,8 @@ from tests.dnd_cases import all_dnd_cases
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_RESULTS = ROOT / "tests" / "expected_results"
-SAMPLES = ROOT / "samples"
-PYTHON_SAMPLES = ROOT / "samples" / "python_extensions"
+EXAMPLES = ROOT / "examples"
+PYTHON_EXAMPLES = ROOT / "examples" / "02_python_extensions"
 
 
 @dataclass(frozen=True)
@@ -22,16 +22,16 @@ class JsonRegressionCase:
 
 
 def sample_files() -> list[Path]:
-    if not SAMPLES.exists():
+    if not EXAMPLES.exists():
         return []
-    return sorted(SAMPLES.rglob("*.dice"))
+    return sorted(EXAMPLES.rglob("*.dice"))
 
 
 def sample_cases() -> list[JsonRegressionCase]:
     cases = []
     for path in sample_files():
         relative = path.relative_to(ROOT)
-        snapshot_path = EXPECTED_RESULTS / "samples" / relative.with_suffix(".json")
+        snapshot_path = EXPECTED_RESULTS / "example_library" / relative.with_suffix(".json")
         cases.append(
             JsonRegressionCase(
                 name=str(relative),
@@ -58,16 +58,20 @@ def dnd_cases() -> list[JsonRegressionCase]:
 
 
 def python_sample_files() -> list[Path]:
-    if not PYTHON_SAMPLES.exists():
+    if not PYTHON_EXAMPLES.exists():
         return []
-    return sorted(PYTHON_SAMPLES.rglob("*.py"))
+    return sorted(
+        path
+        for path in PYTHON_EXAMPLES.glob("[0-9][0-9]_*.py")
+        if path.is_file()
+    )
 
 
 def python_cases() -> list[JsonRegressionCase]:
     cases = []
     for path in python_sample_files():
         relative = path.relative_to(ROOT)
-        snapshot_path = EXPECTED_RESULTS / "samples" / relative.with_suffix(".json")
+        snapshot_path = EXPECTED_RESULTS / "example_library" / relative.with_suffix(".json")
         cases.append(
             JsonRegressionCase(
                 name=str(relative),

@@ -4,6 +4,8 @@
 
 This README is intentionally brief during the rewrite. For now, treat it as the user-facing reference for the currently tested language semantics.
 
+The canonical long-form language manual now lives under [manual/](/home/felix/_Documents/Projects/dice/manual/index.md). `README.md` stays as the shortest GitHub-facing entry point, while `manual/` is the source for the MkDocs documentation site.
+
 ## Values
 
 - `FiniteMeasure`: a finite weighted support value such as `{10, 15}` or `{"fire" @ 2, "ice"}`
@@ -366,7 +368,7 @@ Pass `executor=...` to `dice_interpreter(...)` when you want a non-default backe
 - `D("...")` defaults are evaluated against dice globals only during dice-session calls, not function parameters or caller locals.
 - Registered functions may return scalars, `FiniteMeasure`, `Distribution`, `Sweep[FiniteMeasure]`, or `Sweep[Distribution]`.
 
-User-facing extension samples live under [samples/python_extensions](/home/felix/_Documents/Projects/dice/samples/python_extensions).
+User-facing examples now live under [examples/](/home/felix/_Documents/Projects/dice/examples), with Python-extension examples under [examples/02_python_extensions](/home/felix/_Documents/Projects/dice/examples/02_python_extensions).
 
 ## Comments And Imports
 

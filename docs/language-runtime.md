@@ -14,7 +14,11 @@ The language is built around tabletop dice math:
 ## Language Surfaces In The Repository
 
 - `README.md`
-  Current brief user-facing reference for tested language semantics.
+  Current brief user-facing quickstart and tested short reference.
+- `manual/`
+  Canonical user-facing language manual and MkDocs source.
+- `examples/`
+  Canonical user-facing example library, split into basic language, D&D, and Python-extension examples.
 - `scripts/*.txt`
   Small practical programs using defines, plotting directives, and combat math.
 - `scripts/dnd.org`
@@ -67,3 +71,12 @@ That implementation still exists in git history (`git show HEAD:preprocessor.py`
 Rendering is now centered on stateful `r_*` spec builders plus `render(...)` as the final flush/export step.
 
 `viewer.py` renders runtime `Distributions` directly and chooses a chart shape from the result structure instead of parsing textual dict output.
+
+## Documentation Serving
+
+User-facing documentation is served from the MkDocs source under `manual/`, not from this internal `docs/` directory.
+
+- `mkdocs.yml` defines the public docs site structure
+- `manual/` holds the source pages
+- the intended publish target is GitHub Pages
+- `docs/` remains internal and explanatory for contributors and agents

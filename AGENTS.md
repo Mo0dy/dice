@@ -11,16 +11,16 @@ Secondary surfaces:
 - `dice.py`: CLI entry point
 - `directdiceengine.py`: sampling-based reference backend and validation helpers
 - `viewer.py`: Matplotlib plotting helper
-- `README.md`: brief user-facing language reference during the rewrite
-- `DICE_REWRITE_PLAN.md`: active rewrite design and implementation plan
-- `scripts/`: sample dice programs
+- `README.md`: brief user-facing GitHub quickstart
+- `manual/`: canonical user-facing language manual and MkDocs source
+- `examples/`: user-facing example programs
 - `notes.org`: legacy design notes
 
 ## Repository Structure
 
 - Top-level runtime modules: `dice.py`, `directdiceengine.py`, `lexer.py`, `diceparser.py`, `interpreter.py`, `diceengine.py`, `syntaxtree.py`, `viewer.py`
-- User-facing docs: `README.md`
-- Examples and sample programs: `test.dice`, `scripts/*.txt`, `scripts/*.org`
+- User-facing docs: `README.md`, `manual/`, `mkdocs.yml`
+- Examples and sample programs: `examples/`, `test.dice`, `scripts/*.txt`, `scripts/*.org`
 - Agent-facing docs: `docs/`
 - Tests: `tests/`
 - Historical design notes: `notes.org`
@@ -34,12 +34,14 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - The legacy preprocessor and Discord bot have been removed from the active surface.
 - Minimal first-class comments and file imports now belong to the active language surface: `# ...` and `import "path.dice"`.
 - `README.md` examples are part of the executable contract through the test suite.
+- `manual/` examples are also part of the executable contract through the test suite.
 - The current ongoing task is the semantic rewrite described in `DICE_REWRITE_PLAN.md`.
 - The language is explicitly still in development; undocumented breaking syntax/runtime changes are allowed without compatibility warnings while the rewrite is in flight.
 
 ## Where To Read Next
 
 - `README.md`: current user-facing language semantics and executable examples
+- `manual/`: canonical long-form user-facing language manual
 - `DICE_REWRITE_PLAN.md`: active rewrite target for unifying distributions and sweeps
 - `docs/README.md`: documentation map
 - `docs/architecture.md`: module responsibilities and execution flow
@@ -49,6 +51,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 ## Working Notes For Agents
 
 - Keep `README.md` brief during development. Its main job is to be the current user-facing reference for tested language semantics.
+- Keep `manual/` as the canonical long-form user-facing manual. It is also the source for the MkDocs site defined in `mkdocs.yml`.
 - Treat `DICE_REWRITE_PLAN.md` as the active design brief for ongoing semantic changes.
 - During this rewrite, every semantic feature change should come with sensible end-to-end tests where practical.
 - Do not recreate parallel user docs like the removed `documentation.org` / `documentation.html` unless the user explicitly asks for them.
@@ -58,8 +61,8 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - For semantic changes, check `diceengine.py` first; most exact operator and callable behavior lives there.
 - Multiline functions are part of the active language surface; prefer them over dense one-line functions when samples or stdlib helpers need local bindings, repeated subexpressions, or multi-step logic.
 - The old macro/preprocessor layer is historical only. If you need that behavior again, redesign it intentionally instead of assuming it still exists.
-- Prefer `README.md` for current tested examples and `scripts/` / `notes.org` for older intent or design history.
-- `dnd-sources/` is local convenience/reference material for development only. Do not treat it as repository content to quote, mirror, import into user-facing docs, or mention from the library/tests/samples unless the user explicitly asks for that provenance.
+- Prefer `README.md` and `examples/` for current tested examples and `scripts/` / `notes.org` for older intent or design history.
+- `dnd-sources/` is local convenience/reference material for development only. Do not treat it as repository content to quote, mirror, import into user-facing docs, or mention from the library/tests/examples unless the user explicitly asks for that provenance.
 - Use `==` for singleton exact checks such as `d20 == 20`.
 - Use ordinary comparisons for contiguous threshold-style events such as `d20 >= 15`.
 - Use `in` only for genuine non-contiguous or structured membership queries such as `d20 in {1, 20}`.
@@ -68,10 +71,12 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 
 - Test framework: `unittest` with tests under `tests/`.
 - First-line syntax coverage lives in `tests/test_readme_examples.py`, which extracts fenced `dice` blocks from `README.md` and executes them through `dice.py`.
+- Manual example coverage lives in `tests/test_manual_examples.py`, which executes fenced examples from `manual/`.
 - Runtime regressions live in `tests/test_runtime.py`.
 - Focused math regression checks live in `tests/test_math_correctness.py`.
 - Direct-backend smoke coverage lives in `tests/test_direct_engine.py`.
 - Slow Monte Carlo validation lives in `tests/test_stochastic_validation.py` and does not need to be run constantly; use it after major semantic changes are completed.
 - When adding language examples to `README.md`, keep them executable by the current runtime or update the runtime and tests in the same change.
+- When adding examples to `manual/`, keep them executable by the current runtime or update the runtime and tests in the same change.
 - Run tests with `python3 -m unittest discover -s tests -v`.
 - Run optional stochastic validation with `RUN_STOCHASTIC_VALIDATION=1 python3 -m unittest tests.test_stochastic_validation -v`.

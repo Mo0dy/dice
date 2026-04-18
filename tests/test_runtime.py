@@ -141,6 +141,12 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[3], 0.25)
         self.assertAlmostEqual(result[4], 0.0)
 
+    def test_surv_function_handles_twentieths_without_negative_tail_mass(self):
+        result = only_distribution(interpret_statement("surv(d20)"))
+        self.assertAlmostEqual(result[1], 0.95)
+        self.assertAlmostEqual(result[19], 0.05)
+        self.assertAlmostEqual(result[20], 0.0)
+
     def test_type_reports_outer_runtime_shape_for_distribution(self):
         result = interpret_statement("type(d20)")
         self.assertEqual(result, "Sweep[Distribution]")

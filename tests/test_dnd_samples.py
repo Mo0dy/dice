@@ -8,7 +8,7 @@ from tests.dnd_cases import all_dnd_cases
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SAMPLES = ROOT / "samples" / "dnd"
+SAMPLES = ROOT / "examples" / "01_dnd"
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 mpl_config = Path(tempfile.gettempdir()) / "dice-mplconfig"

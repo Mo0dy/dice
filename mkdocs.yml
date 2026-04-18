@@ -1,0 +1,19 @@
+site_name: dice language manual
+site_description: User-facing language and runtime documentation for dice
+docs_dir: manual
+site_dir: site/manual
+theme:
+  name: readthedocs
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Reference:
+    - Overview: reference/index.md
+    - Values And Types: reference/values-and-types.md
+    - Core Expressions: reference/core-expressions.md
+    - Functions And Imports: reference/functions-and-imports.md
+    - Sweeps And Reducers: reference/sweeps-and-reducers.md
+    - Split: reference/split.md
+    - Reports: reference/reports.md
+    - Python Integration: reference/python-integration.md
+  - Pitfalls: pitfalls.md

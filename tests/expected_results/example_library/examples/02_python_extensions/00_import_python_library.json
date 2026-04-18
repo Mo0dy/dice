@@ -1,0 +1,55 @@
+{
+  "axes": [
+    {
+      "key": "sweep_0",
+      "name": "BASE",
+      "values": [
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "BASE",
+          "value": 1
+        }
+      ],
+      "value": {
+        "kind": "scalar",
+        "value": 6
+      }
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "BASE",
+          "value": 2
+        }
+      ],
+      "value": {
+        "kind": "scalar",
+        "value": 8
+      }
+    },
+    {
+      "coordinates": [
+        {
+          "axis_key": "sweep_0",
+          "axis_name": "BASE",
+          "value": 3
+        }
+      ],
+      "value": {
+        "kind": "scalar",
+        "value": 10
+      }
+    }
+  ],
+  "type": "sweep"
+}
