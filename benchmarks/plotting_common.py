@@ -105,3 +105,60 @@ def plot_representative_distributions(
     output.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output, dpi=160, bbox_inches="tight")
     plt.close(figure)
+
+
+def plot_single_coordinate_pmf(
+    exact_sweep,
+    sampled_runs,
+    coordinate,
+    plot_path: str,
+    *,
+    format_coordinate,
+) -> None:
+    os.environ.setdefault("MPLBACKEND", "Agg")
+    mpl_config = Path(tempfile.gettempdir()) / "dice-mplconfig"
+    mpl_config.mkdir(exist_ok=True)
+    os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
+
+    import matplotlib.pyplot as plt
+
+    colors = ("#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#8c564b", "#e377c2")
+    exact_cells = exact_sweep.cells if hasattr(exact_sweep, "cells") else exact_sweep
+    exact = exact_distribution_dict(exact_cells[coordinate])
+    exact_xs = sorted(exact)
+    exact_ys = [exact[x_value] for x_value in exact_xs]
+
+    figure, axis = plt.subplots(1, 1, figsize=(12, 5.5))
+    axis.bar(
+        exact_xs,
+        exact_ys,
+        width=0.95,
+        alpha=0.35,
+        color="#1f77b4",
+        label="dice exact",
+    )
+
+    for color, (label, sampled_sweep) in zip(colors, sampled_runs.items()):
+        sampled_cells = sampled_sweep.cells if hasattr(sampled_sweep, "cells") else sampled_sweep
+        sampled = sampled_cells[coordinate]
+        sampled_xs = sorted(sampled)
+        sampled_ys = [sampled[x_value] for x_value in sampled_xs]
+        axis.step(
+            sampled_xs,
+            sampled_ys,
+            where="mid",
+            color=color,
+            linewidth=1.6,
+            label=label,
+        )
+
+    axis.set_title("PMF: " + format_coordinate(coordinate))
+    axis.set_xlabel("Damage")
+    axis.set_ylabel("Probability")
+    axis.legend(loc="upper right")
+
+    figure.tight_layout()
+    output = Path(plot_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=180, bbox_inches="tight")
+    plt.close(figure)

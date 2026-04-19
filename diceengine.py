@@ -953,6 +953,8 @@ def _deterministic_comparison_value(value):
 
 
 def _compare_distribution_to_scalar(distribution, scalar, operator, *, scalar_on_left=False):
+    # Threshold-style combat queries such as d20 >= ac are common and do not
+    # need a full Cartesian product when one side is deterministic.
     if _is_structured_value(scalar):
         runtime_error(
             "comparisons do not support tuple or record values yet",

@@ -182,6 +182,9 @@ def _convert_projected_argument(projected, parameter):
 
 
 def _build_argument_binder(parameters, export_name):
+    # Decorated builtins are extremely hot in branch-heavy exact workloads. We
+    # only support POSITIONAL_OR_KEYWORD parameters, so a small binder is much
+    # cheaper here than calling inspect.Signature.bind() on every invocation.
     parameter_count = len(parameters)
     required_count = sum(1 for parameter in parameters if not parameter.has_default)
     parameter_names = tuple(parameter.name for parameter in parameters)

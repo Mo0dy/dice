@@ -117,5 +117,27 @@ def state_space():
     return product(MODES, ATTACK_BONUSES, BLESS_VALUES, ACS)
 
 
+def _timing_cells():
+    coordinates = tuple(coordinate_space())
+    indices = (
+        0,
+        len(coordinates) // 10,
+        2 * len(coordinates) // 10,
+        3 * len(coordinates) // 10,
+        4 * len(coordinates) // 10,
+        5 * len(coordinates) // 10,
+        6 * len(coordinates) // 10,
+        7 * len(coordinates) // 10,
+        8 * len(coordinates) // 10,
+        9 * len(coordinates) // 10,
+        len(coordinates) - 1,
+    )
+    spread = tuple(coordinates[index] for index in indices)
+    return tuple(dict.fromkeys(VALIDATION_CELLS + REPRESENTATIVE_CELLS + spread))
+
+
+TIMING_CELLS = _timing_cells()
+
+
 def format_coordinate(coordinate: tuple[object, ...]) -> str:
     return "slot={} mode={} atk={} bless={} targets={} ac={}".format(*coordinate)

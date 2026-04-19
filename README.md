@@ -6,6 +6,30 @@ This README is intentionally brief during the rewrite. For now, treat it as the 
 
 The canonical long-form language manual now lives under [manual/](/home/felix/_Documents/Projects/dice/manual/index.md). `README.md` stays as the shortest GitHub-facing entry point, while `manual/` is the source for the MkDocs documentation site.
 
+## Performance
+
+- Dice is a lot more accurate and much faster than naive Monte Carlo.
+- Dice is as good as a more optimized Monte Carlo version and a lot easier to write.
+
+For the representative `hexed_scorching_ray` cell `slot=2, mode=normal, atk=7, bless=0, ac=13`, the exact PMF and the vectorized Monte Carlo overlays look like this:
+
+![Exact vs NumPy Monte Carlo PMF](docs/images/readme_benchmark_pmf.png)
+
+Current benchmark numbers:
+
+| Benchmark | Backend | Samples / cell | Scope | Time (s) | vs dice | Representative mean abs. error |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hexed Scorching Ray | dice exact | - | full sweep (1,260 cells) | 0.500 | 1.00x | 0.0000 |
+| Hexed Scorching Ray | naive Python Monte Carlo | 4,000 | full sweep (1,260 cells) | 32.885 | 65.81x | 0.2184 |
+| Hexed Scorching Ray | vectorized NumPy Monte Carlo | 4,000 | full sweep (1,260 cells) | 0.353 | 0.71x | 0.2923 |
+| Hexed Scorching Ray | vectorized NumPy Monte Carlo | 32,000 | full sweep (1,260 cells) | 0.662 | 1.32x | 0.0861 |
+| Chaos Bolt Chain | dice exact | - | 15-cell exact probe | 28.584 | 1.00x | 0.0000 |
+| Chaos Bolt Chain | naive Python Monte Carlo | 4,000 | 15-cell exact probe | 0.120 | <0.01x | 0.2076 |
+| Chaos Bolt Chain | vectorized NumPy Monte Carlo | 4,000 | 15-cell exact probe | 0.910 | 0.03x | 0.1845 |
+| Chaos Bolt Chain | vectorized NumPy Monte Carlo | 32,000 | 15-cell exact probe | 0.997 | 0.03x | 0.0482 |
+
+These numbers are produced by the exploratory runners under [benchmarks/](/home/felix/_Documents/Projects/dice/benchmarks/README.md). The Scorching Ray sweep is the cleanest benchmark for the headline claim above. Chaos Bolt remains the branch-heavy stress test for the exact engine.
+
 ## Values
 
 - `FiniteMeasure`: a finite weighted support value such as `{10, 15}` or `{"fire" @ 2, "ice"}`

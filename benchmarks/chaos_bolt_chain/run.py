@@ -29,11 +29,16 @@ BACKENDS = {
     "numpy": python_numpy,
 }
 
+BACKEND_LABELS = {
+    "baseline": "Naive Python Monte Carlo",
+    "numpy": "Vectorized NumPy Monte Carlo",
+}
+
 
 @dataclass(frozen=True)
 class BenchmarkConfig:
-    backends: tuple[str, ...]
-    sample_counts: tuple[int, ...]
+    baseline_sample_counts: tuple[int, ...]
+    numpy_sample_counts: tuple[int, ...]
     validation_trials: int
     seed: int
     skip_validation: bool
@@ -42,52 +47,28 @@ class BenchmarkConfig:
     numpy_processes: int
 
 
-def backend_kwargs(config: BenchmarkConfig, backend_name: str) -> dict[str, object]:
-    if backend_name == "numpy":
-        return {
-            "batch_size": config.numpy_batch_size,
-            "processes": config.numpy_processes,
-        }
-    return {}
-
-
-def validate_backend(exact_sweep, backend_name: str, config: BenchmarkConfig) -> None:
-    backend = BACKENDS[backend_name]
-    failures = []
-    for index, coordinate in enumerate(workload.VALIDATION_CELLS):
-        sampled = backend.sample_coordinate_distribution(
-            coordinate,
-            config.validation_trials,
-            seed=config.seed + index,
-            **backend_kwargs(config, backend_name)
-        )
-        exact = exact_sweep.cells[coordinate]
-        mean_error = abs(exact.average() - common.distribution_mean(sampled))
-        tvd = common.total_variation_distance(exact, sampled)
-        if mean_error > 0.6 or tvd > 0.10:
-            failures.append((coordinate, mean_error, tvd))
-    if failures:
-        lines = ["validation failed for backend {}".format(backend_name)]
-        for coordinate, mean_error, tvd in failures:
-            lines.append("  {} mean_error={:.4f} tvd={:.4f}".format(coordinate, mean_error, tvd))
-        raise SystemExit("\n".join(lines))
-
-
 def parse_args() -> BenchmarkConfig:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--backend",
-        action="append",
-        choices=tuple(BACKENDS),
-        default=None,
-        help="Sampled backend to run. Repeat to compare more than one backend.",
-    )
     parser.add_argument(
         "--sample-counts",
         nargs="+",
         type=int,
-        default=(4000,),
-        help="One or more Monte Carlo sample counts per cell.",
+        default=None,
+        help="Shared sample counts for all sampled backends.",
+    )
+    parser.add_argument(
+        "--baseline-sample-counts",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Sample counts for the naive Python backend.",
+    )
+    parser.add_argument(
+        "--numpy-sample-counts",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Sample counts for the NumPy backend.",
     )
     parser.add_argument(
         "--validation-trials",
@@ -124,11 +105,12 @@ def parse_args() -> BenchmarkConfig:
         help="Worker-process count for the NumPy backend. Trials are split evenly across workers.",
     )
     args = parser.parse_args()
-    backends = tuple(dict.fromkeys(args.backend or ("numpy",)))
-    sample_counts = tuple(dict.fromkeys(args.sample_counts))
+    shared_counts = tuple(dict.fromkeys(args.sample_counts or ()))
+    baseline_counts = tuple(dict.fromkeys(args.baseline_sample_counts or shared_counts or (4000,)))
+    numpy_counts = tuple(dict.fromkeys(args.numpy_sample_counts or shared_counts or (4000, 32000)))
     return BenchmarkConfig(
-        backends=backends,
-        sample_counts=sample_counts,
+        baseline_sample_counts=baseline_counts,
+        numpy_sample_counts=numpy_counts,
         validation_trials=args.validation_trials,
         seed=args.seed,
         skip_validation=args.skip_validation,
@@ -138,96 +120,143 @@ def parse_args() -> BenchmarkConfig:
     )
 
 
+def backend_kwargs(config: BenchmarkConfig, backend_name: str) -> dict[str, object]:
+    if backend_name == "numpy":
+        return {
+            "batch_size": config.numpy_batch_size,
+            "processes": config.numpy_processes,
+        }
+    return {}
+
+
+def validate_backend(exact_result, backend_name: str, config: BenchmarkConfig) -> None:
+    backend = BACKENDS[backend_name]
+    failures = []
+    for index, coordinate in enumerate(workload.VALIDATION_CELLS):
+        sampled = backend.sample_coordinate_distribution(
+            coordinate,
+            config.validation_trials,
+            seed=config.seed + index,
+            **backend_kwargs(config, backend_name)
+        )
+        exact = common.cells_dict(exact_result)[coordinate]
+        mean_error = abs(exact.average() - common.distribution_mean(sampled))
+        tvd = common.total_variation_distance(exact, sampled)
+        if mean_error > 0.6 or tvd > 0.10:
+            failures.append((coordinate, mean_error, tvd))
+    if failures:
+        lines = ["validation failed for backend {}".format(backend_name)]
+        for coordinate, mean_error, tvd in failures:
+            lines.append("  {} mean_error={:.4f} tvd={:.4f}".format(coordinate, mean_error, tvd))
+        raise SystemExit("\n".join(lines))
+
+
+def benchmark_rows(config: BenchmarkConfig):
+    return (
+        ("baseline", config.baseline_sample_counts),
+        ("numpy", config.numpy_sample_counts),
+    )
+
+
+def format_ratio(value: float) -> str:
+    return "<0.01x" if value < 0.01 else "{:.2f}x".format(value)
+
+
 def main() -> None:
     config = parse_args()
 
-    print("Benchmark: Chaos Bolt chain sweep")
+    print("Benchmark: Chaos Bolt chain")
     print("Axis order: {}".format(", ".join(workload.AXIS_ORDER)))
+    print("Timing scope: {} exact probe coordinates".format(len(workload.TIMING_CELLS)))
     print(
-        "Cells: {} (slots={} modes={} attack_bonuses={} bless_states={} target_counts={} ac_values={})".format(
-            len(workload.SLOTS)
-            * len(workload.MODES)
-            * len(workload.ATTACK_BONUSES)
-            * len(workload.BLESS_VALUES)
-            * len(workload.TARGET_COUNTS)
-            * len(workload.ACS),
-            len(workload.SLOTS),
-            len(workload.MODES),
-            len(workload.ATTACK_BONUSES),
-            len(workload.BLESS_VALUES),
-            len(workload.TARGET_COUNTS),
-            len(workload.ACS),
+        "Sample counts: baseline={} numpy={}".format(
+            ", ".join("{:,}".format(count) for count in config.baseline_sample_counts) or "off",
+            ", ".join("{:,}".format(count) for count in config.numpy_sample_counts) or "off",
         )
     )
-    print("Exact benchmark mode: representative+validation probes")
-    print("Sampled backends: {}".format(", ".join(config.backends)))
     print(
-        "Python sample counts per cell: {}".format(
-            ", ".join("{:,}".format(sample_count) for sample_count in config.sample_counts)
+        "NumPy config: processes={} batch_size={:,}".format(
+            config.numpy_processes,
+            config.numpy_batch_size,
         )
     )
-    if "numpy" in config.backends:
-        print(
-            "NumPy backend config: processes={} batch_size={:,}".format(
-                config.numpy_processes,
-                config.numpy_batch_size,
-            )
-        )
 
-    exact_coordinates = tuple(dict.fromkeys(workload.VALIDATION_CELLS + workload.REPRESENTATIVE_CELLS))
     exact_start = perf_counter()
-    exact_sweep = exact_dice.evaluate_coordinates(exact_coordinates)
+    exact_result = exact_dice.evaluate_coordinates(workload.TIMING_CELLS)
     exact_elapsed = perf_counter() - exact_start
-    print("Exact probe time: {:.3f}s for {} coordinates".format(exact_elapsed, len(exact_coordinates)))
 
     if not config.skip_validation:
-        for backend_name in config.backends:
-            validation_start = perf_counter()
-            validate_backend(exact_sweep, backend_name, config)
-            validation_elapsed = perf_counter() - validation_start
-            print(
-                "Validation ({}) passed on {} cells with {} trials/cell in {:.3f}s".format(
-                    backend_name,
-                    len(workload.VALIDATION_CELLS),
-                    config.validation_trials,
-                    validation_elapsed,
-                )
-            )
+        validation_exact = exact_dice.evaluate_coordinates(workload.VALIDATION_CELLS)
+        for backend_name, _sample_counts in benchmark_rows(config):
+            validate_backend(validation_exact, backend_name, config)
 
     sampled_runs = {}
-    for backend_index, backend_name in enumerate(config.backends, start=1):
+    table_rows = [
+        (
+            "dice exact",
+            "-",
+            "{}-cell exact probe".format(len(workload.TIMING_CELLS)),
+            "{:.3f}".format(exact_elapsed),
+            "1.00x",
+            "0.0000",
+        )
+    ]
+
+    for backend_index, (backend_name, sample_counts) in enumerate(benchmark_rows(config), start=1):
         backend = BACKENDS[backend_name]
-        for sample_index, sample_count in enumerate(config.sample_counts, start=1):
+        for sample_index, sample_count in enumerate(sample_counts, start=1):
             run_seed = config.seed + backend_index * 10000 + sample_index
             sampled_start = perf_counter()
-            sampled_sweep = backend.evaluate_sweep(
-                samples_per_cell=sample_count,
+            sampled_result = common.sample_coordinates(
+                backend,
+                workload.TIMING_CELLS,
+                sample_count,
                 seed=run_seed,
                 **backend_kwargs(config, backend_name)
             )
             sampled_elapsed = perf_counter() - sampled_start
             label = "{} {:,}".format(backend_name, sample_count)
-            sampled_runs[label] = sampled_sweep
+            sampled_runs[label] = sampled_result
+            error = common.mean_absolute_error(exact_result, sampled_result, workload.REPRESENTATIVE_CELLS)
+            table_rows.append(
+                (
+                    BACKEND_LABELS[backend_name],
+                    "{:,}".format(sample_count),
+                    "{}-cell exact probe".format(len(workload.TIMING_CELLS)),
+                    "{:.3f}".format(sampled_elapsed),
+                    format_ratio(sampled_elapsed / exact_elapsed),
+                    "{:.4f}".format(error),
+                )
+            )
 
-            print("Sampled sweep time ({}): {:.3f}s".format(label, sampled_elapsed))
-            print("Representative cells ({}):".format(label))
-            for line in common.summarize_cells(exact_sweep, sampled_sweep, workload.REPRESENTATIVE_CELLS):
-                print("  " + line)
+    print()
+    print(
+        common.markdown_table(
+            ("Backend", "Samples / cell", "Scope", "Time (s)", "vs dice", "Rep. mean abs err"),
+            table_rows,
+        )
+    )
 
-            mean_errors = []
-            for coordinate in workload.REPRESENTATIVE_CELLS:
-                exact = exact_sweep.cells[coordinate]
-                sampled = sampled_sweep[coordinate]
-                mean_errors.append(abs(exact.average() - common.distribution_mean(sampled)))
-            print("Representative mean abs error ({}): {:.4f}".format(label, sum(mean_errors) / len(mean_errors)))
+    print()
+    print("Representative cells:")
+    for label, sampled_result in sampled_runs.items():
+        print("  {}:".format(label))
+        for line in common.summarize_cells(exact_result, sampled_result, workload.REPRESENTATIVE_CELLS):
+            print("    " + line)
 
     if config.plot_path:
+        headline_runs = {
+            label: sampled_runs[label]
+            for label in sampled_runs
+            if label in {"numpy 4,000", "numpy 32,000"}
+        }
         plotting.plot_representative_distributions(
-            exact_sweep,
-            sampled_runs,
+            exact_result,
+            headline_runs if headline_runs else sampled_runs,
             workload.REPRESENTATIVE_CELLS,
             config.plot_path,
         )
+        print()
         print("Plot written to {}".format(config.plot_path))
 
 

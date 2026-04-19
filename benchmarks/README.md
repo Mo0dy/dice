@@ -12,21 +12,74 @@ Current benchmark workloads:
   A bounded multi-target Chaos Bolt cascade with repeated attack rolls,
   conditional jumps, and deeper roll-dependent stop logic.
 
-Recommended entry point:
+## Headline takeaway
+
+For additive combat sweeps like `hexed_scorching_ray`:
+
+- Dice is a lot more accurate and much faster than naive Monte Carlo.
+- Dice is in the same ballpark as a more optimized Monte Carlo version while
+  also being exact and much easier to write.
+
+For branch-heavy exact workloads like `chaos_bolt_chain`, the exact engine is
+still slower than the optimized Monte Carlo path today. That benchmark remains
+useful as the current stress test for `split`/decision-tree execution.
+
+## Headline image
+
+The plot below is intended for the README and compares the exact `dice`
+distribution against NumPy Monte Carlo at `4,000` and `32,000` samples per
+cell.
+
+![Hexed Scorching Ray accuracy comparison](docs/images/hexed_scorching_ray_accuracy.png)
+
+Generated with:
 
 ```bash
-python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py --backend numpy --sample-counts 4000 16000 256000
+python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py \
+  --plot-path /home/felix/_Documents/Projects/dice/docs/images/hexed_scorching_ray_accuracy.png
+```
+
+## Current numbers
+
+### Hexed Scorching Ray
+
+Timing scope: full exact sweep across `1,260` cells.
+
+| Backend | Samples / cell | Scope | Time (s) | vs dice | Rep. mean abs err |
+| --- | --- | --- | --- | --- | --- |
+| dice exact | - | full sweep (1,260 cells) | 0.500 | 1.00x | 0.0000 |
+| Naive Python Monte Carlo | 4,000 | full sweep (1,260 cells) | 32.885 | 65.81x | 0.2184 |
+| Vectorized NumPy Monte Carlo | 4,000 | full sweep (1,260 cells) | 0.353 | 0.71x | 0.2923 |
+| Vectorized NumPy Monte Carlo | 32,000 | full sweep (1,260 cells) | 0.662 | 1.32x | 0.0861 |
+
+### Chaos Bolt Chain
+
+Timing scope: `15` exact probe coordinates.
+
+| Backend | Samples / cell | Scope | Time (s) | vs dice | Rep. mean abs err |
+| --- | --- | --- | --- | --- | --- |
+| dice exact | - | 15-cell exact probe | 28.584 | 1.00x | 0.0000 |
+| Naive Python Monte Carlo | 4,000 | 15-cell exact probe | 0.120 | <0.01x | 0.2076 |
+| Vectorized NumPy Monte Carlo | 4,000 | 15-cell exact probe | 0.910 | 0.03x | 0.1845 |
+| Vectorized NumPy Monte Carlo | 32,000 | 15-cell exact probe | 0.997 | 0.03x | 0.0482 |
+
+## Commands
+
+```bash
+python3 /home/felix/_Documents/Projects/dice/benchmarks/hexed_scorching_ray/run.py
 ```
 
 ```bash
-python3 /home/felix/_Documents/Projects/dice/benchmarks/chaos_bolt_chain/run.py --backend numpy --sample-counts 4000 16000
+python3 /home/felix/_Documents/Projects/dice/benchmarks/chaos_bolt_chain/run.py
 ```
 
 Notes:
 
-- These benchmarks are intentionally exploratory and are not part of the
-  shipped module surface.
+- These benchmarks are exploratory and are not part of the shipped module
+  surface.
 - The NumPy backend still rolls primitive dice directly. It does not use
   precomputed alias tables, PMFs, or other derived stochastic primitives.
 - The NumPy backend can split each state's trial count evenly across worker
   processes with `--numpy-processes N`.
+- The Chaos Bolt numbers use an explicit exact timing probe because a full exact
+  sweep is still too expensive for that branch-heavy workload.
