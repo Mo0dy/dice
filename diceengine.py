@@ -972,7 +972,7 @@ def _accumulate_distribution_contributions(contributions):
     combined_axes = _union_axes([Sweep(axes, cells) for axes, cells in contributions])
     cells = {}
     for coordinates in _coordinates_space(combined_axes):
-        entries = []
+        merged = {}
         for axes, contribution_cells in contributions:
             projected = _lookup_projected(axes, contribution_cells, combined_axes, coordinates, None)
             if projected is None:
@@ -982,8 +982,8 @@ def _accumulate_distribution_contributions(contributions):
             # Distribution is assembled for this output cell.
             projected_entries = projected.items() if isinstance(projected, FiniteMeasure) else projected
             for outcome, probability in projected_entries:
-                entries.append((outcome, probability))
-        cells[coordinates] = Distribution(entries)
+                merged[outcome] = merged.get(outcome, 0.0) + probability
+        cells[coordinates] = Distribution(merged)
     return Sweep(combined_axes, cells)
 
 
