@@ -63,6 +63,37 @@ def _sampled_result(outcome, exact):
     return SampledDistrib(dict(_degenerate(outcome).items()), exact=exact)
 
 
+def _repeat_sum_with_linear(add_function, count, value):
+    count_sweep = diceengine._coerce_value_to_sweep(count)
+    contributions = []
+    for count_coordinates, count_cell in count_sweep.items():
+        count_outcome = diceengine._deterministic_numeric_value(count_cell, "repeat_sum", allow_float=False)
+        if count_outcome < 0:
+            diceengine.runtime_error(
+                "repeat_sum expects a non-negative integer count",
+                hint="Use 0 or a positive integer count.",
+            )
+        repeated = 0
+        for _ in range(count_outcome):
+            repeated = add_function(repeated, value)
+        repeated_sweep = diceengine._coerce_value_to_sweep(repeated)
+        count_selection = diceengine._fixed_axis_distribution(count_sweep.axes, count_coordinates)
+        combined_axes = diceengine._union_axes([count_selection, repeated_sweep])
+        cells = {}
+        for coordinates in diceengine._coordinates_space(combined_axes):
+            if diceengine._lookup_projected(count_sweep.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
+                continue
+            cells[coordinates] = repeated_sweep.lookup(combined_axes, coordinates)
+        contributions.append((combined_axes, cells))
+    if not contributions:
+        return 0
+    result = Sweep(
+        diceengine._union_axes([Sweep(axes, cells) for axes, cells in contributions]),
+        {coord: cell for axes, cells in contributions for coord, cell in cells.items()},
+    )
+    return result.only_value() if result.is_unswept() else result
+
+
 class DirectExecutor(ExactExecutor):
     """Sampling backend mirroring the exact executor one execution at a time."""
 
@@ -199,7 +230,7 @@ class DirectExecutor(ExactExecutor):
         return self.reselse(condition, distrib, self.floordiv(distrib, 2))
 
     def repeat_sum(self, count, value):
-        return diceengine.repeat_sum_with_linear(self.add, count, value)
+        return _repeat_sum_with_linear(self.add, count, value)
 
     def roll(self, n, s):
         def operation(sampled_n, sampled_s):

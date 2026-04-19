@@ -1,8 +1,22 @@
+# FIX HOW SWEEPS INTERACT. SWEEPS WITH THE SAME LABEL ARE THE SAME AXIS.
+# multiline if then
+# Fix printing of highly multidimensional datastructures (perhaps steal some numpy ideas).
+# Think about language types. Currently buildin functions behave very differently for some types
+- 1 + 1 works when 1 is a scalar but not when 1 is represented as a degenerate distribution / finite measure.
+- This is a big point. Making the language internally consistent could potentially remove a lot of code / complexity.
+- I think I changed it so that we are allowing unswept values in the engine in more placed. Likely everything should just be swept.
+
 # TODOS
 - `total` should also accept unnamed axis
 - Distributions should not include fields with probability 0 in rendering?.
 - Have high precision rationals (need to be enabled)
 - Add functionality for comparing distributions (divergences and equality)
+- `rollhigh` / `rolllow` still use recursive full enumeration of kept-dice states.
+  They likely want a memoized dynamic-programming formulation instead of raw tree expansion.
+- Interesting exploration: exact finite combat analysis from Python using Markov-chain / absorbing-state methods.
+  This should stay outside the core `dice` language.
+  The plausible boundary is: `dice` computes exact local stochastic kernels such as attacks, saves, spell damage, and concentration checks; Python orchestrates finite combat state and either analyzes the Markov process exactly or falls back to simulation when the state space is too large.
+  A small example would still be useful: one Python-driven combat/state sample that calls into `dice` for the underlying roll distributions.
 
 ## Brainstorming on Configurations
 - Attack configuration likely wants a first-class unresolved `AttackSpec`-style value plus transform helpers, not just default kwargs.
@@ -58,38 +72,38 @@ End with a list of all language features similar to what we have now) and a link
 
 
 # Improving Rendering Comments
-/home/felix/_Documents/Projects/dice/samples/dnd/ability_scores_4d6h3.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/ability_scores_4d6h3.dice
 - For the "Total modifier sum across 6 scores" plot it would be nice to immediately zoom into the central part without showing the whole tail (left and right). (This would however need some indication that we have cliped the tail. We can safely clip a tail if its total probability mass is less than 0.1%). Then perhaps insert a comment in the plot.
 
-/home/felix/_Documents/Projects/dice/samples/dnd/agonizing_eldritch_blast_vs_ac.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/agonizing_eldritch_blast_vs_ac.dice
 - Add a second plot that shows how much additional damage Agonizing / Hex + Agonizing make over AC
 
-/home/felix/_Documents/Projects/dice/samples/dnd/combat_profiles.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/combat_profiles.dice
 - Since this is a damage comparison It's a bit annoying that we include the miss chance explicitly in the plot. It might be nice to remove this by default (if it is a lot higher than the other probabilities) and instead add it as text somewhere.
 - I love the plot that is chosen. The "stepped" lines are a great in between of bar plots and line plots.
 
-/home/felix/_Documents/Projects/dice/samples/dnd/eldritch_blast_debug.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/eldritch_blast_debug.dice
 - Add another full width plot below the hero plot that shows damage comparison between single double and three beams.
 - The three damage distributions have the problem with the miss change dominating the y-scale again. 
 
-/home/felix/_Documents/Projects/dice/samples/dnd/strategy_heatmap.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/strategy_heatmap.dice
 - Add a comparison plot over ac.
 - The margin plot should be placed below the best stragety heatmap and I don't think it should probably not be a contour plot but a normal one instead.
 
-/home/felix/_Documents/Projects/dice/samples/dnd/fireball_party_total.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/fireball_party_total.dice
 - There is no dense distribution. It plots value over spell slots
 
-/home/felix/_Documents/Projects/dice/samples/dnd/magic_missile_vs_slot.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/magic_missile_vs_slot.dice
 - Should have y axis label "dmg"
 
-/home/felix/_Documents/Projects/dice/samples/dnd/martial_tradeoffs.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/martial_tradeoffs.dice
 - Same as for stragegy_heatmap.
 - Also should include two plots. One "best" plot and one plot with the damage.
 
-/home/felix/_Documents/Projects/dice/samples/dnd/spell_slot_showdown.dice
+/home/felix/_Documents/Projects/dice/examples/01_dnd/spell_slot_showdown.dice
 - Same as above
 
 # Evaluate Python / report interop (it should be easy to modify existing rendered reports / the report spec based rendering from python).
 # Improved Examples
-- Add comments to samples
+- Add comments to examples
 - Create sample files that teach the language / reporting etc.

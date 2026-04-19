@@ -332,6 +332,11 @@ class RuntimeTest(unittest.TestCase):
         explicit = only_distribution(interpret_statement("repeat_sum(3, 2d2)"))
         self.assertEqual(str(direct), str(explicit))
 
+    def test_roll_matches_repeat_sum_of_single_die(self):
+        direct = only_distribution(interpret_statement("10d20"))
+        explicit = only_distribution(interpret_statement("repeat_sum(10, d20)"))
+        self.assertEqual(str(direct), str(explicit))
+
     def test_sumover_reduces_named_axis(self):
         result = only_distribution(interpret_statement('sumover([party:1, 2, 3], "party")'))
         self.assertEqual(result[6], 1)

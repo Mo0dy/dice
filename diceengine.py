@@ -804,26 +804,50 @@ def _uniform_die_distribution(sides):
     return Distribution(((outcome, 1.0 / sides) for outcome in range(1, sides + 1)))
 
 
-def _roll_plain(n, s):
-    _require_int(n, "roll")
-    _require_int(s, "roll")
-    if n < 0 or s <= 0:
-        runtime_error(
-            "roll expects positive sides and a non-negative dice count",
-            hint="Examples: 2d6, 1d20, or 0d6.",
-        )
-    if n == 0:
-        return _deterministic_distribution(0)
+def _dense_contiguous_integer_weights(distrib):
+    items = distrib.items()
+    if not items:
+        return None
+    outcomes = []
+    weights = []
+    for outcome, weight in items:
+        if not isinstance(outcome, int):
+            return None
+        outcomes.append(outcome)
+        weights.append(weight)
+    start = min(outcomes)
+    end = max(outcomes)
+    if len(outcomes) != end - start + 1:
+        return None
+    dense_weights = [0.0] * (end - start + 1)
+    for outcome, weight in zip(outcomes, weights):
+        dense_weights[outcome - start] = weight
+    return start, tuple(dense_weights)
 
-    results = []
-    for p in range(1, s * n + 1):
-        c = (p - n) // s
-        probability = sum(
-            [(-1) ** k * comb(n, k) * comb(p - s * k - 1, n - 1) for k in range(0, c + 1)]
-        ) / s ** n
-        if probability != 0:
-            results.append((p, probability))
-    return Distribution(results)
+
+def _convolve_dense_integer_add(left, right):
+    left_dense = _dense_contiguous_integer_weights(left)
+    if left_dense is None:
+        return None
+    right_dense = _dense_contiguous_integer_weights(right)
+    if right_dense is None:
+        return None
+    left_start, left_weights = left_dense
+    right_start, right_weights = right_dense
+    result_weights = [0.0] * (len(left_weights) + len(right_weights) - 1)
+    for left_index, left_probability in enumerate(left_weights):
+        if left_probability == 0:
+            continue
+        for right_index, right_probability in enumerate(right_weights):
+            if right_probability == 0:
+                continue
+            result_weights[left_index + right_index] += left_probability * right_probability
+    start = left_start + right_start
+    return Distribution(
+        (start + index, probability)
+        for index, probability in enumerate(result_weights)
+        if probability != 0
+    )
 
 
 def _distribution_support_transform(value, scalar, operator, opname):
@@ -838,6 +862,10 @@ def _require_support_numeric(outcome, opname):
 
 
 def _pairwise_numeric(left, right, operator, opname):
+    if opname == "add":
+        convolved = _convolve_dense_integer_add(left, right)
+        if convolved is not None:
+            return convolved
     result = []
     for left_value, left_probability in left.items():
         _require_numeric(left_value, opname)
@@ -1336,7 +1364,7 @@ def roll(n: Any, s: Any):
         _require_int(dice_count, "roll")
         for sides, sides_probability in s_distribution.items():
             _require_int(sides, "roll")
-            rolled = _roll_plain(dice_count, sides)
+            rolled = _coerce_to_distribution_cell(repeat_sum(dice_count, rollsingle(sides)))
             outer = dice_count_probability * sides_probability
             for outcome, probability in rolled.items():
                 entries.append((outcome, outer * probability))
@@ -1537,81 +1565,21 @@ def member(left: Any, right: Any):
     return _member_cell(left, right)
 
 
-def repeat_sum_with_linear(add_function, count, value):
-    count_sweep = _coerce_value_to_sweep(count)
-    contributions = []
-    for count_coordinates, count_cell in count_sweep.items():
-        count_outcome = _deterministic_numeric_value(count_cell, "repeat_sum", allow_float=False)
-        if count_outcome < 0:
-            runtime_error(
-                "repeat_sum expects a non-negative integer count",
-                hint="Use 0 or a positive integer count.",
-            )
-        repeated = 0
-        for _ in range(count_outcome):
-            repeated = add_function(repeated, value)
-        repeated_sweep = _coerce_value_to_sweep(repeated)
-        count_selection = _fixed_axis_distribution(count_sweep.axes, count_coordinates)
-        combined_axes = _union_axes([count_selection, repeated_sweep])
-        cells = {}
-        for coordinates in _coordinates_space(combined_axes):
-            if _lookup_projected(count_sweep.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
-                continue
-            cells[coordinates] = repeated_sweep.lookup(combined_axes, coordinates)
-        contributions.append((combined_axes, cells))
-    if not contributions:
-        return 0
-    result = Sweep(
-        _union_axes([Sweep(axes, cells) for axes, cells in contributions]),
-        {coord: value for axes, cells in contributions for coord, value in cells.items()},
-    )
-    return result.only_value() if result.is_unswept() else result
-
-
-def repeat_sum_with(add_function, count, value):
-    count_sweep = _coerce_value_to_sweep(count)
-    repeated_cache = {0: 0, 1: value}
-
-    def repeated_power(n):
-        cached = repeated_cache.get(n, _OMITTED)
-        if cached is not _OMITTED:
-            return cached
-        half = repeated_power(n // 2)
-        doubled = add_function(half, half)
-        result = doubled if n % 2 == 0 else add_function(doubled, value)
-        repeated_cache[n] = result
-        return result
-
-    contributions = []
-    for count_coordinates, count_cell in count_sweep.items():
-        count_outcome = _deterministic_numeric_value(count_cell, "repeat_sum", allow_float=False)
-        if count_outcome < 0:
-            runtime_error(
-                "repeat_sum expects a non-negative integer count",
-                hint="Use 0 or a positive integer count.",
-            )
-        repeated = repeated_power(count_outcome)
-        repeated_sweep = _coerce_value_to_sweep(repeated)
-        count_selection = _fixed_axis_distribution(count_sweep.axes, count_coordinates)
-        combined_axes = _union_axes([count_selection, repeated_sweep])
-        cells = {}
-        for coordinates in _coordinates_space(combined_axes):
-            if _lookup_projected(count_sweep.axes, {count_coordinates: 1}, combined_axes, coordinates, 0) != 1:
-                continue
-            cells[coordinates] = repeated_sweep.lookup(combined_axes, coordinates)
-        contributions.append((combined_axes, cells))
-    if not contributions:
-        return 0
-    result = Sweep(
-        _union_axes([Sweep(axes, cells) for axes, cells in contributions]),
-        {coord: value for axes, cells in contributions for coord, value in cells.items()},
-    )
-    return result.only_value() if result.is_unswept() else result
-
-
 @dicefunction(cache=True)
 def repeat_sum(count: Any, value: Any):
-    return repeat_sum_with(add, count, value)
+    count_outcome = _deterministic_numeric_value(count, "repeat_sum", allow_float=False)
+    if count_outcome < 0:
+        runtime_error(
+            "repeat_sum expects a non-negative integer count",
+            hint="Use 0 or a positive integer count.",
+        )
+    if count_outcome == 0:
+        return 0
+    if count_outcome == 1:
+        return value
+    half = repeat_sum(count_outcome // 2, value)
+    doubled = add(half, half)
+    return doubled if count_outcome % 2 == 0 else add(doubled, value)
 
 
 @dicefunction

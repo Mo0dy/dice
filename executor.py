@@ -169,7 +169,7 @@ class Executor(ABC):
         return self._register_host_function(function, name=name, require_decorated=True)
 
     def repeat_sum(self, count, value):
-        return diceengine.repeat_sum_with(self.add, count, value)
+        return diceengine.repeat_sum(count, value)
 
     def sumover(self, value, axes=None):
         return diceengine.sumover_with(self.add, value, diceengine._OMITTED if axes is None else axes)
