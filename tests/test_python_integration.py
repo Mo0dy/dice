@@ -42,6 +42,12 @@ class PythonIntegrationTest(unittest.TestCase):
         self.assertAlmostEqual(cached[TRUE], 0.5)
         self.assertAlmostEqual(cached[FALSE], 0.5)
 
+    def test_session_assign_rejects_global_reassignment(self):
+        session = dice_interpreter()
+        session.assign("cached", 1)
+        with self.assertRaisesRegex(Exception, "global reassignment"):
+            session.assign("cached", 2)
+
     def test_registers_decorated_python_function(self):
         session = dice_interpreter()
 
@@ -189,6 +195,34 @@ class PythonIntegrationTest(unittest.TestCase):
             @dicefunction(cache=True)
             def summed(value: Sweep[int]):
                 return value
+
+    def test_dsl_function_caches_pure_exact_results(self):
+        session = dice_interpreter()
+        session("double(value): value + value")
+        self.assertEqual(only_distribution(session("double(3)"))[6], 1)
+        self.assertEqual(len(session.interpreter._function_cache), 1)
+        self.assertEqual(only_distribution(session("double(3)"))[6], 1)
+        self.assertEqual(len(session.interpreter._function_cache), 1)
+
+    def test_dsl_function_cache_is_invalidated_by_global_assignment(self):
+        session = dice_interpreter()
+        session("bonus = 1\nwith_bonus(value): value + bonus")
+        self.assertEqual(only_distribution(session("with_bonus(3)"))[4], 1)
+        self.assertEqual(len(session.interpreter._function_cache), 1)
+        with self.assertRaisesRegex(Exception, "global reassignment"):
+            session("bonus = 2")
+
+    def test_dsl_function_rejects_sampling_in_body(self):
+        session = dice_interpreter()
+        session("sample_once(): !d6")
+        with self.assertRaisesRegex(Exception, "must stay pure"):
+            session("sample_once()")
+
+    def test_dsl_function_rejects_impure_host_calls_in_body(self):
+        session = dice_interpreter()
+        session('mutate(): r_title("x")')
+        with self.assertRaisesRegex(Exception, "must stay pure"):
+            session("mutate()")
 
 
 if __name__ == "__main__":

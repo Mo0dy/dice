@@ -74,10 +74,38 @@ STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")
 IMPORT_COMPLETION_PATTERN = re.compile(r'(?:^|[;\n])\s*import\s+"$')
 IDENTIFIER_COMPLETION_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
 COMPLETION_KEYWORDS = ("as", "import", "in", "otherwise", "split")
+# This is a transitional purity guard. Long term, builtin purity should live
+# in function metadata/registration rather than in a name list duplicated here.
+IMPURE_HOST_FUNCTIONS = frozenset(
+    {
+        "sample",
+        "print",
+        "set_render_mode",
+        "set_render_backend",
+        "set_render_autoflush",
+        "set_render_omit_dominant_zero",
+        "set_probability_mode",
+        "r_title",
+        "r_note",
+        "r_hero",
+        "r_row",
+        "render",
+    }
+)
 
 
 class CallableEntry(object):
-    def __init__(self, name, kind, parameters=(), variadic=False, function=None, node=None, sweep_mode=False):
+    def __init__(
+        self,
+        name,
+        kind,
+        parameters=(),
+        variadic=False,
+        function=None,
+        node=None,
+        sweep_mode=False,
+        cache_enabled=None,
+    ):
         self.name = name
         self.kind = kind
         self.parameters = tuple(parameters)
@@ -85,6 +113,7 @@ class CallableEntry(object):
         self.function = function
         self.node = node
         self.sweep_mode = sweep_mode
+        self.cache_enabled = cache_enabled
 
 
 class Interpreter:
@@ -111,7 +140,7 @@ class Interpreter:
         self.stdlib_root = os.path.abspath(STDLIB_ROOT)
         self.imported_files = imported_files if imported_files is not None else set()
         self.import_stack = import_stack if import_stack is not None else []
-        self._sweep_cache = {}
+        self._function_cache = {}
         self.output_callback = output_callback
         self.warnings = []
 
@@ -165,6 +194,68 @@ class Interpreter:
             )
         self.callable_scope[entry.name] = entry
 
+    def _invalidate_function_cache(self):
+        self._function_cache.clear()
+
+    def _cache_key_component(self, value):
+        if isinstance(value, SweepValues):
+            return ("SweepValues", value.key, value.name, value.values)
+        if isinstance(value, Sweep):
+            return ("Sweep", value.axes, tuple((coordinates, self._cache_key_component(cell)) for coordinates, cell in value.items()))
+        if isinstance(value, Distribution):
+            return ("Distribution", value.entries)
+        if isinstance(value, FiniteMeasure):
+            return ("FiniteMeasure", value.entries)
+        if isinstance(value, TupleValue):
+            return ("TupleValue", tuple(self._cache_key_component(item) for item in value))
+        if isinstance(value, RecordValue):
+            return ("RecordValue", tuple((key, self._cache_key_component(entry_value)) for key, entry_value in value.items()))
+        try:
+            hash(value)
+        except TypeError:
+            return MISSING
+        return value
+
+    def _call_cache_key(self, entry, values):
+        components = []
+        for value in values:
+            component = self._cache_key_component(value)
+            if component is MISSING:
+                return None
+            components.append(component)
+        return (entry.name, tuple(components))
+
+    def _dsl_function_is_cacheable(self, entry):
+        if entry.cache_enabled is not None:
+            return entry.cache_enabled
+        if not isinstance(self.executor, ExactExecutor):
+            entry.cache_enabled = False
+            return False
+        # Dice-language functions are intentionally pure: they cannot sample or
+        # mutate interpreter state, and globals cannot be reassigned after
+        # definition. With those constraints, exact-function memoization is
+        # safe and substantially speeds up recursive workloads.
+        entry.cache_enabled = True
+        return entry.cache_enabled
+
+    def _ensure_pure_function_context(self, name, node=None):
+        if not self.call_stack:
+            return
+        self.exception(
+            "function bodies must stay pure; {} is only allowed at the top level".format(name),
+            node=node,
+            hint="Move the side effect or sampling call outside the function and pass its result in as an argument.",
+        )
+
+    def _ensure_pure_host_call(self, entry, node=None):
+        if not self.call_stack:
+            return
+        # Name-based purity checks are intentionally temporary. The TODO is to
+        # replace this with first-class builtin metadata and eventually support
+        # more nuanced policies for selected impure helpers such as render().
+        if entry.name in IMPURE_HOST_FUNCTIONS:
+            self._ensure_pure_function_context(entry.name, node=node)
+
     def _identifier_names(self, node):
         names = set()
         if node is None:
@@ -214,6 +305,7 @@ class Interpreter:
                 "dsl",
                 parameters=self._dsl_parameter_specs(node),
                 node=node,
+                cache_enabled=None,
             )
         )
 
@@ -633,16 +725,30 @@ class Interpreter:
                 node=function,
                 hint="Rewrite the function using a closed-form expression or a builtin helper.",
             )
+        cache_key = None
+        if self._dsl_function_is_cacheable(entry):
+            cache_key = self._call_cache_key(entry, values)
+            if cache_key is not None and cache_key in self._function_cache:
+                return self._function_cache[cache_key]
+
         local_scope = {parameter.name: value for parameter, value in zip(entry.parameters, values)}
         self.call_stack.append(entry.name)
         self.local_scopes.append(local_scope)
         try:
-            return self.visit(function.body)
+            result = self.visit(function.body)
         finally:
             self.local_scopes.pop()
             self.call_stack.pop()
+        if cache_key is not None:
+            # Dice-language function caching is intentionally coarse: we cache
+            # only exact, obviously pure functions and invalidate on global
+            # state changes. That keeps the interpreter fast without freezing
+            # random sampling or stale global bindings.
+            self._function_cache[cache_key] = result
+        return result
 
     def _call_host_function(self, entry, values):
+        self._ensure_pure_host_call(entry)
         if entry.variadic and getattr(entry, "variadic_keyword_arguments", False):
             positional_values, keyword_values = values
             return self._validate_runtime_value(entry.function(*positional_values, **keyword_values))
@@ -749,6 +855,7 @@ class Interpreter:
             if resolved_path.endswith(".py"):
                 module = self._load_imported_python_module(resolved_path)
                 self._import_python_exports(module, node)
+                self._invalidate_function_cache()
                 return None
             ast = self._parse_imported_source(resolved_path)
             return self.evaluate(ast)
@@ -844,6 +951,7 @@ class Interpreter:
                 hint=self._identifier_hint(function_name, prefer_call=True),
             )
         entry = self.executor.functions[function_name]
+        self._ensure_pure_host_call(entry, node=node)
         values = self._bind_call_arguments(entry, node.args, node=node)
         return self._with_runtime_context(node, lambda: self._call_host_function(entry, values))
 
@@ -986,7 +1094,14 @@ class Interpreter:
         if node.op.type == RES:
             return self._with_runtime_context(node, lambda: self.executor.res(self.visit(node.left), self.visit(node.right)))
         if node.op.type == ASSIGN:
+            if node.left.value in self.global_scope:
+                self.exception(
+                    "global reassignment is not supported for {}".format(node.left.value),
+                    node=node.left,
+                    hint="Choose a new name instead of mutating an existing global binding.",
+                )
             self.global_scope[node.left.value] = self.visit(node.right)
+            self._invalidate_function_cache()
             return None
         self.exception("{} not implemented".format(node), node=node)
 
@@ -1000,10 +1115,12 @@ class Interpreter:
         if node.op.type == AVG:
             return self._with_runtime_context(node, lambda: self.executor.mean(self.visit(node.value)))
         if node.op.type == PROP:
+            self._ensure_pure_function_context("sampling", node=node)
             return self._with_runtime_context(node, lambda: self.executor.sample(self.visit(node.value)))
         if node.op.type == MINUS:
             return self._with_runtime_context(node, lambda: self.executor.neg(self.visit(node.value)))
         if node.op.type == PRINT:
+            self._ensure_pure_function_context("print", node=node)
             value = self.visit(node.value)
             if self.output_callback is not None:
                 self.output_callback(value)

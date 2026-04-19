@@ -1,3 +1,9 @@
+# Think about impurity:
+- Reassigning global values!
+- sampling.
+- Disallow both then remove the check for memoization
+(or allow sampling only in glboal scope not in functions)
+# Caching for dice functions!
 # FIX HOW SWEEPS INTERACT. SWEEPS WITH THE SAME LABEL ARE THE SAME AXIS.
 # multiline if then
 # Fix printing of highly multidimensional datastructures (perhaps steal some numpy ideas).
@@ -107,3 +113,15 @@ End with a list of all language features similar to what we have now) and a link
 # Improved Examples
 - Add comments to examples
 - Create sample files that teach the language / reporting etc.
+* Replace IMPURE_HOST_FUNCTIONS with builtin purity metadata
+
+The interpreter currently uses a hard-coded `IMPURE_HOST_FUNCTIONS` list to
+enforce the new “dice functions are pure” contract. This is only a stopgap.
+
+We want to move away from the name-based list as soon as possible and replace
+it with first-class metadata on builtin/host functions, so purity is declared
+where functions are registered instead of being duplicated in the interpreter.
+
+That should also make it possible to support more nuanced policies later, such
+as explicitly allowing some dice-language functions to call impure host
+functions like `render(...)` when that is intentional.

@@ -192,6 +192,10 @@ class RuntimeTest(unittest.TestCase):
         result = only_distribution(interpret_file("attack = d20 >= 11\nattack -> 5"))
         self.assertAlmostEqual(result[5], 0.5)
 
+    def test_global_reassignment_is_rejected(self):
+        with self.assertRaisesRegex(Exception, "global reassignment"):
+            interpret_file("bonus = 1\nbonus = 2")
+
     def test_relative_else_division_matches_explicit_at_form(self):
         shorthand = interpret_statement("d20 < 14 -> 2d10 | / 2")
         explicit = interpret_statement("d20 < 14 -> 2d10 | @ / 2")
