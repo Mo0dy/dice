@@ -650,11 +650,11 @@ That means:
 
 Best candidates:
 
-- `samples/dnd/ability_scores_4d6h3.dice`
-- `samples/dnd/agonizing_eldritch_blast_vs_ac.dice`
-- `samples/dnd/combat_profiles.dice`
-- `samples/dnd/eldritch_blast_debug.dice`
-- `samples/dnd/strategy_heatmap.dice`
+- `examples/01_dnd/ability_scores_4d6h3.dice`
+- `examples/01_dnd/agonizing_eldritch_blast_vs_ac.dice`
+- `examples/01_dnd/combat_profiles.dice`
+- `examples/01_dnd/eldritch_blast_debug.dice`
+- `examples/01_dnd/strategy_heatmap.dice`
 
 These already represent the product's most important visual stories.
 

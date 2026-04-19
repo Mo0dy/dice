@@ -875,7 +875,7 @@ class Interpreter:
                                 if remaining_mass == 0:
                                     continue
                                 result_distrib = result_value.lookup(clause_axes, coordinates)
-                                weighted = FiniteMeasure(
+                                weighted = tuple(
                                     (result_outcome, outcome_probability * remaining_mass * result_probability)
                                     for result_outcome, result_probability in result_distrib.items()
                                 )
@@ -902,7 +902,7 @@ class Interpreter:
                             matched_mass = remaining_mass * true_mass
                             if matched_mass:
                                 result_distrib = result_value.lookup(clause_axes, coordinates)
-                                clause_cells[coordinates] = FiniteMeasure(
+                                clause_cells[coordinates] = tuple(
                                     (result_outcome, outcome_probability * matched_mass * result_probability)
                                     for result_outcome, result_probability in result_distrib.items()
                                 )

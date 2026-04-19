@@ -13,6 +13,7 @@ Use these files in roughly this order:
 1. [architecture.md](./architecture.md) for the module map and execution flow.
 2. [language-runtime.md](./language-runtime.md) for the language model, data types, and examples.
 3. [rewrite-status.md](./rewrite-status.md) for verified gaps between the legacy design and the current worktree.
+4. [performance_optimization.md](./performance_optimization.md) for current exact-engine performance findings, benchmarks, and optimization seams.
 
 Useful legacy references outside `docs/`:
 

@@ -4,6 +4,26 @@ Initial research backlog of online TTRPG statistics discussions worth recreating
 
 Goal: turn these into sample programs and regression checks that test both mathematical correctness and language ergonomics.
 
+## Implemented Findings
+
+Current implemented D&D discussion samples live under `examples/01_dnd/`.
+
+- Exact matches:
+  Advantage/disadvantage rules of thumb matched the expected headline numbers.
+  Elven Accuracy matched the common `14.2625%` crit-rate claim exactly.
+  Great Weapon Fighting matched the usual `+1.33` on `2d6` and `+0.83` on `1d12`.
+- Qualitative matches with assumption-sensitive breakpoints:
+  Great Weapon Master versus ASI behaved like the online discussion suggests: the ASI was stronger across more AC values without advantage, while advantage made the power-attack line much better.
+  Hunter's Mark versus Crossbow Expert matched the “about two rounds to pay back setup” rule of thumb in the simplified single-target model.
+  Magic Missile as a concentration breaker strongly matched the online claim that one-check-per-dart makes the spell dramatically stronger at breaking concentration.
+- Useful divergences:
+  Bless as party DPR did not support the exact “12.5% closer to maximum DPR” phrasing under the modeled party; the benefit varied much more with AC than that slogan suggests.
+  Spiritual Weapon caught up to the simplified Guiding Bolt line by round 2 in direct self-damage terms, which is faster than the skeptical online discussion and likely reflects omitted ally-followup value from Guiding Bolt.
+  Polearm Master versus ASI was extremely assumption-sensitive; in the narrow level-4 one-main-attack halberd model, Polearm Master won across the whole tested AC range.
+- Language/design takeaway:
+  Keeping the exact math and the rendered report in the same `.dice` file worked well for most discussion samples.
+  The main remaining pressure points were parser-sensitive `split`-heavy helper shapes and cases where cross-sample synthesis is cleaner in Python than in the DSL itself.
+
 ## Cross-Cutting Questions
 
 ## [ ] Where Should `dice` End And Python Begin?

@@ -9,30 +9,30 @@ from textwrap import dedent
 
 ROOT = Path(__file__).resolve().parents[2]
 
-SLOTS = (1, 2, 3, 4, 5)
+SLOTS = (1, 2, 3, 4, 5, 6, 7)
 MODES = ("normal", "advantage", "elven_accuracy")
-ATTACK_BONUSES = (5, 7, 9, 11, 13)
+ATTACK_BONUSES = (5, 7, 9, 11, 13, 15)
 BLESS_VALUES = (0, 1)
-ACS = tuple(range(12, 23))
-TARGET_COUNTS = (2, 3, 4, 5, 6)
+ACS = tuple(range(10, 25))
+TARGET_COUNTS = (2, 3, 4, 5, 6, 7, 8)
 AXIS_ORDER = ("SLOT", "MODE", "ATTACK", "BLESS", "TARGETS", "AC")
 MAX_SLOT = max(SLOTS)
 MAX_TARGETS = max(TARGET_COUNTS)
 MAX_DAMAGE = MAX_TARGETS * (4 * 8 + 2 * MAX_SLOT * 6)
 
 REPRESENTATIVE_CELLS = (
-    (1, "normal", 5, 0, 2, 12),
-    (3, "advantage", 9, 1, 4, 17),
-    (5, "elven_accuracy", 13, 1, 6, 22),
+    (1, "normal", 5, 0, 2, 10),
+    (4, "advantage", 11, 1, 5, 18),
+    (7, "elven_accuracy", 15, 1, 8, 24),
 )
 
 VALIDATION_CELLS = (
-    (1, "normal", 5, 0, 2, 12),
-    (1, "advantage", 5, 1, 3, 14),
-    (2, "normal", 7, 0, 4, 16),
-    (3, "advantage", 9, 1, 4, 17),
-    (4, "elven_accuracy", 11, 0, 5, 20),
-    (5, "elven_accuracy", 13, 1, 6, 22),
+    (1, "normal", 5, 0, 2, 10),
+    (1, "advantage", 5, 1, 3, 12),
+    (3, "normal", 9, 0, 4, 16),
+    (4, "advantage", 11, 1, 5, 18),
+    (6, "elven_accuracy", 13, 0, 7, 22),
+    (7, "elven_accuracy", 15, 1, 8, 24),
 )
 
 

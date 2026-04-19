@@ -31,6 +31,15 @@ class DiceengineLibraryTest(unittest.TestCase):
         result = only_distribution(add(1, 2))
         self.assertEqual(result[3], 1)
 
+    def test_add_handles_non_contiguous_integer_support(self):
+        left = Distribution(((0, 0.5), (7, 0.5)))
+        right = Distribution(((0, 0.25), (2, 0.75)))
+        result = only_distribution(add(left, right))
+        self.assertAlmostEqual(result[0], 0.125)
+        self.assertAlmostEqual(result[2], 0.375)
+        self.assertAlmostEqual(result[7], 0.125)
+        self.assertAlmostEqual(result[9], 0.375)
+
     def test_comparison_is_usable_directly_from_python(self):
         result = only_distribution(greaterorequal(rollsingle(20), 11))
         self.assertAlmostEqual(result[TRUE], 0.5)

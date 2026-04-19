@@ -11,3 +11,8 @@ Suggested order:
 5. `04_weighted_measure.py`
 
 The first example shows the most important user-facing workflow: write a Python helper library, import it from dice, and call the exported functions in a dice program.
+
+Semantics note:
+
+- `~expr` and `mean(expr)` are equivalent in the current language. Both return the expectation as a deterministic result.
+- Deterministic values are represented internally as degenerate distributions, so plain scalars and probability-`1` scalar distributions are intended to be interchangeable in normal composition.

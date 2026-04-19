@@ -804,32 +804,38 @@ def _uniform_die_distribution(sides):
     return Distribution(((outcome, 1.0 / sides) for outcome in range(1, sides + 1)))
 
 
-def _dense_contiguous_integer_weights(distrib):
+DENSE_INTEGER_SUPPORT_RATIO = 8
+DENSE_INTEGER_SUPPORT_MIN_SPAN = 256
+
+
+def _dense_integer_weights(distrib):
     items = distrib.items()
     if not items:
         return None
-    outcomes = []
-    weights = []
+    weights_by_outcome = {}
+    start = None
+    end = None
     for outcome, weight in items:
         if not isinstance(outcome, int):
             return None
-        outcomes.append(outcome)
-        weights.append(weight)
-    start = min(outcomes)
-    end = max(outcomes)
-    if len(outcomes) != end - start + 1:
+        weights_by_outcome[outcome] = weight
+        start = outcome if start is None else min(start, outcome)
+        end = outcome if end is None else max(end, outcome)
+    span = end - start + 1
+    nonzero_count = len(weights_by_outcome)
+    if span > max(nonzero_count * DENSE_INTEGER_SUPPORT_RATIO, DENSE_INTEGER_SUPPORT_MIN_SPAN):
         return None
-    dense_weights = [0.0] * (end - start + 1)
-    for outcome, weight in zip(outcomes, weights):
+    dense_weights = [0.0] * span
+    for outcome, weight in weights_by_outcome.items():
         dense_weights[outcome - start] = weight
     return start, tuple(dense_weights)
 
 
 def _convolve_dense_integer_add(left, right):
-    left_dense = _dense_contiguous_integer_weights(left)
+    left_dense = _dense_integer_weights(left)
     if left_dense is None:
         return None
-    right_dense = _dense_contiguous_integer_weights(right)
+    right_dense = _dense_integer_weights(right)
     if right_dense is None:
         return None
     left_start, left_weights = left_dense
@@ -965,7 +971,8 @@ def _accumulate_distribution_contributions(contributions):
             projected = _lookup_projected(axes, contribution_cells, combined_axes, coordinates, None)
             if projected is None:
                 continue
-            for outcome, probability in projected.items():
+            projected_entries = projected.items() if isinstance(projected, FiniteMeasure) else projected
+            for outcome, probability in projected_entries:
                 entries.append((outcome, probability))
         cells[coordinates] = Distribution(entries)
     return Sweep(combined_axes, cells)

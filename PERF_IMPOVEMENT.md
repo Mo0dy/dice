@@ -258,6 +258,76 @@ Possible direction:
 
 That would separate:
 
+## Chaos Bolt Findings
+
+The Chaos Bolt chain benchmark exposed a different performance shape from the
+Hexed Scorching Ray benchmark.
+
+For Scorching Ray, the main cost was repeated exact additive convolution, so the
+most useful wins were:
+
+- decorator-managed caching on pure exact builtins
+- recursive `repeat_sum(...)` by squaring
+- lowering exact `roll(...)` to `repeat_sum(...)`
+- dense integer-support additive convolution
+
+For Chaos Bolt, the dominant cost is not the additive convolution core. The
+profile is instead dominated by branch handling and repeated measure
+canonicalization:
+
+- `_canonicalize_weighted_entries(...)`
+- `FiniteMeasure.__init__(...)`
+- `Interpreter.visit_Split(...)`
+- `_accumulate_distribution_contributions(...)`
+
+The important current finding is:
+
+- branch-heavy recursive workloads stress `split` much more than `add`
+
+The main source is the current `split` implementation:
+
+- `visit_Split(...)` builds many temporary `FiniteMeasure(...)` objects
+- each temporary measure canonicalizes immediately
+- later accumulation canonicalizes again when forming final distributions
+
+So for Chaos Bolt-style workloads, the next likely optimization seam is not
+better integer convolution, but reducing split/branch canonicalization churn.
+
+### Current-Source Optimization Ideas From Chaos Bolt
+
+Likely high-value source-level optimizations:
+
+- delay canonicalization inside `visit_Split(...)`
+- accumulate branch outcomes directly into dicts or raw weighted-entry buffers
+  per coordinate
+- canonicalize once at the end of branch accumulation instead of repeatedly
+- add cheaper paths for deterministic or Bernoulli branch conditions
+- reduce temporary `Sweep` / `FiniteMeasure` construction during split handling
+
+### Possible Language-Level Optimization Features
+
+Some performance pain in Chaos Bolt comes from using generic `split` as a
+decision-tree language. A more structured language feature could permit a much
+cheaper runtime implementation.
+
+The most promising candidate is a `match` / decision-tree construct for cases
+like:
+
+- exact value matches such as `attack_roll == 1`
+- exact value matches such as `attack_roll == 20`
+- threshold guards such as `attack_roll + total_bonus >= ac`
+- ordered first-match branching with a default case
+
+This would not just be syntax sugar. It could expose structured branching to the
+runtime, allowing a more specialized execution strategy than the current generic
+`split` contribution-building path.
+
+So the current working hypothesis is:
+
+- additive-convolution optimizations matter for exact arithmetic workloads
+- branch-aware execution or language features matter for exact recursive
+  decision-tree workloads
+
 - exact pure semantics
 - registration/export
 - backend-specific behavior
