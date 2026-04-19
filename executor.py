@@ -47,7 +47,7 @@ class Executor(ABC):
     def _annotation_requests_sweep(self, function):
         metadata = get_dicefunction_metadata(function)
         if metadata is not None:
-            return any(parameter.annotation is diceengine.Sweep for parameter in metadata.parameters)
+            return metadata.requests_sweep
         hints = getattr(function, "__annotations__", {})
         return any(annotation is diceengine.Sweep for annotation in hints.values())
 

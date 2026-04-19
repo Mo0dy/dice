@@ -51,6 +51,8 @@ class ParameterSpec:
     default_value: object = MISSING
     annotation: object = None
     keyword_only: bool = False
+    wants_sweep: bool = False
+    coercion_kind: str | None = None
 
     @property
     def has_default(self):
@@ -64,6 +66,8 @@ class DiceFunctionMetadata:
     parameters: tuple[ParameterSpec, ...]
     signature: inspect.Signature
     cache_enabled: bool
+    requests_sweep: bool
+    bind_arguments: object
 
 
 def validate_runtime_value(value):
@@ -139,6 +143,8 @@ def callable_parameters(function, variadic=False):
                 name=parameter.name,
                 default_value=default_value,
                 annotation=hints.get(parameter.name),
+                wants_sweep=_annotation_is_sweep(hints.get(parameter.name)),
+                coercion_kind=_annotation_coercion_kind(hints.get(parameter.name)),
             )
         )
     return tuple(specs)
@@ -157,13 +163,75 @@ def _annotation_is_sweep(annotation):
     return annotation is diceengine.Sweep or get_origin(annotation) is diceengine.Sweep
 
 
-def _convert_projected_argument(projected, annotation):
+def _annotation_coercion_kind(annotation):
     diceengine = _diceengine()
     if annotation is diceengine.Distribution:
-        return diceengine._coerce_to_distribution_cell(projected)
+        return "distribution"
     if annotation is diceengine.FiniteMeasure:
+        return "measure"
+    return None
+
+
+def _convert_projected_argument(projected, parameter):
+    diceengine = _diceengine()
+    if parameter.coercion_kind == "distribution":
+        return diceengine._coerce_to_distribution_cell(projected)
+    if parameter.coercion_kind == "measure":
         return diceengine._coerce_to_measure_cell(projected)
     return projected
+
+
+def _build_argument_binder(parameters, export_name):
+    parameter_count = len(parameters)
+    required_count = sum(1 for parameter in parameters if not parameter.has_default)
+    parameter_names = tuple(parameter.name for parameter in parameters)
+    name_to_index = {name: index for index, name in enumerate(parameter_names)}
+
+    def missing_error(missing_names):
+        quoted = ", ".join("'{}'".format(name) for name in missing_names)
+        plural = "s" if len(missing_names) != 1 else ""
+        raise TypeError("{}() missing required positional argument{}: {}".format(export_name, plural, quoted))
+
+    def bind_arguments(*args, **kwargs):
+        positional_count = len(args)
+        if positional_count > parameter_count:
+            raise TypeError(
+                "{}() takes {} positional argument{} but {} were given".format(
+                    export_name,
+                    parameter_count,
+                    "" if parameter_count == 1 else "s",
+                    positional_count,
+                )
+            )
+        if not kwargs:
+            if positional_count == parameter_count:
+                return tuple(args)
+            if positional_count < required_count:
+                missing_error(parameter_names[positional_count:required_count])
+            return tuple(args) + tuple(parameter.default_value for parameter in parameters[positional_count:])
+
+        bound = [MISSING] * parameter_count
+        for index, value in enumerate(args):
+            bound[index] = value
+        for name, value in kwargs.items():
+            index = name_to_index.get(name)
+            if index is None:
+                raise TypeError("{}() got an unexpected keyword argument '{}'".format(export_name, name))
+            if bound[index] is not MISSING:
+                raise TypeError("{}() got multiple values for argument '{}'".format(export_name, name))
+            bound[index] = value
+        missing = []
+        for index, parameter in enumerate(parameters):
+            if bound[index] is MISSING:
+                if parameter.has_default:
+                    bound[index] = parameter.default_value
+                else:
+                    missing.append(parameter.name)
+        if missing:
+            missing_error(tuple(missing))
+        return tuple(bound)
+
+    return bind_arguments
 
 
 def _lifted_python_call(function, parameters, values):
@@ -171,30 +239,30 @@ def _lifted_python_call(function, parameters, values):
     projected_arguments = []
     combined_sweeps = []
     for index, value in enumerate(values):
-        annotation = parameters[index].annotation if index < len(parameters) else None
-        if _annotation_is_sweep(annotation):
-            projected_arguments.append((False, value, annotation))
+        parameter = parameters[index] if index < len(parameters) else None
+        if parameter is not None and parameter.wants_sweep:
+            projected_arguments.append((False, value, parameter))
             continue
         sweep = diceengine._coerce_value_to_sweep(value)
-        projected_arguments.append((True, sweep, annotation))
+        projected_arguments.append((True, sweep, parameter))
         combined_sweeps.append(sweep)
     combined_axes = diceengine._union_axes(combined_sweeps)
     if not combined_axes:
         projected = []
-        for is_projected, value, annotation in projected_arguments:
+        for is_projected, value, parameter in projected_arguments:
             if not is_projected:
                 projected.append(value)
                 continue
-            projected.append(_convert_projected_argument(value.only_value(), annotation))
+            projected.append(_convert_projected_argument(value.only_value(), parameter))
         return validate_runtime_value(function(*projected))
     cells = {}
     for coordinates in ([()] if not combined_axes else product(*(axis.values for axis in combined_axes))):
         projected = []
-        for is_projected, value, annotation in projected_arguments:
+        for is_projected, value, parameter in projected_arguments:
             if not is_projected:
                 projected.append(value)
                 continue
-            projected.append(_convert_projected_argument(value.lookup(combined_axes, coordinates), annotation))
+            projected.append(_convert_projected_argument(value.lookup(combined_axes, coordinates), parameter))
         result = validate_runtime_value(function(*projected))
         if isinstance(result, diceengine.Sweep) and result.is_unswept():
             result = result.only_value()
@@ -210,17 +278,15 @@ def dicefunction(function=None, *, name=None, cache=False):
         parameters = callable_parameters(raw_function)
         signature = inspect.signature(raw_function)
         requests_sweep = _annotation_requests_sweep(raw_function)
+        bind_arguments = _build_argument_binder(parameters, export_name)
         if cache and requests_sweep:
             raise Exception("@dicefunction(cache=True) is not supported for sweep functions")
         wrapped_function = functools.lru_cache(maxsize=None)(raw_function) if cache else raw_function
 
         @functools.wraps(raw_function)
         def wrapped(*args, **kwargs):
-            bound = signature.bind(*args, **kwargs)
-            bound.apply_defaults()
             values = []
-            for parameter in parameters:
-                value = bound.arguments[parameter.name]
+            for parameter, value in zip(parameters, bind_arguments(*args, **kwargs)):
                 if isinstance(value, DiceDefault):
                     raise Exception("D(...) defaults are only resolved by dice-session invocation")
                 values.append(value)
@@ -235,6 +301,8 @@ def dicefunction(function=None, *, name=None, cache=False):
                 parameters=parameters,
                 signature=signature,
                 cache_enabled=cache,
+                requests_sweep=requests_sweep,
+                bind_arguments=bind_arguments,
             ),
         )
         return wrapped

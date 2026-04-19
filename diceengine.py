@@ -802,6 +802,7 @@ def _uniform_die_distribution(sides):
 
 DENSE_INTEGER_SUPPORT_RATIO = 8
 DENSE_INTEGER_SUPPORT_MIN_SPAN = 256
+_COMPARISON_NOT_DETERMINISTIC = object()
 
 
 def _dense_integer_weights(distrib):
@@ -933,6 +934,81 @@ def _compare_plain(left, right, operator):
             outcome = TRUE if comparison_true else FALSE
             result.append((outcome, left_probability * right_probability))
     return Distribution(result)
+
+
+def _deterministic_comparison_value(value):
+    if isinstance(value, FiniteMeasure):
+        if not isinstance(value, Distribution):
+            runtime_error(
+                "comparisons do not support finite measures directly",
+                hint="Normalize the measure with d{...} first or compare against a scalar.",
+            )
+        items = value.items()
+        if len(items) == 1:
+            outcome, probability = items[0]
+            if abs(probability - 1.0) <= PROBABILITY_TOLERANCE:
+                return outcome
+        return _COMPARISON_NOT_DETERMINISTIC
+    return value
+
+
+def _compare_distribution_to_scalar(distribution, scalar, operator, *, scalar_on_left=False):
+    if _is_structured_value(scalar):
+        runtime_error(
+            "comparisons do not support tuple or record values yet",
+            hint="Use tuples and records as data values for now, not with comparison operators.",
+        )
+    true_probability = 0.0
+    for outcome, probability in distribution.items():
+        if _is_structured_value(outcome):
+            runtime_error(
+                "comparisons do not support tuple or record values yet",
+                hint="Use tuples and records as data values for now, not with comparison operators.",
+            )
+        left_value = scalar if scalar_on_left else outcome
+        right_value = outcome if scalar_on_left else scalar
+        comparison_true = False
+        if operator == "<=":
+            comparison_true = left_value <= right_value
+        elif operator == ">=":
+            comparison_true = left_value >= right_value
+        elif operator == "<":
+            comparison_true = left_value < right_value
+        elif operator == ">":
+            comparison_true = left_value > right_value
+        elif operator == "==":
+            comparison_true = left_value == right_value
+        if comparison_true:
+            true_probability += probability
+    return Distribution(((TRUE, true_probability), (FALSE, 1.0 - true_probability)))
+
+
+def _compare_cell(left, right, operator):
+    def compare_values(left_value, right_value):
+        if _is_structured_value(left_value) or _is_structured_value(right_value):
+            runtime_error(
+                "comparisons do not support tuple or record values yet",
+                hint="Use tuples and records as data values for now, not with comparison operators.",
+            )
+        if operator == "<=":
+            return left_value <= right_value
+        if operator == ">=":
+            return left_value >= right_value
+        if operator == "<":
+            return left_value < right_value
+        if operator == ">":
+            return left_value > right_value
+        return left_value == right_value
+
+    left_scalar = _deterministic_comparison_value(left)
+    right_scalar = _deterministic_comparison_value(right)
+    if left_scalar is not _COMPARISON_NOT_DETERMINISTIC:
+        if right_scalar is not _COMPARISON_NOT_DETERMINISTIC:
+            return _deterministic_distribution(TRUE if compare_values(left_scalar, right_scalar) else FALSE)
+        return _compare_distribution_to_scalar(_coerce_to_distribution_cell(right), left_scalar, operator, scalar_on_left=True)
+    if right_scalar is not _COMPARISON_NOT_DETERMINISTIC:
+        return _compare_distribution_to_scalar(_coerce_to_distribution_cell(left), right_scalar, operator)
+    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), operator)
 
 
 def _member_cell(left, right):
@@ -1556,27 +1632,27 @@ def neg(value: Any):
 
 @dicefunction(cache=True)
 def greaterorequal(left: Any, right: Any):
-    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), ">=")
+    return _compare_cell(left, right, ">=")
 
 
 @dicefunction(cache=True)
 def greater(left: Any, right: Any):
-    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), ">")
+    return _compare_cell(left, right, ">")
 
 
 @dicefunction(cache=True)
 def equal(left: Any, right: Any):
-    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), "==")
+    return _compare_cell(left, right, "==")
 
 
 @dicefunction(cache=True)
 def lessorequal(left: Any, right: Any):
-    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), "<=")
+    return _compare_cell(left, right, "<=")
 
 
 @dicefunction(cache=True)
 def less(left: Any, right: Any):
-    return _compare_plain(_coerce_to_distribution_cell(left), _coerce_to_distribution_cell(right), "<")
+    return _compare_cell(left, right, "<")
 
 
 @dicefunction(cache=True)
