@@ -10,7 +10,7 @@ The canonical long-form language manual now lives under [manual/](/home/felix/_D
 
 - For many additive tabletop probability problems, `dice` is a lot more accurate and much faster than naive Monte Carlo.
 - For many of those same cases, `dice` is in the same ballpark as a more optimized Monte Carlo implementation while being much easier to write.
-- This is not true in every case: branch-heavy workloads such as Chaos Bolt are still much friendlier to Monte Carlo than to exact evaluation.
+- This is not true in every case: branch-heavy workloads such as Chaos Bolt are the worst-case scenario for exact evaluation and are still much friendlier to Monte Carlo than to exact evaluation.
 
 For the representative `hexed_scorching_ray` cell `slot=2, mode=normal, atk=7, bless=0, ac=13`, the exact PMF and the vectorized Monte Carlo overlays look like this:
 
@@ -24,12 +24,12 @@ Current benchmark numbers:
 | Hexed Scorching Ray | naive Python Monte Carlo | 4,000 | full sweep (1,260 cells) | 32.885 | 65.81x | 0.2184 |
 | Hexed Scorching Ray | vectorized NumPy Monte Carlo | 4,000 | full sweep (1,260 cells) | 0.353 | 0.71x | 0.2923 |
 | Hexed Scorching Ray | vectorized NumPy Monte Carlo | 32,000 | full sweep (1,260 cells) | 0.662 | 1.32x | 0.0861 |
-| Chaos Bolt Chain (`small` preset) | dice exact | - | full sweep (48 cells) | 18.626 | 1.00x | 0.0000 |
-| Chaos Bolt Chain (`small` preset) | naive Python Monte Carlo | 4,000 | full sweep (48 cells) | 0.372 | 0.02x | 0.1277 |
-| Chaos Bolt Chain (`small` preset) | vectorized NumPy Monte Carlo | 4,000 | full sweep (48 cells) | 0.079 | <0.01x | 0.1298 |
-| Chaos Bolt Chain (`small` preset) | vectorized NumPy Monte Carlo | 32,000 | full sweep (48 cells) | 0.114 | <0.01x | 0.0109 |
+| Chaos Bolt Chain (`xlarge` preset, worst case) | dice exact | - | full sweep (6,144 cells) | 42.685 | 1.00x | 0.0000 |
+| Chaos Bolt Chain (`xlarge` preset, worst case) | naive Python Monte Carlo | 4,000 | full sweep (6,144 cells) | 49.066 | 1.15x | 0.1830 |
+| Chaos Bolt Chain (`xlarge` preset, worst case) | vectorized NumPy Monte Carlo | 4,000 | full sweep (6,144 cells) | 1.629 | 0.04x | 0.2586 |
+| Chaos Bolt Chain (`xlarge` preset, worst case) | vectorized NumPy Monte Carlo | 32,000 | full sweep (6,144 cells) | 2.940 | 0.07x | 0.0688 |
 
-These numbers are produced by the exploratory runners under [benchmarks/](/home/felix/_Documents/Projects/dice/benchmarks/README.md). The Scorching Ray sweep is the clearest example of the headline claim above. Chaos Bolt is the explicit exception in this table: it remains a branch-heavy stress test where Monte Carlo is much faster than exact evaluation.
+These numbers are produced by the exploratory runners under [benchmarks/](/home/felix/_Documents/Projects/dice/benchmarks/README.md). The Scorching Ray sweep is the clearest example of the headline claim above. The Chaos Bolt row is intentionally a worst-case branch-heavy stress test: even after the recent exact-engine work, this is still the kind of workload where Monte Carlo has the structural advantage.
 
 ## Values
 

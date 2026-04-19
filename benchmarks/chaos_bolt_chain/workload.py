@@ -65,6 +65,24 @@ PRESETS = {
         acs=tuple(range(10, 25)),
         label="large",
     ),
+    "xlarge": SweepConfig(
+        slots=(1, 2, 3, 4),
+        modes=("normal", "advantage", "elven_accuracy"),
+        attack_bonuses=(5, 7, 9, 11, 13, 15, 17, 19),
+        bless_values=(0, 1),
+        target_counts=(2, 3, 5, 6),
+        acs=(10, 12, 14, 16, 18, 20, 22, 24),
+        label="xlarge",
+    ),
+    "huge": SweepConfig(
+        slots=(1, 2, 3, 4, 5, 6, 7, 8),
+        modes=("normal", "advantage", "elven_accuracy"),
+        attack_bonuses=(5, 7, 9, 11, 13, 15, 17, 19),
+        bless_values=(0, 1),
+        target_counts=(2, 3, 5, 6),
+        acs=(10, 12, 14, 16, 18, 20, 22, 24),
+        label="huge",
+    ),
 }
 
 DEFAULT_CONFIG = PRESETS["small"]
