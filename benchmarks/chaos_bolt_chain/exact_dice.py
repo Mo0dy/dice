@@ -6,24 +6,22 @@ from dataclasses import dataclass
 
 from dice import dice_interpreter
 
-from .workload import ROOT, build_dice_prelude
+from .workload import AXIS_ORDER, DEFAULT_CONFIG, ROOT, build_dice_program
 
 
 @dataclass(frozen=True)
-class ExactProbeResult:
+class ExactSweepResult:
+    sweep: object
     cells: dict[tuple[object, ...], object]
 
 
-def evaluate_coordinates(coordinates):
+def evaluate_exact_sweep(config=DEFAULT_CONFIG):
     session = dice_interpreter(current_dir=str(ROOT))
-    session(build_dice_prelude())
+    sweep = session(build_dice_program(config))
+    axis_names = tuple(axis.name for axis in sweep.axes)
+    index_by_name = {name: axis_names.index(name) for name in AXIS_ORDER}
     cells = {}
-    for slot_level, mode, attack_bonus, bless, targets, ac in coordinates:
-        session.assign("slot_level", slot_level)
-        session.assign("mode", mode)
-        session.assign("attack_bonus", attack_bonus)
-        session.assign("bless", bless)
-        session.assign("targets", targets)
-        session.assign("ac", ac)
-        cells[(slot_level, mode, attack_bonus, bless, targets, ac)] = session("chaos_chain()").only_distribution()
-    return ExactProbeResult(cells)
+    for coordinates, distribution in sweep.items():
+        normalized = tuple(coordinates[index_by_name[name]] for name in AXIS_ORDER)
+        cells[normalized] = distribution
+    return ExactSweepResult(sweep=sweep, cells=cells)

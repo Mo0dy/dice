@@ -54,14 +54,14 @@ Timing scope: full exact sweep across `1,260` cells.
 
 ### Chaos Bolt Chain
 
-Timing scope: `15` exact probe coordinates.
+Timing scope: full sweep for the `small` preset (`48` cells).
 
 | Backend | Samples / cell | Scope | Time (s) | vs dice | Rep. mean abs err |
 | --- | --- | --- | --- | --- | --- |
-| dice exact | - | 15-cell exact probe | 28.584 | 1.00x | 0.0000 |
-| Naive Python Monte Carlo | 4,000 | 15-cell exact probe | 0.120 | <0.01x | 0.2076 |
-| Vectorized NumPy Monte Carlo | 4,000 | 15-cell exact probe | 0.910 | 0.03x | 0.1845 |
-| Vectorized NumPy Monte Carlo | 32,000 | 15-cell exact probe | 0.997 | 0.03x | 0.0482 |
+| dice exact | - | full sweep (48 cells) | 18.626 | 1.00x | 0.0000 |
+| Naive Python Monte Carlo | 4,000 | full sweep (48 cells) | 0.372 | 0.02x | 0.1277 |
+| Vectorized NumPy Monte Carlo | 4,000 | full sweep (48 cells) | 0.079 | <0.01x | 0.1298 |
+| Vectorized NumPy Monte Carlo | 32,000 | full sweep (48 cells) | 0.114 | <0.01x | 0.0109 |
 
 ## Commands
 
@@ -81,5 +81,7 @@ Notes:
   precomputed alias tables, PMFs, or other derived stochastic primitives.
 - The NumPy backend can split each state's trial count evenly across worker
   processes with `--numpy-processes N`.
-- The Chaos Bolt numbers use an explicit exact timing probe because a full exact
-  sweep is still too expensive for that branch-heavy workload.
+- The Chaos Bolt runner now benchmarks preset-based full sweeps generated from
+  Python. Use `--preset medium` or `--preset large` when you want to push the
+  workload further, but expect exact full-sweep cost to grow quickly on the
+  branch-heavy presets.

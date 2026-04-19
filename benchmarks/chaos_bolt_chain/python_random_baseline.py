@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 import random
 
-from .workload import coordinate_space
+from .workload import DEFAULT_CONFIG, coordinate_space
 
 
 def roll_die(rng: random.Random, sides: int) -> int:
@@ -93,10 +93,10 @@ def sample_coordinate_distribution(coordinate, trials: int, seed: int) -> dict[i
     return {outcome: count / trials for outcome, count in counts.items()}
 
 
-def evaluate_sweep(samples_per_cell: int, seed: int, **_unused) -> dict[tuple[object, ...], dict[int, float]]:
+def evaluate_sweep(samples_per_cell: int, seed: int, config=DEFAULT_CONFIG, **_unused) -> dict[tuple[object, ...], dict[int, float]]:
     rng = random.Random(seed)
     sampled = {}
-    for slot_level, mode, attack_bonus, bless, targets, ac in coordinate_space():
+    for slot_level, mode, attack_bonus, bless, targets, ac in coordinate_space(config):
         counts: Counter[int] = Counter()
         for _ in range(samples_per_cell):
             outcome = chaos_bolt_trial(

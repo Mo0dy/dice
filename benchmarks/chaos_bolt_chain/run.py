@@ -37,6 +37,7 @@ BACKEND_LABELS = {
 
 @dataclass(frozen=True)
 class BenchmarkConfig:
+    sweep_config: workload.SweepConfig
     baseline_sample_counts: tuple[int, ...]
     numpy_sample_counts: tuple[int, ...]
     validation_trials: int
@@ -49,6 +50,12 @@ class BenchmarkConfig:
 
 def parse_args() -> BenchmarkConfig:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--preset",
+        choices=tuple(workload.PRESETS),
+        default=workload.DEFAULT_CONFIG.label,
+        help="Configured full-sweep workload to benchmark.",
+    )
     parser.add_argument(
         "--sample-counts",
         nargs="+",
@@ -109,6 +116,7 @@ def parse_args() -> BenchmarkConfig:
     baseline_counts = tuple(dict.fromkeys(args.baseline_sample_counts or shared_counts or (4000,)))
     numpy_counts = tuple(dict.fromkeys(args.numpy_sample_counts or shared_counts or (4000, 32000)))
     return BenchmarkConfig(
+        sweep_config=workload.get_config(args.preset),
         baseline_sample_counts=baseline_counts,
         numpy_sample_counts=numpy_counts,
         validation_trials=args.validation_trials,
@@ -121,18 +129,21 @@ def parse_args() -> BenchmarkConfig:
 
 
 def backend_kwargs(config: BenchmarkConfig, backend_name: str) -> dict[str, object]:
+    kwargs = {"config": config.sweep_config}
     if backend_name == "numpy":
-        return {
-            "batch_size": config.numpy_batch_size,
-            "processes": config.numpy_processes,
-        }
-    return {}
+        kwargs.update(
+            {
+                "batch_size": config.numpy_batch_size,
+                "processes": config.numpy_processes,
+            }
+        )
+    return kwargs
 
 
 def validate_backend(exact_result, backend_name: str, config: BenchmarkConfig) -> None:
     backend = BACKENDS[backend_name]
     failures = []
-    for index, coordinate in enumerate(workload.VALIDATION_CELLS):
+    for index, coordinate in enumerate(workload.validation_cells(config.sweep_config)):
         sampled = backend.sample_coordinate_distribution(
             coordinate,
             config.validation_trials,
@@ -164,10 +175,13 @@ def format_ratio(value: float) -> str:
 
 def main() -> None:
     config = parse_args()
+    coordinate_count = len(tuple(workload.coordinate_space(config.sweep_config)))
+    representative_cells = workload.representative_cells(config.sweep_config)
 
     print("Benchmark: Chaos Bolt chain")
+    print("Preset: {}".format(config.sweep_config.label))
     print("Axis order: {}".format(", ".join(workload.AXIS_ORDER)))
-    print("Timing scope: {} exact probe coordinates".format(len(workload.TIMING_CELLS)))
+    print("Timing scope: full sweep across {:,} cells".format(coordinate_count))
     print(
         "Sample counts: baseline={} numpy={}".format(
             ", ".join("{:,}".format(count) for count in config.baseline_sample_counts) or "off",
@@ -182,20 +196,19 @@ def main() -> None:
     )
 
     exact_start = perf_counter()
-    exact_result = exact_dice.evaluate_coordinates(workload.TIMING_CELLS)
+    exact_result = exact_dice.evaluate_exact_sweep(config.sweep_config)
     exact_elapsed = perf_counter() - exact_start
 
     if not config.skip_validation:
-        validation_exact = exact_dice.evaluate_coordinates(workload.VALIDATION_CELLS)
         for backend_name, _sample_counts in benchmark_rows(config):
-            validate_backend(validation_exact, backend_name, config)
+            validate_backend(exact_result, backend_name, config)
 
     sampled_runs = {}
     table_rows = [
         (
             "dice exact",
             "-",
-            "{}-cell exact probe".format(len(workload.TIMING_CELLS)),
+            "full sweep ({:,} cells)".format(coordinate_count),
             "{:.3f}".format(exact_elapsed),
             "1.00x",
             "0.0000",
@@ -207,22 +220,20 @@ def main() -> None:
         for sample_index, sample_count in enumerate(sample_counts, start=1):
             run_seed = config.seed + backend_index * 10000 + sample_index
             sampled_start = perf_counter()
-            sampled_result = common.sample_coordinates(
-                backend,
-                workload.TIMING_CELLS,
-                sample_count,
+            sampled_result = backend.evaluate_sweep(
+                samples_per_cell=sample_count,
                 seed=run_seed,
                 **backend_kwargs(config, backend_name)
             )
             sampled_elapsed = perf_counter() - sampled_start
             label = "{} {:,}".format(backend_name, sample_count)
             sampled_runs[label] = sampled_result
-            error = common.mean_absolute_error(exact_result, sampled_result, workload.REPRESENTATIVE_CELLS)
+            error = common.mean_absolute_error(exact_result, sampled_result, representative_cells)
             table_rows.append(
                 (
                     BACKEND_LABELS[backend_name],
                     "{:,}".format(sample_count),
-                    "{}-cell exact probe".format(len(workload.TIMING_CELLS)),
+                    "full sweep ({:,} cells)".format(coordinate_count),
                     "{:.3f}".format(sampled_elapsed),
                     format_ratio(sampled_elapsed / exact_elapsed),
                     "{:.4f}".format(error),
@@ -241,7 +252,7 @@ def main() -> None:
     print("Representative cells:")
     for label, sampled_result in sampled_runs.items():
         print("  {}:".format(label))
-        for line in common.summarize_cells(exact_result, sampled_result, workload.REPRESENTATIVE_CELLS):
+        for line in common.summarize_cells(exact_result, sampled_result, representative_cells):
             print("    " + line)
 
     if config.plot_path:
@@ -253,7 +264,7 @@ def main() -> None:
         plotting.plot_representative_distributions(
             exact_result,
             headline_runs if headline_runs else sampled_runs,
-            workload.REPRESENTATIVE_CELLS,
+            representative_cells,
             config.plot_path,
         )
         print()

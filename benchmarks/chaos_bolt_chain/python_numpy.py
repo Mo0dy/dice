@@ -7,11 +7,16 @@ import multiprocessing as mp
 
 import numpy as np
 
-from .workload import MAX_DAMAGE, MAX_SLOT, MAX_TARGETS, SLOTS, TARGET_COUNTS, state_space
+from .workload import DEFAULT_CONFIG, max_damage, max_slot, max_targets, state_space
 
 
 def _simulate_state_histograms(
     *,
+    slots: tuple[int, ...],
+    target_counts: tuple[int, ...],
+    max_slot_level: int,
+    max_targets_count: int,
+    max_total_damage: int,
     mode: str,
     attack_bonus: int,
     bless: int,
@@ -21,7 +26,7 @@ def _simulate_state_histograms(
     batch_size: int,
 ) -> np.ndarray:
     rng = np.random.default_rng(seed)
-    histograms = np.zeros((len(SLOTS), len(TARGET_COUNTS), MAX_DAMAGE + 1), dtype=np.int64)
+    histograms = np.zeros((len(slots), len(target_counts), max_total_damage + 1), dtype=np.int64)
     remaining = samples_per_cell
 
     while remaining > 0:
@@ -29,26 +34,26 @@ def _simulate_state_histograms(
         remaining -= batch
 
         if mode == "normal":
-            attack_rolls = rng.integers(1, 21, size=(batch, MAX_TARGETS), dtype=np.int16)
+            attack_rolls = rng.integers(1, 21, size=(batch, max_targets_count), dtype=np.int16)
         elif mode == "advantage":
-            attack_rolls = rng.integers(1, 21, size=(batch, MAX_TARGETS, 2), dtype=np.int16).max(axis=2)
+            attack_rolls = rng.integers(1, 21, size=(batch, max_targets_count, 2), dtype=np.int16).max(axis=2)
         elif mode == "elven_accuracy":
-            attack_rolls = rng.integers(1, 21, size=(batch, MAX_TARGETS, 3), dtype=np.int16).max(axis=2)
+            attack_rolls = rng.integers(1, 21, size=(batch, max_targets_count, 3), dtype=np.int16).max(axis=2)
         else:
             raise ValueError("unknown mode {!r}".format(mode))
 
         if bless:
-            bless_rolls = rng.integers(1, 5, size=(batch, MAX_TARGETS), dtype=np.int16)
+            bless_rolls = rng.integers(1, 5, size=(batch, max_targets_count), dtype=np.int16)
         else:
             bless_rolls = 0
 
-        pair_d8 = rng.integers(1, 9, size=(batch, MAX_TARGETS, 2), dtype=np.int16)
+        pair_d8 = rng.integers(1, 9, size=(batch, max_targets_count, 2), dtype=np.int16)
         pair_sums = pair_d8.sum(axis=2, dtype=np.int16)
         doubles = pair_d8[:, :, 0] == pair_d8[:, :, 1]
 
-        base_d6 = rng.integers(1, 7, size=(batch, MAX_TARGETS, MAX_SLOT), dtype=np.int16)
-        crit_d8 = rng.integers(1, 9, size=(batch, MAX_TARGETS, 2), dtype=np.int16)
-        crit_d6 = rng.integers(1, 7, size=(batch, MAX_TARGETS, MAX_SLOT), dtype=np.int16)
+        base_d6 = rng.integers(1, 7, size=(batch, max_targets_count, max_slot_level), dtype=np.int16)
+        crit_d8 = rng.integers(1, 9, size=(batch, max_targets_count, 2), dtype=np.int16)
+        crit_d6 = rng.integers(1, 7, size=(batch, max_targets_count, max_slot_level), dtype=np.int16)
 
         base_d6_prefix = np.cumsum(base_d6, axis=2, dtype=np.int16)
         crit_d6_prefix = np.cumsum(crit_d6, axis=2, dtype=np.int16)
@@ -58,20 +63,20 @@ def _simulate_state_histograms(
         crits = attack_rolls == 20
         hits = (~misses) & (crits | (attack_rolls + attack_bonus + bless_rolls >= ac))
 
-        active = np.zeros((batch, MAX_TARGETS), dtype=bool)
+        active = np.zeros((batch, max_targets_count), dtype=bool)
         active[:, 0] = True
-        for target_index in range(1, MAX_TARGETS):
+        for target_index in range(1, max_targets_count):
             active[:, target_index] = active[:, target_index - 1] & hits[:, target_index - 1] & doubles[:, target_index - 1]
 
-        for slot_index, slot_level in enumerate(SLOTS):
+        for slot_index, slot_level in enumerate(slots):
             base_damage = pair_sums + base_d6_prefix[:, :, slot_level - 1]
             crit_damage = base_damage + crit_pair_sum + crit_d6_prefix[:, :, slot_level - 1]
             strike_damage = np.where(hits, np.where(crits, crit_damage, base_damage), 0)
             chain_damage = np.where(active, strike_damage, 0)
             chain_totals = np.cumsum(chain_damage, axis=1, dtype=np.int16)
-            for target_count_index, target_count in enumerate(TARGET_COUNTS):
+            for target_count_index, target_count in enumerate(target_counts):
                 totals = chain_totals[:, target_count - 1]
-                histograms[slot_index, target_count_index] += np.bincount(totals, minlength=MAX_DAMAGE + 1)
+                histograms[slot_index, target_count_index] += np.bincount(totals, minlength=max_total_damage + 1)
 
     return histograms
 
@@ -82,10 +87,15 @@ def _split_trials_evenly(total_trials: int, parts: int) -> tuple[int, ...]:
 
 
 def _simulate_state_histograms_task(args) -> tuple[int, np.ndarray]:
-    state_index, mode, attack_bonus, bless, ac, samples_per_cell, seed, batch_size = args
+    state_index, slots, target_counts, max_slot_level, max_targets_count, max_total_damage, mode, attack_bonus, bless, ac, samples_per_cell, seed, batch_size = args
     return (
         state_index,
         _simulate_state_histograms(
+            slots=slots,
+            target_counts=target_counts,
+            max_slot_level=max_slot_level,
+            max_targets_count=max_targets_count,
+            max_total_damage=max_total_damage,
             mode=mode,
             attack_bonus=attack_bonus,
             bless=bless,
@@ -99,6 +109,11 @@ def _simulate_state_histograms_task(args) -> tuple[int, np.ndarray]:
 
 def _state_histograms_for_single_state(
     *,
+    slots: tuple[int, ...],
+    target_counts: tuple[int, ...],
+    max_slot_level: int,
+    max_targets_count: int,
+    max_total_damage: int,
     mode: str,
     attack_bonus: int,
     bless: int,
@@ -110,6 +125,11 @@ def _state_histograms_for_single_state(
 ) -> np.ndarray:
     if processes <= 1:
         return _simulate_state_histograms(
+            slots=slots,
+            target_counts=target_counts,
+            max_slot_level=max_slot_level,
+            max_targets_count=max_targets_count,
+            max_total_damage=max_total_damage,
             mode=mode,
             attack_bonus=attack_bonus,
             bless=bless,
@@ -122,6 +142,11 @@ def _state_histograms_for_single_state(
     chunks = [chunk for chunk in _split_trials_evenly(samples_per_cell, processes) if chunk > 0]
     if len(chunks) == 1:
         return _simulate_state_histograms(
+            slots=slots,
+            target_counts=target_counts,
+            max_slot_level=max_slot_level,
+            max_targets_count=max_targets_count,
+            max_total_damage=max_total_damage,
             mode=mode,
             attack_bonus=attack_bonus,
             bless=bless,
@@ -131,12 +156,26 @@ def _state_histograms_for_single_state(
             batch_size=batch_size,
         )
 
-    aggregate = np.zeros((len(SLOTS), len(TARGET_COUNTS), MAX_DAMAGE + 1), dtype=np.int64)
+    aggregate = np.zeros((len(slots), len(target_counts), max_total_damage + 1), dtype=np.int64)
     with ProcessPoolExecutor(max_workers=len(chunks), mp_context=mp.get_context("fork")) as executor:
         futures = [
             executor.submit(
                 _simulate_state_histograms_task,
-                (0, mode, attack_bonus, bless, ac, chunk, seed + chunk_index, batch_size),
+                (
+                    0,
+                    slots,
+                    target_counts,
+                    max_slot_level,
+                    max_targets_count,
+                    max_total_damage,
+                    mode,
+                    attack_bonus,
+                    bless,
+                    ac,
+                    chunk,
+                    seed + chunk_index,
+                    batch_size,
+                ),
             )
             for chunk_index, chunk in enumerate(chunks)
         ]
@@ -150,11 +189,19 @@ def sample_coordinate_distribution(
     coordinate,
     trials: int,
     seed: int,
+    config=DEFAULT_CONFIG,
     batch_size: int = 50000,
     processes: int = 1,
 ) -> dict[int, float]:
     slot_level, mode, attack_bonus, bless, targets, ac = coordinate
+    slots = tuple(config.slots)
+    target_counts = tuple(config.target_counts)
     histograms = _state_histograms_for_single_state(
+        slots=slots,
+        target_counts=target_counts,
+        max_slot_level=max_slot(config),
+        max_targets_count=max_targets(config),
+        max_total_damage=max_damage(config),
         mode=mode,
         attack_bonus=attack_bonus,
         bless=bless,
@@ -164,7 +211,7 @@ def sample_coordinate_distribution(
         batch_size=batch_size,
         processes=processes,
     )
-    row = histograms[SLOTS.index(slot_level), TARGET_COUNTS.index(targets)]
+    row = histograms[slots.index(slot_level), target_counts.index(targets)]
     nonzero = np.flatnonzero(row)
     return {int(outcome): int(row[outcome]) / trials for outcome in nonzero}
 
@@ -172,15 +219,26 @@ def sample_coordinate_distribution(
 def evaluate_sweep(
     samples_per_cell: int,
     seed: int,
+    config=DEFAULT_CONFIG,
     batch_size: int = 50000,
     processes: int = 1,
 ) -> dict[tuple[object, ...], dict[int, float]]:
     sampled = {}
-    states = tuple(state_space())
+    slots = tuple(config.slots)
+    target_counts = tuple(config.target_counts)
+    max_slot_level = max_slot(config)
+    max_targets_count = max_targets(config)
+    max_total_damage = max_damage(config)
+    states = tuple(state_space(config))
 
     if processes <= 1:
         for state_index, (mode, attack_bonus, bless, ac) in enumerate(states):
             histograms = _simulate_state_histograms(
+                slots=slots,
+                target_counts=target_counts,
+                max_slot_level=max_slot_level,
+                max_targets_count=max_targets_count,
+                max_total_damage=max_total_damage,
                 mode=mode,
                 attack_bonus=attack_bonus,
                 bless=bless,
@@ -189,8 +247,8 @@ def evaluate_sweep(
                 seed=seed + state_index,
                 batch_size=batch_size,
             )
-            for slot_index, slot_level in enumerate(SLOTS):
-                for target_count_index, target_count in enumerate(TARGET_COUNTS):
+            for slot_index, slot_level in enumerate(slots):
+                for target_count_index, target_count in enumerate(target_counts):
                     row = histograms[slot_index, target_count_index]
                     nonzero = np.flatnonzero(row)
                     sampled[(slot_level, mode, attack_bonus, bless, target_count, ac)] = {
@@ -200,7 +258,7 @@ def evaluate_sweep(
 
     chunks = [chunk for chunk in _split_trials_evenly(samples_per_cell, processes) if chunk > 0]
     aggregate_by_state = {
-        state_index: np.zeros((len(SLOTS), len(TARGET_COUNTS), MAX_DAMAGE + 1), dtype=np.int64)
+        state_index: np.zeros((len(slots), len(target_counts), max_total_damage + 1), dtype=np.int64)
         for state_index in range(len(states))
     }
 
@@ -210,6 +268,11 @@ def evaluate_sweep(
             tasks.append(
                 (
                     state_index,
+                    slots,
+                    target_counts,
+                    max_slot_level,
+                    max_targets_count,
+                    max_total_damage,
                     mode,
                     attack_bonus,
                     bless,
@@ -228,8 +291,8 @@ def evaluate_sweep(
 
     for state_index, (mode, attack_bonus, bless, ac) in enumerate(states):
         histograms = aggregate_by_state[state_index]
-        for slot_index, slot_level in enumerate(SLOTS):
-            for target_count_index, target_count in enumerate(TARGET_COUNTS):
+        for slot_index, slot_level in enumerate(slots):
+            for target_count_index, target_count in enumerate(target_counts):
                 row = histograms[slot_index, target_count_index]
                 nonzero = np.flatnonzero(row)
                 sampled[(slot_level, mode, attack_bonus, bless, target_count, ac)] = {
