@@ -20,13 +20,15 @@ if str(ROOT) not in sys.path:
 
 import dice
 from dice import interpret_file, interpret_statement
-from diceengine import TRUE, FALSE, Distributions
+from diceengine import TRUE, FALSE, Distribution, FiniteMeasure, Sweep
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class RuntimeTest(unittest.TestCase):
@@ -149,7 +151,7 @@ class RuntimeTest(unittest.TestCase):
 
     def test_type_reports_outer_runtime_shape_for_distribution(self):
         result = interpret_statement("type(d20)")
-        self.assertEqual(result, "Sweep[Distribution]")
+        self.assertEqual(result, "Distribution")
 
     def test_type_reports_raw_scalar_literal_shape(self):
         result = interpret_statement("type(1)")
@@ -250,6 +252,25 @@ class RuntimeTest(unittest.TestCase):
         self.assertAlmostEqual(result[4], 0.375)
         self.assertAlmostEqual(result[5], 0.375)
         self.assertAlmostEqual(result[6], 0.125)
+
+    def test_repeat_sum_zero_returns_identity(self):
+        result = interpret_statement("repeat_sum(0, d6)")
+        self.assertEqual(result, 0)
+
+    def test_repeat_sum_one_matches_original_value(self):
+        direct = only_distribution(interpret_statement("repeat_sum(1, d6 + 1)"))
+        explicit = only_distribution(interpret_statement("d6 + 1"))
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_large_odd_count_matches_explicit_chain(self):
+        direct = only_distribution(interpret_statement("repeat_sum(5, d2)"))
+        explicit = only_distribution(interpret_statement("d2 + d2 + d2 + d2 + d2"))
+        self.assertEqual(str(direct), str(explicit))
+
+    def test_repeat_sum_power_of_two_count_matches_explicit_chain(self):
+        direct = only_distribution(interpret_statement("repeat_sum(8, d2)"))
+        explicit = only_distribution(interpret_statement("d2 + d2 + d2 + d2 + d2 + d2 + d2 + d2"))
+        self.assertEqual(str(direct), str(explicit))
 
     def test_repeat_sum_operator_matches_repeat_sum(self):
         direct = only_distribution(interpret_statement("d2 ^ 3"))

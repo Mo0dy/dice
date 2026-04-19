@@ -16,14 +16,16 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dice import D, dice_interpreter, dicefunction
-from diceengine import Distribution, Distributions, TRUE, FALSE
+from diceengine import Distribution, FiniteMeasure, TRUE, FALSE, Sweep
 from executor import ExactExecutor
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class PythonIntegrationTest(unittest.TestCase):
@@ -169,6 +171,24 @@ class PythonIntegrationTest(unittest.TestCase):
 
         with self.assertRaisesRegex(Exception, "dice-session invocation"):
             add_default_bonus(4)
+
+    def test_cache_enabled_function_reuses_pure_results(self):
+        calls = []
+
+        @dicefunction(cache=True)
+        def add_bonus(value, bonus=2):
+            calls.append((value, bonus))
+            return value + bonus
+
+        self.assertEqual(add_bonus(3), 5)
+        self.assertEqual(add_bonus(3), 5)
+        self.assertEqual(calls, [(3, 2)])
+
+    def test_cache_enabled_sweep_function_is_rejected(self):
+        with self.assertRaisesRegex(Exception, "cache=True"):
+            @dicefunction(cache=True)
+            def summed(value: Sweep[int]):
+                return value
 
 
 if __name__ == "__main__":

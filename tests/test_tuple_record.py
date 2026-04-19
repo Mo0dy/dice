@@ -18,13 +18,15 @@ if str(ROOT) not in sys.path:
 
 import dice
 from dice import dice_interpreter, dicefunction, interpret_file, interpret_statement
-from diceengine import Distributions, RecordValue, Sweep, SweepValues, TupleValue
+from diceengine import Distribution, FiniteMeasure, RecordValue, Sweep, SweepValues, TupleValue
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class TupleRecordLiteralTest(unittest.TestCase):
@@ -137,7 +139,7 @@ class TupleRecordFormattingTest(unittest.TestCase):
     def test_json_output_serializes_structured_distribution_outcomes(self):
         payload = json.loads(dice._format_result_json(interpret_statement("d{(1,), (2,)}")))
         self.assertEqual(
-            payload["cells"][0]["distribution"],
+            payload["distribution"],
             [
                 {"outcome": {"type": "tuple", "items": [1]}, "probability": 0.5},
                 {"outcome": {"type": "tuple", "items": [2]}, "probability": 0.5},

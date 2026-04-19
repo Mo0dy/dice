@@ -1,75 +1,69 @@
 {
-  "axes": [],
-  "cells": [
+  "type": "distribution",
+  "distribution": [
     {
-      "coordinates": [],
-      "distribution": [
-        {
-          "outcome": 3,
-          "probability": 0.0007716049382716049
-        },
-        {
-          "outcome": 4,
-          "probability": 0.0030864197530864196
-        },
-        {
-          "outcome": 5,
-          "probability": 0.007716049382716049
-        },
-        {
-          "outcome": 6,
-          "probability": 0.016203703703703703
-        },
-        {
-          "outcome": 7,
-          "probability": 0.029320987654320986
-        },
-        {
-          "outcome": 8,
-          "probability": 0.047839506172839504
-        },
-        {
-          "outcome": 9,
-          "probability": 0.07021604938271606
-        },
-        {
-          "outcome": 10,
-          "probability": 0.0941358024691358
-        },
-        {
-          "outcome": 11,
-          "probability": 0.11419753086419752
-        },
-        {
-          "outcome": 12,
-          "probability": 0.12885802469135801
-        },
-        {
-          "outcome": 13,
-          "probability": 0.13271604938271606
-        },
-        {
-          "outcome": 14,
-          "probability": 0.12345679012345678
-        },
-        {
-          "outcome": 15,
-          "probability": 0.10108024691358025
-        },
-        {
-          "outcome": 16,
-          "probability": 0.07253086419753087
-        },
-        {
-          "outcome": 17,
-          "probability": 0.041666666666666664
-        },
-        {
-          "outcome": 18,
-          "probability": 0.016203703703703703
-        }
-      ]
+      "outcome": 3,
+      "probability": 0.0007716049382716049
+    },
+    {
+      "outcome": 4,
+      "probability": 0.0030864197530864196
+    },
+    {
+      "outcome": 5,
+      "probability": 0.007716049382716049
+    },
+    {
+      "outcome": 6,
+      "probability": 0.016203703703703703
+    },
+    {
+      "outcome": 7,
+      "probability": 0.029320987654320986
+    },
+    {
+      "outcome": 8,
+      "probability": 0.047839506172839504
+    },
+    {
+      "outcome": 9,
+      "probability": 0.07021604938271606
+    },
+    {
+      "outcome": 10,
+      "probability": 0.0941358024691358
+    },
+    {
+      "outcome": 11,
+      "probability": 0.11419753086419752
+    },
+    {
+      "outcome": 12,
+      "probability": 0.12885802469135801
+    },
+    {
+      "outcome": 13,
+      "probability": 0.13271604938271606
+    },
+    {
+      "outcome": 14,
+      "probability": 0.12345679012345678
+    },
+    {
+      "outcome": 15,
+      "probability": 0.10108024691358025
+    },
+    {
+      "outcome": 16,
+      "probability": 0.07253086419753087
+    },
+    {
+      "outcome": 17,
+      "probability": 0.041666666666666664
+    },
+    {
+      "outcome": 18,
+      "probability": 0.016203703703703703
     }
-  ],
-  "type": "distributions"
+  ]
 }

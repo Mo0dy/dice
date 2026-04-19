@@ -15,7 +15,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from diceengine import Distributions, FALSE, TRUE
+from diceengine import Distribution, FiniteMeasure, Sweep, FALSE, TRUE
 from diceparser import DiceParser
 from interpreter import Interpreter
 from lexer import Lexer
@@ -28,9 +28,11 @@ def interpret(text):
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class InterpreterFunctionScopeTest(unittest.TestCase):

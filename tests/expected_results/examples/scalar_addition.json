@@ -1,15 +1,9 @@
 {
-  "axes": [],
-  "cells": [
+  "type": "distribution",
+  "distribution": [
     {
-      "coordinates": [],
-      "distribution": [
-        {
-          "outcome": 2,
-          "probability": 1.0
-        }
-      ]
+      "outcome": 2,
+      "probability": 1.0
     }
-  ],
-  "type": "distributions"
+  ]
 }

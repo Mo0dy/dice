@@ -1,4 +1,5 @@
 {
+  "type": "distributions",
   "axes": [],
   "cells": [
     {
@@ -58,6 +59,5 @@
         }
       ]
     }
-  ],
-  "type": "distributions"
+  ]
 }

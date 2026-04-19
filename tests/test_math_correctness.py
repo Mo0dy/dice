@@ -16,13 +16,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dice import interpret_statement
-from diceengine import Distributions
+from diceengine import Distribution, FiniteMeasure, Sweep
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class MathCorrectnessTest(unittest.TestCase):

@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover - platform-specific
     readline = None
 
 from interpreter import Interpreter
-from executor import D, dicefunction
+from hostfunctions import D, dicefunction
 from diceengine import (
     Distributions,
     Distribution,
@@ -229,6 +229,14 @@ def _format_scalar_heatmap(result, roundlevel=0):
 
 
 def _format_result_text(result, roundlevel=0, probability_mode="percent"):
+    if isinstance(result, Distribution):
+        return _format_unswept_distribution(
+            result,
+            roundlevel,
+            probability_mode=probability_mode,
+        )
+    if isinstance(result, FiniteMeasure):
+        return str(result)
     if isinstance(result, Distributions):
         if result.is_unswept() and isinstance(result.only_distribution(), FiniteMeasure) and not isinstance(result.only_distribution(), Distribution):
             return str(result.only_distribution())

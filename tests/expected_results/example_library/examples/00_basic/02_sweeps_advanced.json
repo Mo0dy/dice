@@ -1,4 +1,5 @@
 {
+  "type": "distributions",
   "axes": [
     {
       "key": "sweep_1",
@@ -184,6 +185,5 @@
         }
       ]
     }
-  ],
-  "type": "distributions"
+  ]
 }

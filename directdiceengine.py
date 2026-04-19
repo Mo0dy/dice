@@ -21,7 +21,7 @@ from diceengine import (
     lift_sweeps,
 )
 from diceparser import DiceParser
-from executor import ExactExecutor
+from executor import ExactExecutor, Executor
 from interpreter import Interpreter
 from lexer import Lexer
 
@@ -69,6 +69,9 @@ class DirectExecutor(ExactExecutor):
     def __init__(self, seed=None, rng=None):
         self.rng = rng if rng is not None else random.Random(seed)
         super().__init__()
+
+    def _register_builtin_functions(self):
+        Executor._register_builtin_functions(self)
 
     def _lift_binary(self, left, right, operation, exact_operation=None):
         @lift_sweeps
@@ -194,6 +197,9 @@ class DirectExecutor(ExactExecutor):
 
     def reselsefloordiv(self, condition, distrib):
         return self.reselse(condition, distrib, self.floordiv(distrib, 2))
+
+    def repeat_sum(self, count, value):
+        return diceengine.repeat_sum_with_linear(self.add, count, value)
 
     def roll(self, n, s):
         def operation(sampled_n, sampled_s):

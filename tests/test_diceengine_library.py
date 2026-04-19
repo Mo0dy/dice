@@ -15,13 +15,15 @@ os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from diceengine import FALSE, TRUE, Sweep, SweepValues, Distributions, add, cum, greaterorequal, mean, repeat_sum, rollsingle, std, surv, total, var
+from diceengine import FALSE, TRUE, Distribution, FiniteMeasure, Sweep, SweepValues, add, cum, greaterorequal, mean, repeat_sum, rollsingle, std, surv, total, var
 
 
 def only_distribution(result):
-    assert isinstance(result, Distributions)
-    assert result.is_unswept()
-    return result.only_distribution()
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class DiceengineLibraryTest(unittest.TestCase):

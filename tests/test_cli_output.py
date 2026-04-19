@@ -21,13 +21,22 @@ if str(ROOT) not in sys.path:
 
 import dice
 from dice import interpret_statement
+from diceengine import Distribution, FiniteMeasure, Sweep
 from interpreter import Interpreter
+
+
+def only_distribution(result):
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class CliFormattingTest(unittest.TestCase):
     def test_roundlevel_only_affects_rendering_not_runtime_distribution(self):
         result = interpret_statement("d3", roundlevel=2)
-        distrib = result.only_distribution()
+        distrib = only_distribution(result)
         self.assertAlmostEqual(distrib[1], 1 / 3)
         self.assertAlmostEqual(distrib[2], 1 / 3)
         self.assertAlmostEqual(distrib[3], 1 / 3)
@@ -54,7 +63,7 @@ class CliFormattingTest(unittest.TestCase):
 
     def test_string_result_renders_directly(self):
         rendered = dice._format_result_text(interpret_statement("type(d20)"), roundlevel=2)
-        self.assertEqual(rendered, "Sweep[Distribution]")
+        self.assertEqual(rendered, "Distribution")
 
     def test_shape_result_renders_directly(self):
         rendered = dice._format_result_text(interpret_statement("shape(d20 >= [AC:10..12])"), roundlevel=2)
@@ -99,11 +108,9 @@ class CliFormattingTest(unittest.TestCase):
     def test_json_output_returns_structured_object(self):
         rendered = dice._format_result_json(interpret_statement("d20 >= 11", roundlevel=2), roundlevel=2)
         payload = json.loads(rendered)
-        self.assertEqual(payload["type"], "distributions")
-        self.assertEqual(payload["axes"], [])
-        self.assertEqual(payload["cells"][0]["coordinates"], [])
+        self.assertEqual(payload["type"], "distribution")
         self.assertEqual(
-            payload["cells"][0]["distribution"],
+            payload["distribution"],
             [
                 {"outcome": 0, "probability": 0.5},
                 {"outcome": 1, "probability": 0.5},
@@ -113,7 +120,7 @@ class CliFormattingTest(unittest.TestCase):
     def test_json_output_serializes_string_result(self):
         rendered = dice._format_result_json(interpret_statement("type(d20)"), roundlevel=2)
         payload = json.loads(rendered)
-        self.assertEqual(payload, {"type": "string", "value": "Sweep[Distribution]"})
+        self.assertEqual(payload, {"type": "string", "value": "Distribution"})
 
     def test_json_output_serializes_shape_string_result(self):
         rendered = dice._format_result_json(interpret_statement("shape(d20 >= [AC:10..12])"), roundlevel=2)
@@ -136,7 +143,7 @@ class CliFormattingTest(unittest.TestCase):
         )
         payload = json.loads(rendered)
         self.assertEqual(
-            payload["cells"][0]["distribution"],
+            payload["distribution"],
             [
                 {"outcome": 0, "probability": 50.0},
                 {"outcome": 1, "probability": 50.0},
@@ -330,7 +337,7 @@ class CliMainIntegrationTest(unittest.TestCase):
                 exit_code = dice.main()
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
-        self.assertEqual(payload["type"], "distributions")
+        self.assertEqual(payload["type"], "distribution")
 
     def test_main_waits_for_rendered_figures_after_file_execution(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -376,9 +383,9 @@ class CliMainIntegrationTest(unittest.TestCase):
                 exit_code = dice.main()
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
-        self.assertEqual([entry["outcome"] for entry in payload["cells"][0]["distribution"]], [0, 1])
-        self.assertAlmostEqual(payload["cells"][0]["distribution"][0]["probability"], 0.5)
-        self.assertAlmostEqual(payload["cells"][0]["distribution"][1]["probability"], 0.5)
+        self.assertEqual([entry["outcome"] for entry in payload["distribution"]], [0, 1])
+        self.assertAlmostEqual(payload["distribution"][0]["probability"], 0.5)
+        self.assertAlmostEqual(payload["distribution"][1]["probability"], 0.5)
 
     def test_main_json_honors_script_probability_mode_toggle(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -389,9 +396,9 @@ class CliMainIntegrationTest(unittest.TestCase):
                     exit_code = dice.main()
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
-        self.assertEqual([entry["outcome"] for entry in payload["cells"][0]["distribution"]], [0, 1])
-        self.assertAlmostEqual(payload["cells"][0]["distribution"][0]["probability"], 50.0)
-        self.assertAlmostEqual(payload["cells"][0]["distribution"][1]["probability"], 50.0)
+        self.assertEqual([entry["outcome"] for entry in payload["distribution"]], [0, 1])
+        self.assertAlmostEqual(payload["distribution"][0]["probability"], 50.0)
+        self.assertAlmostEqual(payload["distribution"][1]["probability"], 50.0)
 
     def test_main_json_defaults_to_unrounded_output(self):
         with mock.patch.object(sys, "argv", ["dice.py", "--json", "d3"]):
@@ -400,7 +407,7 @@ class CliMainIntegrationTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(
-            payload["cells"][0]["distribution"],
+            payload["distribution"],
             [
                 {"outcome": 1, "probability": 1 / 3},
                 {"outcome": 2, "probability": 1 / 3},
@@ -415,7 +422,7 @@ class CliMainIntegrationTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(
-            payload["cells"][0]["distribution"],
+            payload["distribution"],
             [
                 {"outcome": 1, "probability": 0.33},
                 {"outcome": 2, "probability": 0.33},

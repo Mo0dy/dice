@@ -67,7 +67,7 @@ from diceengine import (
     sweep_index,
 )
 from executor import ExactExecutor
-from executor import DiceDefault, MISSING, ParameterSpec, get_dicefunction_metadata, validate_runtime_value
+from hostfunctions import DiceDefault, MISSING, ParameterSpec, get_dicefunction_metadata, validate_runtime_value
 
 
 STDLIB_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stdlib")

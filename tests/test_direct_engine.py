@@ -17,21 +17,27 @@ if str(ROOT) not in sys.path:
 
 from directdiceengine import DirectExecutor, direct_sample
 from dice import interpret_statement
-from diceengine import FALSE, TRUE, Distributions
+from diceengine import FALSE, TRUE, Distribution, FiniteMeasure, Sweep
+
+
+def only_distribution(result):
+    if isinstance(result, Sweep):
+        assert result.is_unswept()
+        result = result.only_value()
+    assert isinstance(result, (Distribution, FiniteMeasure))
+    return result
 
 
 class DirectEngineSmokeTest(unittest.TestCase):
     def test_direct_backend_can_evaluate_branching_expression(self):
         result = direct_sample("d20 >= 11 -> 5 | 0", seed=123)
-        self.assertIsInstance(result, Distributions)
-        self.assertTrue(result.is_unswept())
-        distrib = result.only_distribution()
+        distrib = only_distribution(result)
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(set(distrib.keys()).issubset({0, 5}))
 
     def test_direct_backend_supports_relative_else_floor_division(self):
         result = direct_sample("d20 < 14 -> 2d10 | // 2", seed=123)
-        distrib = result.only_distribution()
+        distrib = only_distribution(result)
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(all(float(outcome).is_integer() for outcome in distrib.keys()))
 
@@ -44,13 +50,13 @@ class DirectEngineSmokeTest(unittest.TestCase):
 
     def test_direct_backend_supports_exact_match_queries(self):
         result = direct_sample("d20 == 20", seed=123)
-        distrib = result.only_distribution()
+        distrib = only_distribution(result)
         self.assertEqual(distrib.total_probability(), 1)
         self.assertTrue(set(distrib.keys()).issubset({TRUE, FALSE}))
 
     def test_direct_backend_keeps_deterministic_summary_semantics(self):
-        avg_result = direct_sample("2d6 $ mean", seed=123).only_distribution()
-        prop_result = direct_sample("d20 == 20 $ mean", seed=123).only_distribution()
+        avg_result = only_distribution(direct_sample("2d6 $ mean", seed=123))
+        prop_result = only_distribution(direct_sample("d20 == 20 $ mean", seed=123))
         outcome, probability = next(iter(avg_result.items()))
         self.assertAlmostEqual(outcome, 7.0)
         self.assertEqual(probability, 1)
@@ -59,21 +65,21 @@ class DirectEngineSmokeTest(unittest.TestCase):
         self.assertEqual(prop_probability, 1)
 
     def test_direct_backend_summarizes_choice_distributions(self):
-        avg_result = direct_sample("d20 >= 11 $ mean", seed=123).only_distribution()
-        var_result = direct_sample("d20 >= 11 $ var", seed=123).only_distribution()
+        avg_result = only_distribution(direct_sample("d20 >= 11 $ mean", seed=123))
+        var_result = only_distribution(direct_sample("d20 >= 11 $ var", seed=123))
         self.assertAlmostEqual(next(iter(avg_result.keys())), 0.5)
         self.assertAlmostEqual(next(iter(var_result.keys())), 0.25)
 
     def test_direct_backend_uses_exact_cumulative_helpers(self):
-        cum_result = direct_sample("cum(d4)", seed=123).only_distribution()
-        surv_result = direct_sample("surv(d4)", seed=123).only_distribution()
+        cum_result = only_distribution(direct_sample("cum(d4)", seed=123))
+        surv_result = only_distribution(direct_sample("surv(d4)", seed=123))
         self.assertAlmostEqual(cum_result[1], 0.25)
         self.assertAlmostEqual(cum_result[4], 1.0)
         self.assertAlmostEqual(surv_result[1], 0.75)
         self.assertAlmostEqual(surv_result[4], 0.0)
 
     def test_direct_backend_sample_operator_returns_one_outcome(self):
-        result = direct_sample("!d20", seed=123).only_distribution()
+        result = only_distribution(direct_sample("!d20", seed=123))
         self.assertEqual(result.total_probability(), 1)
         sampled_outcomes = list(result.keys())
         self.assertEqual(len(sampled_outcomes), 1)
@@ -81,8 +87,7 @@ class DirectEngineSmokeTest(unittest.TestCase):
 
     def test_interpret_statement_accepts_direct_engine_backend(self):
         result = interpret_statement("d20 >= 11", executor=DirectExecutor(seed=123))
-        self.assertTrue(result.is_unswept())
-        distrib = result.only_distribution()
+        distrib = only_distribution(result)
         self.assertIn(distrib.total_probability(), (0, 1))
         self.assertTrue(set(distrib.keys()).issubset({TRUE, FALSE}))
 

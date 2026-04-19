@@ -1,4 +1,5 @@
 {
+  "type": "distributions",
   "axes": [
     {
       "key": "sweep_0",
@@ -41,7 +42,7 @@
       ],
       "distribution": [
         {
-          "outcome": 19.6,
+          "outcome": 19.600000000000005,
           "probability": 1.0
         }
       ]
@@ -71,7 +72,7 @@
       ],
       "distribution": [
         {
-          "outcome": 29.400000000000006,
+          "outcome": 29.40000000000001,
           "probability": 1.0
         }
       ]
@@ -101,7 +102,7 @@
       ],
       "distribution": [
         {
-          "outcome": 39.200000000000024,
+          "outcome": 39.20000000000003,
           "probability": 1.0
         }
       ]
@@ -131,11 +132,10 @@
       ],
       "distribution": [
         {
-          "outcome": 49.0,
+          "outcome": 49.00000000000001,
           "probability": 1.0
         }
       ]
     }
-  ],
-  "type": "distributions"
+  ]
 }

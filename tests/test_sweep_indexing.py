@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dice import interpret_file, interpret_statement
-from diceengine import RecordValue, Sweep
+from diceengine import Distribution, FiniteMeasure, RecordValue, Sweep
 
 
 def only_value(result):
@@ -27,6 +27,7 @@ def only_value(result):
 
 def only_distribution(result):
     value = only_value(result)
+    assert isinstance(value, (Distribution, FiniteMeasure))
     return value
 
 
