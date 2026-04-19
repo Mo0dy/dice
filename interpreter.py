@@ -875,6 +875,11 @@ class Interpreter:
                                 if remaining_mass == 0:
                                     continue
                                 result_distrib = result_value.lookup(clause_axes, coordinates)
+                                # Keep raw weighted entries here instead of
+                                # constructing a temporary FiniteMeasure. Split
+                                # dominated workloads such as Chaos Bolt were
+                                # spending most of their time canonicalizing
+                                # these branch-local intermediates.
                                 weighted = tuple(
                                     (result_outcome, outcome_probability * remaining_mass * result_probability)
                                     for result_outcome, result_probability in result_distrib.items()
@@ -902,6 +907,9 @@ class Interpreter:
                             matched_mass = remaining_mass * true_mass
                             if matched_mass:
                                 result_distrib = result_value.lookup(clause_axes, coordinates)
+                                # This mirrors the otherwise-branch optimization
+                                # above: defer canonicalization until the final
+                                # branch contributions are merged.
                                 clause_cells[coordinates] = tuple(
                                     (result_outcome, outcome_probability * matched_mass * result_probability)
                                     for result_outcome, result_probability in result_distrib.items()

@@ -54,6 +54,7 @@ The active runtime is now the parser/interpreter/engine stack plus the CLI in `d
 - Keep `manual/` as the canonical long-form user-facing manual. It is also the source for the MkDocs site defined in `mkdocs.yml`.
 - Treat `DICE_REWRITE_PLAN.md` as the active design brief for ongoing semantic changes.
 - During this rewrite, every semantic feature change should come with sensible end-to-end tests where practical.
+- Add source-level comments when non-obvious design decisions matter, or when code is complicated enough to benefit from a brief explanation. Keep these comments short and focused on intent or invariants, not line-by-line narration.
 - Do not recreate parallel user docs like the removed `documentation.org` / `documentation.html` unless the user explicitly asks for them.
 - For syntax changes, update `lexer.py`, `diceparser.py`, and `interpreter.py` together.
 - When adding standard-library builtins, define them in `diceengine.py` and register them through `executor.py` so dice and Python use the same callable surface.

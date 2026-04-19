@@ -64,6 +64,9 @@ def _sampled_result(outcome, exact):
 
 
 def _repeat_sum_with_linear(add_function, count, value):
+    # The direct backend intentionally keeps a simple linear reference
+    # implementation. Exact repeated-squaring and exact caches live on the exact
+    # engine side; this path is here as a straightforward sampled baseline.
     count_sweep = diceengine._coerce_value_to_sweep(count)
     contributions = []
     for count_coordinates, count_cell in count_sweep.items():

@@ -189,7 +189,6 @@ def wait_for_rendered_figures(render_config=None):
 
 def _canonicalize_weighted_entries(entries):
     merged = {}
-    order = []
     for outcome, weight in entries:
         if not isinstance(weight, (int, float)) or not isfinite(weight):
             runtime_error("weights must be finite numbers")
@@ -198,13 +197,10 @@ def _canonicalize_weighted_entries(entries):
         if weight == 0:
             continue
         try:
-            existing = merged.get(outcome, 0.0)
+            merged[outcome] = merged.get(outcome, 0.0) + float(weight)
         except TypeError as error:
             runtime_error("measure outcomes must be hashable: {}".format(error))
-        if outcome not in merged:
-            order.append(outcome)
-        merged[outcome] = existing + float(weight)
-    return tuple((outcome, merged[outcome]) for outcome in order if merged[outcome] != 0)
+    return tuple((outcome, weight) for outcome, weight in merged.items() if weight != 0)
 
 
 def _is_identifier_key(key):
@@ -809,6 +805,10 @@ DENSE_INTEGER_SUPPORT_MIN_SPAN = 256
 
 
 def _dense_integer_weights(distrib):
+    # Dense integer convolution is worthwhile for many combat distributions even
+    # when the support has holes, e.g. {0} U [hit_min..hit_max]. We therefore
+    # allow zero-filled gaps and gate the fast path by span/density instead of a
+    # strict contiguity check.
     items = distrib.items()
     if not items:
         return None
@@ -832,6 +832,9 @@ def _dense_integer_weights(distrib):
 
 
 def _convolve_dense_integer_add(left, right):
+    # This is the main exact-add fast path. It intentionally handles bounded
+    # integer supports with holes because branch-heavy attack distributions often
+    # have a miss spike at 0 plus dense positive damage bands.
     left_dense = _dense_integer_weights(left)
     if left_dense is None:
         return None
@@ -869,6 +872,9 @@ def _require_support_numeric(outcome, opname):
 
 def _pairwise_numeric(left, right, operator, opname):
     if opname == "add":
+        # Try the dense integer path before falling back to generic pairwise
+        # combination. Future regressions here show up immediately in the exact
+        # combat benchmarks.
         convolved = _convolve_dense_integer_add(left, right)
         if convolved is not None:
             return convolved
@@ -971,6 +977,9 @@ def _accumulate_distribution_contributions(contributions):
             projected = _lookup_projected(axes, contribution_cells, combined_axes, coordinates, None)
             if projected is None:
                 continue
+            # Split-heavy workloads keep raw weighted-entry tuples here on
+            # purpose so branch handling canonicalizes only once when the final
+            # Distribution is assembled for this output cell.
             projected_entries = projected.items() if isinstance(projected, FiniteMeasure) else projected
             for outcome, probability in projected_entries:
                 entries.append((outcome, probability))
@@ -1371,6 +1380,9 @@ def roll(n: Any, s: Any):
         _require_int(dice_count, "roll")
         for sides, sides_probability in s_distribution.items():
             _require_int(sides, "roll")
+            # Lower exact NdS into repeat_sum(single_die) so the same cached
+            # exact-add machinery is exercised by both explicit repeat_sum(...)
+            # and ordinary dice syntax.
             rolled = _coerce_to_distribution_cell(repeat_sum(dice_count, rollsingle(sides)))
             outer = dice_count_probability * sides_probability
             for outcome, probability in rolled.items():
@@ -1584,6 +1596,8 @@ def repeat_sum(count: Any, value: Any):
         return 0
     if count_outcome == 1:
         return value
+    # Recurse through the decorated builtin itself so the lru_cache attached by
+    # @dicefunction(cache=True) is shared across the whole execution.
     half = repeat_sum(count_outcome // 2, value)
     doubled = add(half, half)
     return doubled if count_outcome % 2 == 0 else add(doubled, value)
